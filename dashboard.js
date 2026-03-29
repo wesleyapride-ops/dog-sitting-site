@@ -18,7 +18,7 @@ const defaultData = () => ({
     services: [...defaultServices],
     bookings: [],
     tasks: [],
-    settings: { businessName: 'Paws & Stay' }
+    settings: { businessName: 'GenusPupClub' }
 });
 
 const Store = {
