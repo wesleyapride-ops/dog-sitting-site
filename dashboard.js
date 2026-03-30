@@ -3,11 +3,68 @@
 // ========================================
 const STORAGE_KEY = 'pawsAndStay';
 
+const DOG_BREEDS = [
+    'Labrador Retriever','Golden Retriever','German Shepherd','Bulldog','Beagle','Poodle','Rottweiler','Yorkshire Terrier',
+    'Boxer','Dachshund','Siberian Husky','Great Dane','Doberman Pinscher','Australian Shepherd','Cavalier King Charles Spaniel',
+    'Shih Tzu','Boston Terrier','Bernese Mountain Dog','Pomeranian','Havanese','Shetland Sheepdog','Brittany','English Springer Spaniel',
+    'Cocker Spaniel','Miniature Schnauzer','Border Collie','Vizsla','Maltese','Chihuahua','Pug','Weimaraner','Rhodesian Ridgeback',
+    'Collie','Basset Hound','Newfoundland','Bichon Frise','Belgian Malinois','West Highland White Terrier','Papillon','Bloodhound',
+    'Akita','Samoyed','Whippet','Bull Terrier','Cane Corso','Dalmatian','Italian Greyhound','French Bulldog','Corgi','Pit Bull',
+    'Other'
+];
+
+const CAT_BREEDS = [
+    'Domestic Shorthair','Domestic Longhair','Siamese','Persian','Maine Coon','Ragdoll','Bengal','Abyssinian','Sphynx','Russian Blue',
+    'Scottish Fold','British Shorthair','Birman','Oriental Shorthair','Devon Rex','Burmese','Tonkinese','Norwegian Forest Cat',
+    'Turkish Angora','Himalayan','Other'
+];
+
+const PET_SIZES = [
+    { value: 'tiny', label: 'Tiny (under 10 lbs)' },
+    { value: 'small', label: 'Small (10-25 lbs)' },
+    { value: 'medium', label: 'Medium (25-50 lbs)' },
+    { value: 'large', label: 'Large (50-100 lbs)' },
+    { value: 'xlarge', label: 'X-Large (100+ lbs)' }
+];
+
+const ALLERGY_OPTIONS = ['Chicken', 'Beef', 'Grain', 'Flea Meds', 'Dairy', 'Fish'];
+const TEMPERAMENT_OPTIONS = ['Friendly', 'Shy', 'Anxious', 'Energetic', 'Calm', 'Aggressive with dogs', 'Aggressive with cats'];
+const TENDENCY_OPTIONS = ['Chewer', 'Digger', 'Jumper', 'Barker', 'Escape Artist', 'Resource Guarder', 'Separation Anxiety'];
+const FEEDING_SCHEDULES = ['1x/day', '2x/day', '3x/day', 'Free feed'];
+const HOUSE_TRAINING_OPTIONS = ['Fully trained', 'Mostly trained', 'In progress', 'Not trained'];
+
+const DEFAULT_HOLIDAYS = [
+    { id: 'hol-christmas', name: 'Christmas', startMonth: 12, startDay: 23, endMonth: 12, endDay: 26, multiplier: 1.5 },
+    { id: 'hol-newyear', name: "New Year's", startMonth: 12, startDay: 30, endMonth: 1, endDay: 2, multiplier: 1.5 },
+    { id: 'hol-july4', name: 'July 4th', startMonth: 7, startDay: 3, endMonth: 7, endDay: 5, multiplier: 1.5 },
+    { id: 'hol-thanksgiving', name: 'Thanksgiving', startMonth: 11, startDay: 25, endMonth: 11, endDay: 29, multiplier: 1.5 },
+    { id: 'hol-memorial', name: 'Memorial Day', startMonth: 5, startDay: 24, endMonth: 5, endDay: 27, multiplier: 1.5 },
+    { id: 'hol-labor', name: 'Labor Day', startMonth: 9, startDay: 1, endMonth: 9, endDay: 3, multiplier: 1.5 }
+];
+
+const DEFAULT_ADDONS = [
+    { id: 'addon-bath', name: 'Bath', price: 15, icon: '🛁', enabled: true },
+    { id: 'addon-nail', name: 'Nail Trim', price: 10, icon: '✂️', enabled: true },
+    { id: 'addon-teeth', name: 'Teeth Brushing', price: 8, icon: '🪥', enabled: true },
+    { id: 'addon-groom', name: 'Full Groom', price: 45, icon: '💇', enabled: true }
+];
+
+const DEFAULT_FAQ = [
+    { q: 'What happens during a typical day?', a: 'Your pet enjoys a structured day with walks, playtime, meals, rest periods, and lots of love. We follow your pet\'s normal routine as closely as possible.' },
+    { q: 'What if my pet has special dietary needs?', a: 'We accommodate all dietary requirements. Just let us know your pet\'s specific food, portions, and schedule, and we\'ll follow it exactly.' },
+    { q: 'Are you insured?', a: 'Yes! We are fully insured and bonded, and all team members are background checked and Pet First Aid certified.' },
+    { q: 'How do you handle emergencies?', a: 'We have an emergency protocol in place and will contact you immediately. We keep your vet\'s information on file and have a 24/7 emergency vet nearby.' },
+    { q: 'Can I see photos of my pet during their stay?', a: 'Absolutely! We send daily photo and video updates so you can see your pet having a great time.' },
+    { q: 'Do you accept cats?', a: 'Yes! We love cats too. We provide separate, quiet spaces for feline guests with all the comforts of home.' },
+    { q: 'What are your holiday rates?', a: 'Holiday periods have a 1.5x rate multiplier. This includes major holidays like Christmas, New Year\'s, July 4th, Thanksgiving, Memorial Day, and Labor Day.' },
+    { q: 'What bathing/grooming services do you offer?', a: 'We offer Bath ($15), Nail Trim ($10), Teeth Brushing ($8), and Full Groom ($45) as add-ons to any booking.' }
+];
+
 const defaultServices = [
-    { id: 'svc-overnight', name: 'Overnight Sitting', price: 55, unit: 'night', duration: 'Overnight', color: '#6c5ce7', icon: '🏠', description: '24/7 care in a home environment', enabled: true, createdAt: new Date().toISOString() },
-    { id: 'svc-walking', name: 'Dog Walking', price: 25, unit: 'walk', duration: '30 min', color: '#00b894', icon: '🚶', description: 'Neighborhood walks tailored to your dog', enabled: true, createdAt: new Date().toISOString() },
-    { id: 'svc-dropin', name: 'Drop-In Visit', price: 20, unit: 'visit', duration: '30 min', color: '#fdcb6e', icon: '👋', description: 'Quick home visit for feeding and potty', enabled: true, createdAt: new Date().toISOString() },
-    { id: 'svc-daycare', name: 'Doggy Daycare', price: 40, unit: 'day', duration: 'Full day', color: '#e17055', icon: '🎉', description: 'Full day of supervised play and socialization', enabled: true, createdAt: new Date().toISOString() }
+    { id: 'svc-overnight', name: 'Overnight Sitting', price: 55, unit: 'night', duration: 'Overnight', color: '#6c5ce7', icon: '🏠', description: '24/7 care in a home environment', features: ['Feeding & fresh water', 'Multiple walks per day', 'Bedtime cuddles', 'Daily photo updates'], enabled: true, createdAt: new Date().toISOString() },
+    { id: 'svc-walking', name: 'Dog Walking', price: 25, unit: 'walk', duration: '30 min', color: '#00b894', icon: '🚶', description: 'Neighborhood walks tailored to your dog', features: ['30 or 60 minute walks', 'GPS-tracked routes', 'Post-walk report', 'Fresh water provided'], enabled: true, createdAt: new Date().toISOString() },
+    { id: 'svc-dropin', name: 'Drop-In Visit', price: 20, unit: 'visit', duration: '30 min', color: '#fdcb6e', icon: '👋', description: 'Quick home visit for feeding and potty', features: ['30-minute home visits', 'Feeding & medication', 'Potty break & play', 'Mail & plant care'], enabled: true, createdAt: new Date().toISOString() },
+    { id: 'svc-daycare', name: 'Doggy Daycare', price: 40, unit: 'day', duration: 'Full day', color: '#e17055', icon: '🎉', description: 'Full day of supervised play and socialization', features: ['All-day supervision', 'Structured play & rest', 'Socialization time', 'Lunch included'], enabled: true, createdAt: new Date().toISOString() }
 ];
 
 const defaultData = () => ({
@@ -18,7 +75,38 @@ const defaultData = () => ({
     services: [...defaultServices],
     bookings: [],
     tasks: [],
-    settings: { businessName: 'GenusPupClub' }
+    messages: [],
+    reviews: [],
+    settings: {
+        businessName: 'GenusPupClub.com',
+        holidayRates: [...DEFAULT_HOLIDAYS],
+        addons: [...DEFAULT_ADDONS],
+        faq: [...DEFAULT_FAQ],
+        // Price customization
+        sizeSurcharges: { tiny: 0, small: 0, medium: 0, large: 10, xlarge: 20 },
+        breedSurcharges: [
+            { id: 'bs-giant', label: 'Giant Breeds', breeds: ['Great Dane', 'Newfoundland', 'Saint Bernard', 'Mastiff'], surcharge: 15 },
+            { id: 'bs-brachy', label: 'Brachycephalic (Flat-face)', breeds: ['Bulldog', 'French Bulldog', 'Pug', 'Boston Terrier', 'Shih Tzu'], surcharge: 5 },
+            { id: 'bs-highenergy', label: 'High Energy', breeds: ['Border Collie', 'Australian Shepherd', 'Siberian Husky', 'Belgian Malinois', 'Vizsla', 'Weimaraner'], surcharge: 5 }
+        ],
+        puppySurcharge: 5,
+        multiPetDiscount: 15,
+        // Loyalty program
+        loyaltyEnabled: true,
+        loyaltyTiers: [
+            { name: 'New', minBookings: 0, discount: 0, color: '#999', icon: '🐾' },
+            { name: 'Bronze', minBookings: 3, discount: 5, color: '#CD7F32', icon: '🥉' },
+            { name: 'Silver', minBookings: 8, discount: 8, color: '#C0C0C0', icon: '🥈' },
+            { name: 'Gold', minBookings: 15, discount: 12, color: '#FFD700', icon: '🥇' },
+            { name: 'Platinum', minBookings: 25, discount: 15, color: '#B4C7DC', icon: '💎' }
+        ],
+        // Referral program
+        referralEnabled: true,
+        referralRewardReferrer: 15,
+        referralRewardReferee: 10,
+        // Discount codes
+        discountCodes: []
+    }
 });
 
 const Store = {
@@ -35,22 +123,59 @@ const Store = {
         for (const key of Object.keys(defaults)) {
             if (!(key in this._data)) this._data[key] = defaults[key];
         }
-        // Migrate: if services is empty, seed defaults
         if (!this._data.services || this._data.services.length === 0) {
             this._data.services = [...defaultServices];
         }
-        // Migrate: ensure owner exists
         if (!this._data.owner) this._data.owner = { pin: '1234' };
-        // Migrate: ensure tasks exists
         if (!this._data.tasks) this._data.tasks = [];
-        // Migrate old bookings that use service string instead of serviceId
+        if (!this._data.messages) this._data.messages = [];
+        if (!this._data.reviews) this._data.reviews = [];
+        if (!this._data.settings.holidayRates) this._data.settings.holidayRates = [...DEFAULT_HOLIDAYS];
+        if (!this._data.settings.addons) this._data.settings.addons = [...DEFAULT_ADDONS];
+        if (!this._data.settings.faq) this._data.settings.faq = [...DEFAULT_FAQ];
+        if (!this._data.settings.sizeSurcharges) this._data.settings.sizeSurcharges = { tiny: 0, small: 0, medium: 0, large: 10, xlarge: 20 };
+        if (!this._data.settings.breedSurcharges) this._data.settings.breedSurcharges = [];
+        if (this._data.settings.puppySurcharge === undefined) this._data.settings.puppySurcharge = 5;
+        if (this._data.settings.multiPetDiscount === undefined) this._data.settings.multiPetDiscount = 15;
+        if (this._data.settings.loyaltyEnabled === undefined) this._data.settings.loyaltyEnabled = true;
+        if (!this._data.settings.loyaltyTiers) this._data.settings.loyaltyTiers = defaultData().settings.loyaltyTiers;
+        if (this._data.settings.referralEnabled === undefined) this._data.settings.referralEnabled = true;
+        if (this._data.settings.referralRewardReferrer === undefined) this._data.settings.referralRewardReferrer = 15;
+        if (this._data.settings.referralRewardReferee === undefined) this._data.settings.referralRewardReferee = 10;
+        if (!this._data.settings.discountCodes) this._data.settings.discountCodes = [];
+        // Migrate clients for referral codes and loyalty
+        (this._data.clients || []).forEach(c => {
+            if (!c.referralCode) c.referralCode = 'REF-' + (c.id || '').slice(0, 6).toUpperCase();
+            if (!c.referredBy) c.referredBy = '';
+            if (!c.referralCredits) c.referralCredits = 0;
+            if (!c.tags) c.tags = [];
+            if (!c.notes) c.notes = '';
+        });
+
+        // Migrate services to include features array
+        this._data.services.forEach(s => {
+            if (!s.features) s.features = [];
+        });
+
+        // Migrate old bookings
         this._data.bookings.forEach(b => {
             if (b.service && !b.serviceId) {
                 const svc = this._data.services.find(s => s.id === `svc-${b.service}` || s.name.toLowerCase().includes(b.service));
                 b.serviceId = svc?.id || '';
                 delete b.service;
             }
+            if (!b.addons) b.addons = [];
         });
+
+        // Migrate dogs to include petType and profile fields
+        this._data.dogs.forEach(d => {
+            if (!d.petType) d.petType = 'dog';
+            if (!d.allergies) d.allergies = [];
+            if (!d.temperament) d.temperament = [];
+            if (!d.tendencies) d.tendencies = [];
+            if (!d.photos) d.photos = [];
+        });
+
         this.save();
         return this._data;
     },
@@ -93,6 +218,10 @@ const Store = {
         return this.getAll('dogs').filter(d => d.clientId === clientId);
     },
 
+    getPetsForClient(clientId) {
+        return this.getDogsForClient(clientId);
+    },
+
     getBookingsForDate(dateStr) {
         return this.getAll('bookings').filter(b => dateStr >= b.startDate && dateStr <= b.endDate);
     },
@@ -110,7 +239,148 @@ const Store = {
     },
 
     getServiceById(id) { return this.getById('services', id); },
-    getEmployeeById(id) { return this.getById('employees', id); }
+    getEmployeeById(id) { return this.getById('employees', id); },
+
+    getMessagesForClient(clientId) {
+        return this.getAll('messages').filter(m => m.clientId === clientId).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    },
+
+    getFeaturedReviews() {
+        return this.getAll('reviews').filter(r => r.featured);
+    },
+
+    getEnabledAddons() {
+        return (this.data.settings.addons || []).filter(a => a.enabled);
+    },
+
+    // Loyalty & Referral Methods
+    getClientCompletedBookings(clientId) {
+        return this.getAll('bookings').filter(b => b.clientId === clientId && b.status === 'completed').length;
+    },
+
+    getClientTotalBookings(clientId) {
+        return this.getAll('bookings').filter(b => b.clientId === clientId && b.status !== 'cancelled').length;
+    },
+
+    getClientLoyaltyTier(clientId) {
+        const count = this.getClientCompletedBookings(clientId);
+        const tiers = [...(this.data.settings.loyaltyTiers || [])].sort((a, b) => b.minBookings - a.minBookings);
+        return tiers.find(t => count >= t.minBookings) || tiers[tiers.length - 1] || { name: 'New', discount: 0, color: '#999', icon: '🐾' };
+    },
+
+    getClientByReferralCode(code) {
+        return this.getAll('clients').find(c => c.referralCode === code);
+    },
+
+    getClientReferrals(clientId) {
+        const client = this.getById('clients', clientId);
+        if (!client) return [];
+        return this.getAll('clients').filter(c => c.referredBy === client.referralCode);
+    },
+
+    getActiveDiscountCode(code) {
+        const now = new Date().toISOString();
+        return (this.data.settings.discountCodes || []).find(d =>
+            d.code.toUpperCase() === code.toUpperCase() && d.active && (!d.expiresAt || d.expiresAt >= now.split('T')[0])
+        );
+    },
+
+    getSizeSurcharge(size) {
+        return (this.data.settings.sizeSurcharges || {})[size] || 0;
+    },
+
+    getBreedSurcharge(breed) {
+        const categories = this.data.settings.breedSurcharges || [];
+        for (const cat of categories) {
+            if ((cat.breeds || []).some(b => b.toLowerCase() === (breed || '').toLowerCase())) {
+                return { amount: cat.surcharge || 0, label: cat.label };
+            }
+        }
+        return { amount: 0, label: '' };
+    },
+
+    getAlerts() {
+        const alerts = [];
+        const today = todayStr();
+        const tomorrow = toDateStr(new Date(Date.now() + 86400000));
+        const bookings = this.getAll('bookings');
+        const clients = this.getAll('clients');
+
+        // Upcoming bookings (next 48hrs)
+        const upcoming = bookings.filter(b =>
+            b.status === 'confirmed' && b.startDate >= today && b.startDate <= tomorrow
+        );
+        upcoming.forEach(b => {
+            const client = this.getById('clients', b.clientId);
+            const pet = this.getById('dogs', b.dogId);
+            alerts.push({
+                type: 'upcoming', icon: '📅', priority: 'high',
+                title: `Upcoming: ${pet?.name || 'Pet'} — ${getServiceLabel(b.serviceId)}`,
+                detail: `${client?.name || 'Client'} | ${formatDate(b.startDate)}`,
+                id: b.id
+            });
+        });
+
+        // Overdue payments
+        const overdue = bookings.filter(b =>
+            b.paymentStatus !== 'paid' && b.status === 'completed' && b.endDate < today
+        );
+        overdue.forEach(b => {
+            const client = this.getById('clients', b.clientId);
+            alerts.push({
+                type: 'payment', icon: '💰', priority: 'high',
+                title: `Overdue: $${b.paymentAmount || 0} from ${client?.name || 'Client'}`,
+                detail: `Booking ended ${formatDate(b.endDate)}`,
+                id: b.id
+            });
+        });
+
+        // Pending bookings needing confirmation
+        const pending = bookings.filter(b => b.status === 'pending');
+        pending.forEach(b => {
+            const client = this.getById('clients', b.clientId);
+            alerts.push({
+                type: 'pending', icon: '⏳', priority: 'medium',
+                title: `Pending booking from ${client?.name || 'Client'}`,
+                detail: `${formatDate(b.startDate)} — needs confirmation`,
+                id: b.id
+            });
+        });
+
+        // Loyalty milestones (clients near next tier)
+        const tiers = [...(this.data.settings.loyaltyTiers || [])].sort((a, b) => a.minBookings - b.minBookings);
+        clients.forEach(c => {
+            const count = this.getClientCompletedBookings(c.id);
+            for (const tier of tiers) {
+                const diff = tier.minBookings - count;
+                if (diff > 0 && diff <= 2) {
+                    alerts.push({
+                        type: 'loyalty', icon: '⭐', priority: 'low',
+                        title: `${c.name} is ${diff} booking${diff > 1 ? 's' : ''} from ${tier.name}!`,
+                        detail: `${count} completed bookings — ${tier.name} at ${tier.minBookings}`,
+                        id: c.id
+                    });
+                    break;
+                }
+            }
+        });
+
+        // Unread messages
+        const unreadCount = this.getAll('messages').filter(m => !m.read && m.sender === 'client').length;
+        if (unreadCount > 0) {
+            alerts.push({
+                type: 'message', icon: '💬', priority: 'medium',
+                title: `${unreadCount} unread message${unreadCount > 1 ? 's' : ''}`,
+                detail: 'Check your inbox',
+                id: 'messages'
+            });
+        }
+
+        // Sort by priority
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        alerts.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+        return alerts;
+    }
 };
 
 Store.load();
@@ -118,7 +388,7 @@ Store.load();
 // ========================================
 // Auth State
 // ========================================
-let currentUser = null; // null = not logged in, { type: 'owner' } or { type: 'employee', id, name }
+let currentUser = null;
 
 const AUTH = {
     login(pin) {
@@ -146,7 +416,6 @@ const AUTH = {
             const saved = localStorage.getItem('pawsAuth');
             if (saved) {
                 currentUser = JSON.parse(saved);
-                // Validate employee still exists
                 if (currentUser.type === 'employee') {
                     const emp = Store.getById('employees', currentUser.id);
                     if (!emp || emp.active === false) {
@@ -223,15 +492,183 @@ const getEmployeeColor = (empId) => {
     return emp ? emp.color : '#999';
 };
 
-const calcAmount = (serviceId, startDate, endDate) => {
+const getPetIcon = (petType) => petType === 'cat' ? '🐱' : '🐕';
+
+// Holiday rate calculation
+const isHolidayDate = (dateStr) => {
+    const holidays = Store.data.settings.holidayRates || [];
+    const d = new Date(dateStr + 'T00:00:00');
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+
+    for (const h of holidays) {
+        if (h.startMonth <= h.endMonth) {
+            if ((month > h.startMonth || (month === h.startMonth && day >= h.startDay)) &&
+                (month < h.endMonth || (month === h.endMonth && day <= h.endDay))) {
+                return h;
+            }
+        } else {
+            // Wraps around year (e.g., Dec 30 - Jan 2)
+            if ((month > h.startMonth || (month === h.startMonth && day >= h.startDay)) ||
+                (month < h.endMonth || (month === h.endMonth && day <= h.endDay))) {
+                return h;
+            }
+        }
+    }
+    return null;
+};
+
+const calcAmount = (serviceId, startDate, endDate, addonIds = [], options = {}) => {
+    // options: { petSize, petBreed, isPuppy, numPets, clientId, discountCode }
     const svc = Store.getServiceById(serviceId);
-    if (!svc) return 0;
+    if (!svc) return { total: 0, breakdown: [] };
     const rate = svc.price || 0;
-    if (!startDate || !endDate) return rate;
+    const breakdown = [];
+
+    // Base service cost with holiday calculation
+    let baseCost = rate;
+    let numUnits = 1;
+    let regularDays = 0;
+    let holidayDays = 0;
+    let holidayMultiplier = 1.5;
+
+    if (startDate && endDate) {
+        const start = new Date(startDate + 'T00:00:00');
+        const end = new Date(endDate + 'T00:00:00');
+        numUnits = Math.max(1, Math.round((end - start) / 86400000) + (svc.unit === 'night' ? 0 : 1));
+
+        for (let i = 0; i < numUnits; i++) {
+            const d = new Date(start);
+            d.setDate(d.getDate() + i);
+            const ds = toDateStr(d);
+            const hol = isHolidayDate(ds);
+            if (hol) { holidayDays++; holidayMultiplier = hol.multiplier || 1.5; }
+            else { regularDays++; }
+        }
+
+        if (regularDays > 0) {
+            const amt = rate * regularDays;
+            breakdown.push({ label: `${svc.icon} ${svc.name} x ${regularDays} ${svc.unit}${regularDays > 1 ? 's' : ''}`, amount: amt });
+            baseCost = amt;
+        }
+        if (holidayDays > 0) {
+            const amt = rate * holidayMultiplier * holidayDays;
+            breakdown.push({ label: `${svc.icon} ${svc.name} x ${holidayDays} ${svc.unit}${holidayDays > 1 ? 's' : ''} (Holiday ${holidayMultiplier}x)`, amount: amt });
+            baseCost = (baseCost || 0) + amt;
+        }
+        if (regularDays === 0 && holidayDays === 0) {
+            breakdown.push({ label: `${svc.icon} ${svc.name}`, amount: rate });
+            baseCost = rate;
+        }
+    } else {
+        breakdown.push({ label: `${svc.icon} ${svc.name} — $${rate}/${svc.unit}`, amount: rate });
+        baseCost = rate;
+    }
+
+    let subtotal = baseCost;
+
+    // Size surcharge (per unit)
+    const sizeSurcharge = Store.getSizeSurcharge(options.petSize);
+    if (sizeSurcharge > 0) {
+        const sizeAmt = sizeSurcharge * (numUnits || 1);
+        breakdown.push({ label: `📏 Size surcharge (${options.petSize}) x ${numUnits || 1}`, amount: sizeAmt });
+        subtotal += sizeAmt;
+    }
+
+    // Breed surcharge (per unit)
+    const breedInfo = Store.getBreedSurcharge(options.petBreed);
+    if (breedInfo.amount > 0) {
+        const breedAmt = breedInfo.amount * (numUnits || 1);
+        breakdown.push({ label: `🐕 Breed surcharge (${breedInfo.label}) x ${numUnits || 1}`, amount: breedAmt });
+        subtotal += breedAmt;
+    }
+
+    // Puppy/kitten surcharge (flat per booking)
+    if (options.isPuppy && Store.data.settings.puppySurcharge > 0) {
+        const puppyAmt = Store.data.settings.puppySurcharge;
+        breakdown.push({ label: '🍼 Puppy/kitten surcharge', amount: puppyAmt });
+        subtotal += puppyAmt;
+    }
+
+    // Add-ons
+    const allAddons = Store.data.settings.addons || [];
+    (addonIds || []).forEach(aid => {
+        const addon = allAddons.find(a => a.id === aid);
+        if (addon) {
+            breakdown.push({ label: `${addon.icon} ${addon.name}`, amount: addon.price });
+            subtotal += addon.price;
+        }
+    });
+
+    // Multi-pet multiplier
+    const numPets = parseInt(options.numPets) || 1;
+    if (numPets > 1) {
+        const discountPct = Store.data.settings.multiPetDiscount || 15;
+        const extraPets = numPets - 1;
+        const extraCost = baseCost * extraPets;
+        const discountAmt = extraCost * (discountPct / 100);
+        breakdown.push({ label: `🐾 ${extraPets} additional pet${extraPets > 1 ? 's' : ''} (+${100 - discountPct}% each)`, amount: extraCost - discountAmt });
+        subtotal += extraCost - discountAmt;
+    }
+
+    // Loyalty discount
+    if (options.clientId && Store.data.settings.loyaltyEnabled) {
+        const tier = Store.getClientLoyaltyTier(options.clientId);
+        if (tier.discount > 0) {
+            const loyaltyAmt = subtotal * (tier.discount / 100);
+            breakdown.push({ label: `${tier.icon} ${tier.name} loyalty (−${tier.discount}%)`, amount: -loyaltyAmt, isDiscount: true });
+            subtotal -= loyaltyAmt;
+        }
+    }
+
+    // Referral credit
+    if (options.clientId) {
+        const client = Store.getById('clients', options.clientId);
+        if (client?.referralCredits > 0) {
+            const creditUsed = Math.min(client.referralCredits, subtotal);
+            if (creditUsed > 0) {
+                breakdown.push({ label: '🎁 Referral credit', amount: -creditUsed, isDiscount: true });
+                subtotal -= creditUsed;
+            }
+        }
+    }
+
+    // Discount code
+    if (options.discountCode) {
+        const disc = Store.getActiveDiscountCode(options.discountCode);
+        if (disc) {
+            let discAmt = 0;
+            if (disc.type === 'percent') {
+                discAmt = subtotal * (disc.value / 100);
+                breakdown.push({ label: `🏷️ Promo: ${disc.code} (−${disc.value}%)`, amount: -discAmt, isDiscount: true });
+            } else {
+                discAmt = Math.min(disc.value, subtotal);
+                breakdown.push({ label: `🏷️ Promo: ${disc.code} (−$${disc.value})`, amount: -discAmt, isDiscount: true });
+            }
+            subtotal -= discAmt;
+        }
+    }
+
+    const total = Math.max(0, Math.round(subtotal * 100) / 100);
+    return { total, breakdown };
+};
+
+// Legacy-compatible wrapper (returns just the number)
+const calcAmountSimple = (serviceId, startDate, endDate, addonIds = [], options = {}) => {
+    return calcAmount(serviceId, startDate, endDate, addonIds, options).total;
+};
+
+const bookingHasHoliday = (startDate, endDate) => {
+    if (!startDate || !endDate) return false;
     const start = new Date(startDate + 'T00:00:00');
     const end = new Date(endDate + 'T00:00:00');
-    const days = Math.max(1, Math.round((end - start) / 86400000) + (svc.unit === 'night' ? 0 : 1));
-    return rate * days;
+    const days = Math.round((end - start) / 86400000) + 1;
+    for (let i = 0; i < days; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        if (isHolidayDate(toDateStr(d))) return true;
+    }
+    return false;
 };
 
 // ========================================
@@ -259,6 +696,9 @@ const handleLogin = () => {
     const user = AUTH.login(pin);
     if (user) {
         hideLogin();
+        document.body.classList.add('dashboard-active');
+        localStorage.setItem('pawsView', 'dashboard');
+        window.scrollTo(0, 0);
         initDashboard();
         pinInput.value = '';
     } else {
@@ -271,7 +711,6 @@ const handleLogin = () => {
 const handleLogout = () => {
     AUTH.logout();
     document.body.classList.remove('dashboard-active');
-    // Reset toggle buttons
     document.querySelectorAll('.toggle-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === 'site');
     });
@@ -295,11 +734,17 @@ const buildSidebar = () => {
     if (!nav) return;
 
     if (AUTH.isOwner()) {
+        const alertCount = Store.getAlerts().length;
         nav.innerHTML = `
             <button class="dash-nav-btn active" data-panel="calendar"><span class="dash-nav-icon">📅</span><span class="dash-nav-label">Calendar</span></button>
+            <button class="dash-nav-btn" data-panel="alerts"><span class="dash-nav-icon">🔔</span><span class="dash-nav-label">Alerts</span>${alertCount > 0 ? `<span class="nav-badge">${alertCount}</span>` : ''}</button>
             <button class="dash-nav-btn" data-panel="bookings"><span class="dash-nav-icon">📋</span><span class="dash-nav-label">Bookings</span></button>
             <button class="dash-nav-btn" data-panel="tasks"><span class="dash-nav-icon">✅</span><span class="dash-nav-label">Tasks</span></button>
             <button class="dash-nav-btn" data-panel="clients"><span class="dash-nav-icon">👥</span><span class="dash-nav-label">Clients</span></button>
+            <button class="dash-nav-btn" data-panel="loyalty"><span class="dash-nav-icon">💎</span><span class="dash-nav-label">Loyalty</span></button>
+            <button class="dash-nav-btn" data-panel="referrals"><span class="dash-nav-icon">🎁</span><span class="dash-nav-label">Referrals</span></button>
+            <button class="dash-nav-btn" data-panel="messages"><span class="dash-nav-icon">💬</span><span class="dash-nav-label">Messages</span></button>
+            <button class="dash-nav-btn" data-panel="reviews"><span class="dash-nav-icon">⭐</span><span class="dash-nav-label">Reviews</span></button>
             <button class="dash-nav-btn" data-panel="employees"><span class="dash-nav-icon">👷</span><span class="dash-nav-label">Employees</span></button>
             <button class="dash-nav-btn" data-panel="payments"><span class="dash-nav-icon">💰</span><span class="dash-nav-label">Payments</span></button>
             <button class="dash-nav-btn" data-panel="settings"><span class="dash-nav-icon">⚙️</span><span class="dash-nav-label">Settings</span></button>
@@ -310,11 +755,11 @@ const buildSidebar = () => {
             <button class="dash-nav-btn active" data-panel="calendar"><span class="dash-nav-icon">📅</span><span class="dash-nav-label">My Schedule</span></button>
             <button class="dash-nav-btn" data-panel="tasks"><span class="dash-nav-icon">✅</span><span class="dash-nav-label">My Tasks</span></button>
             <button class="dash-nav-btn" data-panel="today"><span class="dash-nav-icon">📋</span><span class="dash-nav-label">Today</span></button>
+            <button class="dash-nav-btn" data-panel="messages"><span class="dash-nav-icon">💬</span><span class="dash-nav-label">Messages</span></button>
             <button class="dash-nav-btn dash-logout-btn" id="logoutBtn"><span class="dash-nav-icon">🚪</span><span class="dash-nav-label">Log Out</span></button>
         `;
     }
 
-    // Re-bind nav clicks
     nav.querySelectorAll('.dash-nav-btn:not(.dash-logout-btn)').forEach(btn => {
         btn.addEventListener('click', () => switchPanel(btn.dataset.panel));
     });
@@ -337,13 +782,18 @@ const switchPanel = (panelName) => {
 
     const refreshMap = {
         calendar: renderCalendar,
+        alerts: renderAlerts,
         bookings: renderBookings,
         tasks: renderTasks,
         clients: renderClients,
+        loyalty: renderLoyalty,
+        referrals: renderReferrals,
         employees: renderEmployees,
         payments: renderPayments,
         settings: renderSettings,
-        today: renderToday
+        today: renderToday,
+        messages: renderMessages,
+        reviews: renderReviews
     };
     refreshMap[panelName]?.();
 };
@@ -369,7 +819,6 @@ const renderCalendar = () => {
     const monthYearEl = document.getElementById('calMonthYear');
     if (monthYearEl) monthYearEl.textContent = `${monthNames[calMonth]} ${calYear}`;
 
-    // Build filter dropdowns
     renderCalendarFilters();
 
     const firstDay = new Date(calYear, calMonth, 1).getDay();
@@ -380,7 +829,6 @@ const renderCalendar = () => {
     const monthEnd = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
     let bookings = Store.getBookingsInRange(monthStart, monthEnd);
 
-    // Apply filters
     if (AUTH.isEmployee()) {
         bookings = bookings.filter(b => b.employeeId === AUTH.employeeId());
     } else {
@@ -456,6 +904,9 @@ const createCalDay = (dayNum, dateStr, isOtherMonth, today, allBookings) => {
     if (dateStr === today) el.classList.add('today');
     if (dateStr === calSelectedDate) el.classList.add('selected');
 
+    // Holiday indicator
+    if (isHolidayDate(dateStr)) el.classList.add('holiday');
+
     const dayBookings = allBookings.filter(b => dateStr >= b.startDate && dateStr <= b.endDate && b.status !== 'cancelled');
 
     const numEl = document.createElement('div');
@@ -469,7 +920,6 @@ const createCalDay = (dayNum, dateStr, isOtherMonth, today, allBookings) => {
         dayBookings.slice(0, 5).forEach(b => {
             const dot = document.createElement('span');
             dot.className = 'cal-dot';
-            // Use employee color if assigned, otherwise service color
             const empColor = b.employeeId ? getEmployeeColor(b.employeeId) : null;
             dot.style.background = empColor || getServiceColor(b.serviceId);
             dot.title = `${getServiceLabel(b.serviceId)}${b.employeeId ? ' — ' + getEmployeeName(b.employeeId) : ''}`;
@@ -505,7 +955,8 @@ const renderCalDayDetail = () => {
         return;
     }
 
-    dateEl.textContent = formatDate(calSelectedDate);
+    const holiday = isHolidayDate(calSelectedDate);
+    dateEl.textContent = formatDate(calSelectedDate) + (holiday ? ` — ${holiday.name} (${holiday.multiplier}x rate)` : '');
     let bookings = Store.getBookingsForDate(calSelectedDate).filter(b => b.status !== 'cancelled');
 
     if (AUTH.isEmployee()) {
@@ -523,12 +974,14 @@ const renderCalDayDetail = () => {
         const svcColor = getServiceColor(b.serviceId);
         const empName = getEmployeeName(b.employeeId);
         const empColor = getEmployeeColor(b.employeeId);
+        const hasHoliday = bookingHasHoliday(b.startDate, b.endDate);
         return `
-            <div class="cal-detail-item" style="border-left-color:${svcColor}" data-id="${b.id}" ${AUTH.isOwner() ? 'style="cursor:pointer"' : ''}>
+            <div class="cal-detail-item" style="border-left-color:${svcColor}" data-id="${b.id}">
                 <div class="detail-info">
-                    <strong>${getServiceIcon(b.serviceId)} ${dog?.name || 'Unknown dog'} — ${getServiceLabel(b.serviceId)}</strong>
-                    <span>${client?.name || 'Unknown'} | ${formatDateShort(b.startDate)} – ${formatDateShort(b.endDate)}</span>
+                    <strong>${getServiceIcon(b.serviceId)} ${getPetIcon(dog?.petType)} ${escapeHtml(dog?.name || 'Unknown pet')} — ${getServiceLabel(b.serviceId)}</strong>
+                    <span>${escapeHtml(client?.name || 'Unknown')} | ${formatDateShort(b.startDate)} – ${formatDateShort(b.endDate)}</span>
                     <span class="detail-employee" style="color:${empColor}">👷 ${escapeHtml(empName)}</span>
+                    ${hasHoliday ? '<span class="holiday-badge">Holiday Rate</span>' : ''}
                 </div>
                 <span class="status-badge ${b.paymentStatus}">${b.paymentStatus}</span>
             </div>
@@ -574,7 +1027,6 @@ const renderBookings = () => {
     let bookings = Store.getAll('bookings');
     const today = todayStr();
 
-    // Apply filter
     switch (bookingFilter) {
         case 'upcoming': bookings = bookings.filter(b => b.endDate >= today && b.status !== 'cancelled'); break;
         case 'past': bookings = bookings.filter(b => b.endDate < today); break;
@@ -594,12 +1046,18 @@ const renderBookings = () => {
         const svcColor = getServiceColor(b.serviceId);
         const empName = getEmployeeName(b.employeeId);
         const empColor = getEmployeeColor(b.employeeId);
+        const hasHoliday = bookingHasHoliday(b.startDate, b.endDate);
+        const addonNames = (b.addons || []).map(aid => {
+            const a = (Store.data.settings.addons || []).find(x => x.id === aid);
+            return a ? a.name : '';
+        }).filter(Boolean);
         return `
             <div class="booking-card" style="border-left-color:${svcColor}" data-id="${b.id}">
                 <span class="booking-service-badge" style="background:${svcColor}20;color:${svcColor}">${getServiceIcon(b.serviceId)} ${getServiceLabel(b.serviceId)}</span>
                 <div class="booking-info">
-                    <strong>${escapeHtml(dog?.name || 'Unknown dog')}</strong>
+                    <strong>${getPetIcon(dog?.petType)} ${escapeHtml(dog?.name || 'Unknown pet')}</strong>
                     <span>${escapeHtml(client?.name || 'Unknown client')}</span>
+                    ${addonNames.length > 0 ? `<span class="booking-addons">+ ${escapeHtml(addonNames.join(', '))}</span>` : ''}
                 </div>
                 <div class="booking-employee" style="color:${empColor}">
                     <strong>👷 ${escapeHtml(empName)}</strong>
@@ -611,6 +1069,7 @@ const renderBookings = () => {
                 <div class="booking-status">
                     <span class="status-badge ${b.status}">${b.status}</span>
                     <span class="status-badge ${b.paymentStatus}">${b.paymentStatus}</span>
+                    ${hasHoliday ? '<span class="holiday-badge">Holiday</span>' : ''}
                 </div>
             </div>
         `;
@@ -647,6 +1106,7 @@ const openBookingModal = (bookingId) => {
     populateClientDropdown();
     populateEmployeeDropdown();
     populateServiceDropdown();
+    renderAddonCheckboxes([]);
 
     if (bookingId) {
         const b = Store.getById('bookings', bookingId);
@@ -656,8 +1116,8 @@ const openBookingModal = (bookingId) => {
         document.getElementById('bookingDelete').style.display = 'inline-flex';
 
         document.getElementById('bkClient').value = b.clientId;
-        populateDogDropdown(b.clientId);
-        document.getElementById('bkDog').value = b.dogId;
+        populatePetDropdown(b.clientId);
+        document.getElementById('bkPet').value = b.dogId;
         document.getElementById('bkService').value = b.serviceId || '';
         document.getElementById('bkEmployee').value = b.employeeId || '';
         document.getElementById('bkStatus').value = b.status;
@@ -666,8 +1126,9 @@ const openBookingModal = (bookingId) => {
         document.getElementById('bkAmount').value = b.paymentAmount || '';
         document.getElementById('bkPayStatus').value = b.paymentStatus;
         document.getElementById('bkNotes').value = b.notes || '';
+        renderAddonCheckboxes(b.addons || []);
     } else {
-        populateDogDropdown(null);
+        populatePetDropdown(null);
         if (calSelectedDate) {
             document.getElementById('bkStart').value = calSelectedDate;
             document.getElementById('bkEnd').value = calSelectedDate;
@@ -675,6 +1136,26 @@ const openBookingModal = (bookingId) => {
     }
 
     bookingModal.classList.add('active');
+};
+
+const renderAddonCheckboxes = (selectedAddons) => {
+    const container = document.getElementById('bkAddonsContainer');
+    if (!container) return;
+    const addons = Store.getEnabledAddons();
+    if (addons.length === 0) {
+        container.innerHTML = '<span class="empty-state" style="padding:8px;font-size:0.85rem">No add-ons available</span>';
+        return;
+    }
+    container.innerHTML = addons.map(a => `
+        <label class="addon-checkbox">
+            <input type="checkbox" name="addon" value="${a.id}" ${selectedAddons.includes(a.id) ? 'checked' : ''}>
+            <span>${a.icon} ${escapeHtml(a.name)} (+$${a.price})</span>
+        </label>
+    `).join('');
+
+    container.querySelectorAll('input[name="addon"]').forEach(cb => {
+        cb.addEventListener('change', autoCalcAmount);
+    });
 };
 
 const populateClientDropdown = () => {
@@ -690,15 +1171,15 @@ const populateClientDropdown = () => {
     });
 };
 
-const populateDogDropdown = (clientId) => {
-    const sel = document.getElementById('bkDog');
+const populatePetDropdown = (clientId) => {
+    const sel = document.getElementById('bkPet');
     if (!sel) return;
-    sel.innerHTML = '<option value="" disabled selected>Select dog</option>';
+    sel.innerHTML = '<option value="" disabled selected>Select pet</option>';
     if (!clientId) return;
-    Store.getDogsForClient(clientId).forEach(d => {
+    Store.getPetsForClient(clientId).forEach(d => {
         const opt = document.createElement('option');
         opt.value = d.id;
-        opt.textContent = `${d.name} (${d.breed || 'Unknown breed'})`;
+        opt.textContent = `${getPetIcon(d.petType)} ${d.name} (${d.breed || 'Unknown breed'})`;
         sel.appendChild(opt);
     });
 };
@@ -733,21 +1214,60 @@ document.getElementById('bkClient')?.addEventListener('change', (e) => {
         openClientModal();
         return;
     }
-    populateDogDropdown(e.target.value);
+    populatePetDropdown(e.target.value);
 });
+
+const getSelectedAddons = () => {
+    const checkboxes = document.querySelectorAll('#bkAddonsContainer input[name="addon"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+};
 
 const autoCalcAmount = () => {
     const svcId = document.getElementById('bkService')?.value;
     const start = document.getElementById('bkStart')?.value;
     const end = document.getElementById('bkEnd')?.value;
     if (svcId && start && end) {
-        document.getElementById('bkAmount').value = calcAmount(svcId, start, end);
+        const addons = getSelectedAddons();
+        const petId = document.getElementById('bkPet')?.value;
+        const clientId = document.getElementById('bkClient')?.value;
+        const pet = petId ? Store.getById('dogs', petId) : null;
+        const result = calcAmount(svcId, start, end, addons, {
+            petSize: pet?.size,
+            petBreed: pet?.breed,
+            isPuppy: pet?.isPuppy,
+            numPets: 1,
+            clientId: clientId && clientId !== '__new__' ? clientId : null
+        });
+        document.getElementById('bkAmount').value = result.total;
+
+        // Show breakdown in booking modal
+        const breakdownEl = document.getElementById('bkCostBreakdown');
+        if (breakdownEl) {
+            breakdownEl.innerHTML = result.breakdown.map(l => `
+                <div class="cost-line ${l.isDiscount ? 'discount' : ''}">
+                    <span>${l.label}</span>
+                    <span>${l.isDiscount ? '' : '+'}$${Math.abs(l.amount).toFixed(2)}</span>
+                </div>
+            `).join('');
+            breakdownEl.style.display = result.breakdown.length > 1 ? 'block' : 'none';
+        }
+    }
+
+    // Show holiday indicator
+    const holidayInfo = document.getElementById('bkHolidayInfo');
+    if (holidayInfo && start && end) {
+        if (bookingHasHoliday(start, end)) {
+            holidayInfo.style.display = 'block';
+        } else {
+            holidayInfo.style.display = 'none';
+        }
     }
 };
 
 document.getElementById('bkService')?.addEventListener('change', autoCalcAmount);
 document.getElementById('bkStart')?.addEventListener('change', autoCalcAmount);
 document.getElementById('bkEnd')?.addEventListener('change', autoCalcAmount);
+document.getElementById('bkPet')?.addEventListener('change', autoCalcAmount);
 
 bookingForm?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -756,8 +1276,19 @@ bookingForm?.addEventListener('submit', (e) => {
     const id = data.bookingId;
     delete data.bookingId;
 
+    // Handle pet field mapped to dogId for backward compat
+    data.dogId = data.petId || data.dogId || '';
+    delete data.petId;
+
     data.paymentAmount = parseFloat(data.paymentAmount) || 0;
     if (data.paymentStatus === 'paid' && !data.paidDate) data.paidDate = todayStr();
+    // Store pricing options for audit trail
+    const pet = data.dogId ? Store.getById('dogs', data.dogId) : null;
+    if (pet) {
+        data.pricingMeta = { size: pet.size, breed: pet.breed, isPuppy: pet.isPuppy };
+    }
+    data.addons = getSelectedAddons();
+    delete data.addon;
 
     if (id) {
         Store.update('bookings', id, data);
@@ -790,7 +1321,6 @@ const renderTasks = () => {
     const panel = document.getElementById('panelTasks');
     if (!panel) return;
 
-    // Build filter
     const filterContainer = document.getElementById('taskFilters');
     if (filterContainer && AUTH.isOwner()) {
         const employees = Store.getActiveEmployees();
@@ -820,7 +1350,6 @@ const renderTasks = () => {
         col.push(t);
     });
 
-    // Sort by priority then due date
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     for (const col of Object.values(columns)) {
         col.sort((a, b) => (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1) || (a.dueDate || '').localeCompare(b.dueDate || ''));
@@ -860,7 +1389,6 @@ const renderTasks = () => {
             `;
         }).join('');
 
-        // Bind click to edit
         listEl.querySelectorAll('.task-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.task-move-btn')) return;
@@ -868,7 +1396,6 @@ const renderTasks = () => {
             });
         });
 
-        // Bind move buttons
         listEl.querySelectorAll('.task-move-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -894,7 +1421,6 @@ const openTaskModal = (taskId) => {
     document.getElementById('taskModalTitle').textContent = 'New Task';
     document.getElementById('taskDelete').style.display = 'none';
 
-    // Populate employee dropdown
     const empSel = document.getElementById('tkEmployee');
     if (empSel) {
         empSel.innerHTML = '<option value="">Unassigned</option>';
@@ -963,9 +1489,9 @@ const renderClients = () => {
 
     if (searchVal) {
         clients = clients.filter(c => {
-            const dogs = Store.getDogsForClient(c.id);
-            const dogMatch = dogs.some(d => d.name.toLowerCase().includes(searchVal) || (d.breed || '').toLowerCase().includes(searchVal));
-            return c.name.toLowerCase().includes(searchVal) || (c.email || '').toLowerCase().includes(searchVal) || dogMatch;
+            const pets = Store.getPetsForClient(c.id);
+            const petMatch = pets.some(d => d.name.toLowerCase().includes(searchVal) || (d.breed || '').toLowerCase().includes(searchVal));
+            return c.name.toLowerCase().includes(searchVal) || (c.email || '').toLowerCase().includes(searchVal) || petMatch;
         });
     }
 
@@ -977,8 +1503,11 @@ const renderClients = () => {
     }
 
     listEl.innerHTML = clients.map(c => {
-        const dogs = Store.getDogsForClient(c.id);
+        const pets = Store.getPetsForClient(c.id);
         const initial = c.name.charAt(0).toUpperCase();
+        const tier = Store.getClientLoyaltyTier(c.id);
+        const bookingCount = Store.getClientTotalBookings(c.id);
+        const referralCount = Store.getClientReferrals(c.id).length;
         return `
             <div class="client-card" data-id="${c.id}">
                 <div class="client-header">
@@ -987,10 +1516,16 @@ const renderClients = () => {
                         <strong>${escapeHtml(c.name)}</strong>
                         <span>${escapeHtml(c.email || '')}${c.phone ? ' | ' + escapeHtml(c.phone) : ''}</span>
                     </div>
+                    <div class="client-badges">
+                        <span class="loyalty-badge" style="background:${tier.color}20;color:${tier.color};border:1px solid ${tier.color}40">${tier.icon} ${tier.name}</span>
+                        <span class="client-stat-badge">${bookingCount} booking${bookingCount !== 1 ? 's' : ''}</span>
+                        ${referralCount > 0 ? `<span class="client-stat-badge referral">🎁 ${referralCount} referral${referralCount !== 1 ? 's' : ''}</span>` : ''}
+                        ${c.referralCredits > 0 ? `<span class="client-stat-badge credit">$${c.referralCredits} credit</span>` : ''}
+                    </div>
                 </div>
                 <div class="client-dogs">
-                    ${dogs.map(d => `<span class="client-dog-tag">${escapeHtml(d.name)} — ${escapeHtml(d.breed || 'Unknown')}</span>`).join('')}
-                    ${dogs.length === 0 ? '<span class="client-dog-tag" style="opacity:0.5">No dogs added</span>' : ''}
+                    ${pets.map(d => `<span class="client-dog-tag" data-pet-type="${d.petType || 'dog'}">${getPetIcon(d.petType)} ${escapeHtml(d.name)} — ${escapeHtml(d.breed || 'Unknown')}</span>`).join('')}
+                    ${pets.length === 0 ? '<span class="client-dog-tag" style="opacity:0.5">No pets added</span>' : ''}
                 </div>
             </div>
         `;
@@ -1005,12 +1540,12 @@ document.getElementById('clientSearch')?.addEventListener('input', renderClients
 document.getElementById('addClientBtn')?.addEventListener('click', () => openClientModal());
 
 // ========================================
-// Client Modal
+// Client Modal with Pet Profiles
 // ========================================
 const clientModal = document.getElementById('clientModal');
 const clientForm = document.getElementById('clientForm');
-const dogFieldsContainer = document.getElementById('dogFields');
-const dogFieldTemplate = document.getElementById('dogFieldTemplate');
+const petFieldsContainer = document.getElementById('petFields');
+const petFieldTemplate = document.getElementById('petFieldTemplate');
 
 const openClientModal = (clientId) => {
     if (!clientForm) return;
@@ -1018,7 +1553,7 @@ const openClientModal = (clientId) => {
     document.getElementById('clientId').value = '';
     document.getElementById('clientModalTitle').textContent = 'New Client';
     document.getElementById('clientDelete').style.display = 'none';
-    if (dogFieldsContainer) dogFieldsContainer.innerHTML = '';
+    if (petFieldsContainer) petFieldsContainer.innerHTML = '';
 
     if (clientId) {
         const c = Store.getById('clients', clientId);
@@ -1031,34 +1566,242 @@ const openClientModal = (clientId) => {
         document.getElementById('clPhone').value = c.phone || '';
         document.getElementById('clAddress').value = c.address || '';
         document.getElementById('clNotes').value = c.notes || '';
-        Store.getDogsForClient(c.id).forEach(d => addDogField(d));
+        Store.getPetsForClient(c.id).forEach(d => addPetField(d));
     } else {
-        addDogField();
+        addPetField();
     }
 
     clientModal.classList.add('active');
 };
 
-const addDogField = (dogData) => {
-    if (!dogFieldTemplate || !dogFieldsContainer) return;
-    const clone = dogFieldTemplate.content.cloneNode(true);
-    const group = clone.querySelector('.dog-field-group');
+const addPetField = (petData) => {
+    if (!petFieldTemplate || !petFieldsContainer) return;
+    const clone = petFieldTemplate.content.cloneNode(true);
+    const group = clone.querySelector('.pet-field-group');
 
-    if (dogData) {
-        group.dataset.dogId = dogData.id;
-        group.querySelector('[name="dogName"]').value = dogData.name || '';
-        group.querySelector('[name="dogBreed"]').value = dogData.breed || '';
-        group.querySelector('[name="dogSize"]').value = dogData.size || 'large';
-        group.querySelector('[name="dogAge"]').value = dogData.age || '';
-        group.querySelector('[name="dogSpecialNeeds"]').value = dogData.specialNeeds || '';
-        group.querySelector('[name="dogVetInfo"]').value = dogData.vetInfo || '';
+    const petType = petData?.petType || 'dog';
+
+    if (petData) {
+        group.dataset.petId = petData.id;
+        group.querySelector('[name="petName"]').value = petData.name || '';
+        group.querySelector('[name="petType"]').value = petType;
+        group.querySelector('[name="petAge"]').value = petData.age || '';
+        group.querySelector('[name="petSize"]').value = petData.size || 'medium';
     }
 
-    group.querySelector('.dog-remove').addEventListener('click', () => group.remove());
-    dogFieldsContainer.appendChild(clone);
+    // Setup breed dropdown based on pet type
+    const breedSelect = group.querySelector('[name="petBreed"]');
+    const breedOtherInput = group.querySelector('[name="petBreedOther"]');
+    const breedSearchInput = group.querySelector('.breed-search-input');
+
+    const populateBreeds = (type, selected) => {
+        const breeds = type === 'cat' ? CAT_BREEDS : DOG_BREEDS;
+        breedSelect.innerHTML = '<option value="" disabled selected>Select breed</option>';
+        breeds.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            if (b === selected) opt.selected = true;
+            breedSelect.appendChild(opt);
+        });
+        if (selected && !breeds.includes(selected) && selected !== '') {
+            // It was a custom "Other" breed
+            breedSelect.value = 'Other';
+            breedOtherInput.value = selected;
+            breedOtherInput.style.display = 'block';
+        }
+    };
+
+    populateBreeds(petType, petData?.breed || '');
+
+    // Pet type change handler
+    group.querySelector('[name="petType"]').addEventListener('change', (e) => {
+        populateBreeds(e.target.value, '');
+        group.querySelector('.pet-field-title').textContent = e.target.value === 'cat' ? '🐱 Cat' : '🐕 Dog';
+        // Update size options for cats
+        const sizeSelect = group.querySelector('[name="petSize"]');
+        if (e.target.value === 'cat') {
+            sizeSelect.innerHTML = PET_SIZES.filter(s => s.value !== 'xlarge').map(s =>
+                `<option value="${s.value}">${s.label}</option>`
+            ).join('');
+        } else {
+            sizeSelect.innerHTML = PET_SIZES.map(s =>
+                `<option value="${s.value}">${s.label}</option>`
+            ).join('');
+        }
+    });
+
+    // Breed search filter
+    if (breedSearchInput) {
+        breedSearchInput.addEventListener('input', () => {
+            const search = breedSearchInput.value.toLowerCase();
+            const breeds = (petType === 'cat' ? CAT_BREEDS : DOG_BREEDS);
+            const opts = breedSelect.querySelectorAll('option');
+            opts.forEach(opt => {
+                if (opt.disabled) return;
+                opt.style.display = opt.value.toLowerCase().includes(search) ? '' : 'none';
+            });
+        });
+    }
+
+    // Breed "Other" handling
+    breedSelect.addEventListener('change', () => {
+        breedOtherInput.style.display = breedSelect.value === 'Other' ? 'block' : 'none';
+    });
+
+    // Puppy/kitten toggle
+    if (petData?.isPuppy !== undefined) {
+        const puppyCheck = group.querySelector('[name="petIsPuppy"]');
+        if (puppyCheck) puppyCheck.checked = petData.isPuppy;
+    }
+
+    // Pet profile expanded section
+    const detailsToggle = group.querySelector('.pet-details-toggle');
+    const detailsSection = group.querySelector('.pet-details-section');
+    if (detailsToggle && detailsSection) {
+        detailsToggle.addEventListener('click', () => {
+            detailsSection.classList.toggle('expanded');
+            detailsToggle.classList.toggle('expanded');
+        });
+    }
+
+    // Populate profile data
+    if (petData) {
+        // Allergies
+        (petData.allergies || []).forEach(a => {
+            const cb = group.querySelector(`[name="allergy"][value="${a}"]`);
+            if (cb) cb.checked = true;
+        });
+        const allergyOther = group.querySelector('[name="allergyOther"]');
+        if (allergyOther && petData.allergyOther) {
+            allergyOther.value = petData.allergyOther;
+        }
+
+        // Temperament
+        (petData.temperament || []).forEach(t => {
+            const cb = group.querySelector(`[name="temperament"][value="${t}"]`);
+            if (cb) cb.checked = true;
+        });
+
+        // Tendencies
+        (petData.tendencies || []).forEach(t => {
+            const cb = group.querySelector(`[name="tendency"][value="${t}"]`);
+            if (cb) cb.checked = true;
+        });
+
+        // Feeding
+        const feedSchedule = group.querySelector('[name="feedingSchedule"]');
+        if (feedSchedule && petData.feedingSchedule) feedSchedule.value = petData.feedingSchedule;
+        const feedBrand = group.querySelector('[name="foodBrand"]');
+        if (feedBrand && petData.foodBrand) feedBrand.value = petData.foodBrand;
+        const feedAmount = group.querySelector('[name="foodAmount"]');
+        if (feedAmount && petData.foodAmount) feedAmount.value = petData.foodAmount;
+
+        // Medical
+        const spayed = group.querySelector('[name="spayedNeutered"]');
+        if (spayed) spayed.checked = petData.spayedNeutered || false;
+        const meds = group.querySelector('[name="medications"]');
+        if (meds && petData.medications) meds.value = petData.medications;
+        const vet = group.querySelector('[name="vetInfo"]');
+        if (vet && petData.vetInfo) vet.value = petData.vetInfo;
+
+        // House training
+        const ht = group.querySelector('[name="houseTraining"]');
+        if (ht && petData.houseTraining) ht.value = petData.houseTraining;
+
+        // Photos
+        if (petData.photos && petData.photos.length > 0) {
+            renderPetPhotoThumbnails(group, petData.photos);
+        }
+    }
+
+    // Photo upload handler
+    const photoInput = group.querySelector('.pet-photo-input');
+    if (photoInput) {
+        photoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const existingPhotos = getPetPhotosFromGroup(group);
+            if (existingPhotos.length >= 5) {
+                alert('Maximum 5 photos per pet.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                // Compress via canvas
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxSize = 400;
+                    let w = img.width, h = img.height;
+                    if (w > maxSize || h > maxSize) {
+                        const ratio = Math.min(maxSize / w, maxSize / h);
+                        w = Math.round(w * ratio);
+                        h = Math.round(h * ratio);
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                    const photos = getPetPhotosFromGroup(group);
+                    photos.push(compressed);
+                    setPetPhotosOnGroup(group, photos);
+                    renderPetPhotoThumbnails(group, photos);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+            photoInput.value = '';
+        });
+    }
+
+    group.querySelector('.pet-remove').addEventListener('click', () => group.remove());
+
+    // Update title
+    if (petData) {
+        group.querySelector('.pet-field-title').textContent = petType === 'cat' ? '🐱 Cat' : '🐕 Dog';
+    }
+
+    petFieldsContainer.appendChild(clone);
 };
 
-document.getElementById('addDogFieldBtn')?.addEventListener('click', () => addDogField());
+const getPetPhotosFromGroup = (group) => {
+    const hidden = group.querySelector('[name="petPhotos"]');
+    if (!hidden || !hidden.value) return [];
+    try { return JSON.parse(hidden.value); } catch { return []; }
+};
+
+const setPetPhotosOnGroup = (group, photos) => {
+    const hidden = group.querySelector('[name="petPhotos"]');
+    if (hidden) hidden.value = JSON.stringify(photos);
+};
+
+const renderPetPhotoThumbnails = (group, photos) => {
+    const gallery = group.querySelector('.pet-photo-gallery');
+    if (!gallery) return;
+    gallery.innerHTML = photos.map((p, i) => `
+        <div class="pet-photo-thumb">
+            <img src="${p}" alt="Pet photo ${i + 1}">
+            <button type="button" class="photo-remove-btn" data-index="${i}" title="Remove photo">&times;</button>
+            <label class="photo-public-toggle" title="Show in public gallery">
+                <input type="checkbox" name="photoPublic_${i}" class="photo-public-cb">
+                <span>Public</span>
+            </label>
+        </div>
+    `).join('');
+
+    gallery.querySelectorAll('.photo-remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.index);
+            const currentPhotos = getPetPhotosFromGroup(group);
+            currentPhotos.splice(idx, 1);
+            setPetPhotosOnGroup(group, currentPhotos);
+            renderPetPhotoThumbnails(group, currentPhotos);
+        });
+    });
+};
+
+document.getElementById('addPetFieldBtn')?.addEventListener('click', () => addPetField());
 
 clientForm?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1079,31 +1822,49 @@ clientForm?.addEventListener('submit', (e) => {
         cId = Store.add('clients', clientData).id;
     }
 
-    const existingDogs = Store.getDogsForClient(cId);
-    const dogGroups = dogFieldsContainer?.querySelectorAll('.dog-field-group') || [];
-    const formDogIds = new Set();
+    const existingPets = Store.getPetsForClient(cId);
+    const petGroups = petFieldsContainer?.querySelectorAll('.pet-field-group') || [];
+    const formPetIds = new Set();
 
-    dogGroups.forEach(group => {
-        const dogId = group.dataset.dogId;
-        const dogData = {
+    petGroups.forEach(group => {
+        const petId = group.dataset.petId;
+        const breed = group.querySelector('[name="petBreed"]').value;
+        const breedOther = group.querySelector('[name="petBreedOther"]').value;
+        const finalBreed = breed === 'Other' ? breedOther : breed;
+
+        const petData = {
             clientId: cId,
-            name: group.querySelector('[name="dogName"]').value.trim(),
-            breed: group.querySelector('[name="dogBreed"]').value.trim(),
-            size: group.querySelector('[name="dogSize"]').value,
-            age: group.querySelector('[name="dogAge"]').value.trim(),
-            specialNeeds: group.querySelector('[name="dogSpecialNeeds"]').value.trim(),
-            vetInfo: group.querySelector('[name="dogVetInfo"]').value.trim()
+            petType: group.querySelector('[name="petType"]').value || 'dog',
+            name: group.querySelector('[name="petName"]').value.trim(),
+            breed: finalBreed,
+            size: group.querySelector('[name="petSize"]').value,
+            age: group.querySelector('[name="petAge"]').value.trim(),
+            isPuppy: group.querySelector('[name="petIsPuppy"]')?.checked || false,
+            // Profile fields
+            allergies: Array.from(group.querySelectorAll('[name="allergy"]:checked')).map(cb => cb.value),
+            allergyOther: group.querySelector('[name="allergyOther"]')?.value?.trim() || '',
+            temperament: Array.from(group.querySelectorAll('[name="temperament"]:checked')).map(cb => cb.value),
+            tendencies: Array.from(group.querySelectorAll('[name="tendency"]:checked')).map(cb => cb.value),
+            feedingSchedule: group.querySelector('[name="feedingSchedule"]')?.value || '',
+            foodBrand: group.querySelector('[name="foodBrand"]')?.value?.trim() || '',
+            foodAmount: group.querySelector('[name="foodAmount"]')?.value?.trim() || '',
+            spayedNeutered: group.querySelector('[name="spayedNeutered"]')?.checked || false,
+            medications: group.querySelector('[name="medications"]')?.value?.trim() || '',
+            vetInfo: group.querySelector('[name="vetInfo"]')?.value?.trim() || '',
+            houseTraining: group.querySelector('[name="houseTraining"]')?.value || '',
+            photos: getPetPhotosFromGroup(group),
+            publicPhotos: Array.from(group.querySelectorAll('.photo-public-cb:checked')).map((_, i) => i)
         };
-        if (!dogData.name) return;
-        if (dogId) {
-            Store.update('dogs', dogId, dogData);
-            formDogIds.add(dogId);
+        if (!petData.name) return;
+        if (petId) {
+            Store.update('dogs', petId, petData);
+            formPetIds.add(petId);
         } else {
-            formDogIds.add(Store.add('dogs', dogData).id);
+            formPetIds.add(Store.add('dogs', petData).id);
         }
     });
 
-    existingDogs.forEach(d => { if (!formDogIds.has(d.id)) Store.remove('dogs', d.id); });
+    existingPets.forEach(d => { if (!formPetIds.has(d.id)) Store.remove('dogs', d.id); });
 
     closeModal(clientModal);
     refreshAll();
@@ -1111,8 +1872,8 @@ clientForm?.addEventListener('submit', (e) => {
 
 document.getElementById('clientDelete')?.addEventListener('click', () => {
     const id = document.getElementById('clientId').value;
-    if (id && confirm('Delete this client and all their dogs?')) {
-        Store.getDogsForClient(id).forEach(d => Store.remove('dogs', d.id));
+    if (id && confirm('Delete this client and all their pets?')) {
+        Store.getPetsForClient(id).forEach(d => Store.remove('dogs', d.id));
         Store.remove('clients', id);
         closeModal(clientModal);
         refreshAll();
@@ -1178,7 +1939,6 @@ const openEmployeeModal = (empId) => {
     document.getElementById('employeeDelete').style.display = 'none';
     document.getElementById('empActive').checked = true;
 
-    // Generate random color for new employees
     const colors = ['#6c5ce7', '#00b894', '#e17055', '#0984e3', '#fdcb6e', '#e84393', '#00cec9', '#ff7675'];
     document.getElementById('empColor').value = colors[Math.floor(Math.random() * colors.length)];
 
@@ -1208,7 +1968,6 @@ employeeForm?.addEventListener('submit', (e) => {
     delete data.employeeId;
     data.active = document.getElementById('empActive').checked;
 
-    // Validate PIN uniqueness
     const existingPins = Store.getAll('employees')
         .filter(emp => emp.id !== id)
         .map(emp => emp.pin)
@@ -1289,7 +2048,7 @@ const renderPayments = () => {
         return `
             <div class="payment-row">
                 <div>
-                    <strong>${escapeHtml(dog?.name || 'Unknown')} — ${getServiceLabel(b.serviceId)}</strong>
+                    <strong>${getPetIcon(dog?.petType)} ${escapeHtml(dog?.name || 'Unknown')} — ${getServiceLabel(b.serviceId)}</strong>
                     <br><span>${escapeHtml(client?.name || 'Unknown')} | ${escapeHtml(empName)} | ${formatDateShort(b.startDate)} – ${formatDateShort(b.endDate)}</span>
                 </div>
                 <span class="payment-amount">$${(b.paymentAmount || 0).toFixed(2)}</span>
@@ -1392,10 +2151,318 @@ const renderRevenueChart = (bookings) => {
 };
 
 // ========================================
+// Messages View
+// ========================================
+let activeMessageClient = null;
+
+const renderMessages = () => {
+    const panel = document.getElementById('panelMessages');
+    if (!panel) return;
+
+    const clients = Store.getAll('clients');
+    const messages = Store.getAll('messages');
+
+    // Get clients that have messages, plus show all for owner
+    const clientsWithMessages = new Set(messages.map(m => m.clientId));
+    const messageClients = clients.filter(c => clientsWithMessages.has(c.id));
+
+    const threadList = panel.querySelector('.message-thread-list');
+    const chatArea = panel.querySelector('.message-chat-area');
+    if (!threadList || !chatArea) return;
+
+    // Render thread list
+    threadList.innerHTML = messageClients.length === 0
+        ? '<p class="empty-state" style="padding:20px;font-size:0.85rem">No conversations yet</p>'
+        : messageClients.map(c => {
+            const clientMsgs = Store.getMessagesForClient(c.id);
+            const lastMsg = clientMsgs[clientMsgs.length - 1];
+            const unread = clientMsgs.filter(m => !m.read && m.sender === 'client').length;
+            return `
+                <div class="message-thread ${activeMessageClient === c.id ? 'active' : ''}" data-client-id="${c.id}">
+                    <div class="thread-avatar">${c.name.charAt(0).toUpperCase()}</div>
+                    <div class="thread-info">
+                        <strong>${escapeHtml(c.name)}</strong>
+                        <span>${lastMsg ? escapeHtml(lastMsg.content.substring(0, 40)) + (lastMsg.content.length > 40 ? '...' : '') : 'No messages'}</span>
+                    </div>
+                    ${unread > 0 ? `<span class="thread-unread">${unread}</span>` : ''}
+                </div>
+            `;
+        }).join('');
+
+    threadList.querySelectorAll('.message-thread').forEach(el => {
+        el.addEventListener('click', () => {
+            activeMessageClient = el.dataset.clientId;
+            // Mark as read
+            Store.getMessagesForClient(activeMessageClient).forEach(m => {
+                if (!m.read && m.sender === 'client') {
+                    Store.update('messages', m.id, { read: true });
+                }
+            });
+            renderMessages();
+        });
+    });
+
+    // Render chat area
+    if (activeMessageClient) {
+        const client = Store.getById('clients', activeMessageClient);
+        const clientMsgs = Store.getMessagesForClient(activeMessageClient);
+
+        chatArea.innerHTML = `
+            <div class="chat-header">
+                <strong>${escapeHtml(client?.name || 'Unknown')}</strong>
+                <span>${escapeHtml(client?.email || '')}</span>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                ${clientMsgs.map(m => `
+                    <div class="chat-bubble ${m.sender === 'client' ? 'incoming' : 'outgoing'}">
+                        <p>${escapeHtml(m.content)}</p>
+                        <span class="chat-time">${new Date(m.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="chat-input-area">
+                <textarea id="chatInput" rows="2" placeholder="Type a message..."></textarea>
+                <button class="btn btn-primary btn-sm" id="chatSendBtn">Send</button>
+            </div>
+        `;
+
+        // Scroll to bottom
+        const chatMsgs = document.getElementById('chatMessages');
+        if (chatMsgs) chatMsgs.scrollTop = chatMsgs.scrollHeight;
+
+        document.getElementById('chatSendBtn')?.addEventListener('click', () => {
+            const input = document.getElementById('chatInput');
+            const content = input?.value?.trim();
+            if (!content) return;
+
+            Store.add('messages', {
+                clientId: activeMessageClient,
+                content,
+                sender: AUTH.isOwner() ? 'owner' : AUTH.employeeId(),
+                timestamp: new Date().toISOString(),
+                read: true
+            });
+            input.value = '';
+            renderMessages();
+        });
+
+        document.getElementById('chatInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chatSendBtn')?.click();
+            }
+        });
+    } else {
+        chatArea.innerHTML = '<p class="empty-state">Select a conversation to view messages</p>';
+    }
+};
+
+// ========================================
+// Reviews View
+// ========================================
+const renderReviews = () => {
+    const panel = document.getElementById('panelReviews');
+    if (!panel) return;
+
+    const reviews = Store.getAll('reviews');
+    const statsEl = panel.querySelector('.review-stats');
+    const listEl = panel.querySelector('.reviews-list');
+    if (!statsEl || !listEl) return;
+
+    // Stats
+    const totalReviews = reviews.length;
+    const avgRating = totalReviews > 0 ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / totalReviews).toFixed(1) : '0.0';
+    const distribution = [5, 4, 3, 2, 1].map(star => ({
+        star,
+        count: reviews.filter(r => r.rating === star).length,
+        pct: totalReviews > 0 ? Math.round(reviews.filter(r => r.rating === star).length / totalReviews * 100) : 0
+    }));
+
+    statsEl.innerHTML = `
+        <div class="review-stat-summary">
+            <div class="review-avg-rating">${avgRating}</div>
+            <div class="review-avg-stars">${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))}</div>
+            <div class="review-total">${totalReviews} review${totalReviews !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="review-distribution">
+            ${distribution.map(d => `
+                <div class="review-dist-row">
+                    <span>${d.star}★</span>
+                    <div class="review-dist-bar"><div class="review-dist-fill" style="width:${d.pct}%"></div></div>
+                    <span>${d.count}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    // List
+    if (reviews.length === 0) {
+        listEl.innerHTML = '<p class="empty-state">No reviews yet. Add your first one!</p>';
+        return;
+    }
+
+    listEl.innerHTML = reviews.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(r => {
+        const client = Store.getById('clients', r.clientId);
+        const pet = Store.getById('dogs', r.petId);
+        return `
+            <div class="review-card ${r.featured ? 'featured' : ''}" data-id="${r.id}">
+                <div class="review-card-header">
+                    <div class="review-stars">${'★'.repeat(r.rating || 0)}${'☆'.repeat(5 - (r.rating || 0))}</div>
+                    ${r.featured ? '<span class="featured-badge">Featured</span>' : ''}
+                    <span class="review-date">${formatDate(r.date)}</span>
+                </div>
+                <p class="review-text">${escapeHtml(r.text)}</p>
+                <div class="review-meta">
+                    <strong>${escapeHtml(client?.name || 'Unknown')}</strong>
+                    ${pet ? `<span>— ${getPetIcon(pet.petType)} ${escapeHtml(pet.name)}</span>` : ''}
+                </div>
+                ${r.response ? `<div class="review-response"><strong>Owner response:</strong> ${escapeHtml(r.response)}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+
+    listEl.querySelectorAll('.review-card').forEach(card => {
+        card.addEventListener('click', () => openReviewModal(card.dataset.id));
+    });
+};
+
+document.getElementById('addReviewBtn')?.addEventListener('click', () => openReviewModal());
+
+// ========================================
+// Review Modal
+// ========================================
+const reviewModal = document.getElementById('reviewModal');
+const reviewForm = document.getElementById('reviewForm');
+
+const openReviewModal = (reviewId) => {
+    if (!reviewForm) return;
+    reviewForm.reset();
+    document.getElementById('reviewIdField').value = '';
+    document.getElementById('reviewModalTitle').textContent = 'New Review';
+    document.getElementById('reviewDelete').style.display = 'none';
+
+    // Populate client dropdown
+    const clientSel = document.getElementById('rvClient');
+    if (clientSel) {
+        clientSel.innerHTML = '<option value="" disabled selected>Select client</option>';
+        Store.getAll('clients').forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            clientSel.appendChild(opt);
+        });
+    }
+
+    // Star rating interactive
+    setupStarRating();
+
+    if (reviewId) {
+        const r = Store.getById('reviews', reviewId);
+        if (!r) return;
+        document.getElementById('reviewModalTitle').textContent = 'Edit Review';
+        document.getElementById('reviewIdField').value = r.id;
+        document.getElementById('reviewDelete').style.display = 'inline-flex';
+        if (clientSel) clientSel.value = r.clientId || '';
+        document.getElementById('rvRating').value = r.rating || 5;
+        setStarDisplay(r.rating || 5);
+        document.getElementById('rvText').value = r.text || '';
+        document.getElementById('rvDate').value = r.date || '';
+        document.getElementById('rvFeatured').checked = r.featured || false;
+        document.getElementById('rvResponse').value = r.response || '';
+
+        // Populate pet dropdown
+        populateReviewPetDropdown(r.clientId, r.petId);
+    }
+
+    reviewModal.classList.add('active');
+};
+
+const populateReviewPetDropdown = (clientId, selectedPetId) => {
+    const sel = document.getElementById('rvPet');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">No specific pet</option>';
+    if (!clientId) return;
+    Store.getPetsForClient(clientId).forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${getPetIcon(d.petType)} ${d.name}`;
+        if (d.id === selectedPetId) opt.selected = true;
+        sel.appendChild(opt);
+    });
+};
+
+const setupStarRating = () => {
+    const container = document.getElementById('starRatingContainer');
+    if (!container) return;
+    container.innerHTML = [1, 2, 3, 4, 5].map(i =>
+        `<span class="star-btn" data-rating="${i}">★</span>`
+    ).join('');
+
+    setStarDisplay(5);
+
+    container.querySelectorAll('.star-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const rating = parseInt(btn.dataset.rating);
+            document.getElementById('rvRating').value = rating;
+            setStarDisplay(rating);
+        });
+    });
+};
+
+const setStarDisplay = (rating) => {
+    const container = document.getElementById('starRatingContainer');
+    if (!container) return;
+    container.querySelectorAll('.star-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.rating) <= rating);
+    });
+};
+
+document.getElementById('rvClient')?.addEventListener('change', (e) => {
+    populateReviewPetDropdown(e.target.value);
+});
+
+reviewForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(reviewForm);
+    const data = Object.fromEntries(fd);
+    const id = data.reviewId;
+    delete data.reviewId;
+    data.rating = parseInt(data.rating) || 5;
+    data.featured = document.getElementById('rvFeatured').checked;
+
+    if (id) {
+        Store.update('reviews', id, data);
+    } else {
+        Store.add('reviews', data);
+    }
+
+    closeModal(reviewModal);
+    renderReviews();
+});
+
+document.getElementById('reviewDelete')?.addEventListener('click', () => {
+    const id = document.getElementById('reviewIdField').value;
+    if (id && confirm('Delete this review?')) {
+        Store.remove('reviews', id);
+        closeModal(reviewModal);
+        renderReviews();
+    }
+});
+
+document.getElementById('reviewModalClose')?.addEventListener('click', () => closeModal(reviewModal));
+document.getElementById('reviewCancel')?.addEventListener('click', () => closeModal(reviewModal));
+
+// ========================================
 // Settings View
 // ========================================
 const renderSettings = () => {
     renderServicesSettings();
+    renderHolidaySettings();
+    renderAddonSettings();
+    renderPricingSettings();
+    renderLoyaltySettings();
+    renderReferralSettings();
+    renderDiscountCodesSettings();
     renderBusinessSettings();
 };
 
@@ -1440,6 +2507,96 @@ const renderServicesSettings = () => {
     });
 };
 
+const renderHolidaySettings = () => {
+    const container = document.getElementById('holidaySettingsList');
+    if (!container) return;
+    const holidays = Store.data.settings.holidayRates || [];
+
+    container.innerHTML = holidays.map(h => `
+        <div class="holiday-setting-row">
+            <strong>${escapeHtml(h.name)}</strong>
+            <span>${h.startMonth}/${h.startDay} – ${h.endMonth}/${h.endDay}</span>
+            <span class="holiday-multiplier">${h.multiplier}x</span>
+            <button class="btn btn-icon btn-sm holiday-remove-btn" data-id="${h.id}" title="Remove">&times;</button>
+        </div>
+    `).join('');
+
+    container.querySelectorAll('.holiday-remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            Store.data.settings.holidayRates = Store.data.settings.holidayRates.filter(h => h.id !== btn.dataset.id);
+            Store.save();
+            renderHolidaySettings();
+        });
+    });
+};
+
+document.getElementById('addHolidayBtn')?.addEventListener('click', () => {
+    const name = prompt('Holiday name:');
+    if (!name) return;
+    const startMonth = parseInt(prompt('Start month (1-12):'));
+    const startDay = parseInt(prompt('Start day:'));
+    const endMonth = parseInt(prompt('End month (1-12):'));
+    const endDay = parseInt(prompt('End day:'));
+    const multiplier = parseFloat(prompt('Rate multiplier (e.g., 1.5):') || '1.5');
+
+    if (!startMonth || !startDay || !endMonth || !endDay) return;
+
+    Store.data.settings.holidayRates.push({
+        id: 'hol-' + crypto.randomUUID().slice(0, 8),
+        name, startMonth, startDay, endMonth, endDay, multiplier
+    });
+    Store.save();
+    renderHolidaySettings();
+});
+
+const renderAddonSettings = () => {
+    const container = document.getElementById('addonSettingsList');
+    if (!container) return;
+    const addons = Store.data.settings.addons || [];
+
+    container.innerHTML = addons.map(a => `
+        <div class="addon-setting-row">
+            <span class="addon-icon">${a.icon}</span>
+            <strong>${escapeHtml(a.name)}</strong>
+            <span>$${a.price}</span>
+            <label class="toggle-switch">
+                <input type="checkbox" ${a.enabled ? 'checked' : ''} data-id="${a.id}" class="addon-toggle">
+                <span class="toggle-slider"></span>
+            </label>
+            <button class="btn btn-icon btn-sm addon-remove-btn" data-id="${a.id}" title="Remove">&times;</button>
+        </div>
+    `).join('');
+
+    container.querySelectorAll('.addon-toggle').forEach(toggle => {
+        toggle.addEventListener('change', () => {
+            const addon = Store.data.settings.addons.find(a => a.id === toggle.dataset.id);
+            if (addon) { addon.enabled = toggle.checked; Store.save(); }
+        });
+    });
+
+    container.querySelectorAll('.addon-remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            Store.data.settings.addons = Store.data.settings.addons.filter(a => a.id !== btn.dataset.id);
+            Store.save();
+            renderAddonSettings();
+        });
+    });
+};
+
+document.getElementById('addAddonBtn')?.addEventListener('click', () => {
+    const name = prompt('Add-on name:');
+    if (!name) return;
+    const price = parseFloat(prompt('Price ($):') || '0');
+    const icon = prompt('Icon (emoji):') || '✨';
+
+    Store.data.settings.addons.push({
+        id: 'addon-' + crypto.randomUUID().slice(0, 8),
+        name, price, icon, enabled: true
+    });
+    Store.save();
+    renderAddonSettings();
+});
+
 const renderBusinessSettings = () => {
     const nameInput = document.getElementById('businessNameInput');
     const pinInput = document.getElementById('ownerPinInput');
@@ -1455,7 +2612,6 @@ document.getElementById('saveBusinessSettings')?.addEventListener('click', () =>
 
     if (name) Store.data.settings.businessName = name;
     if (pin && pin.length >= 4) {
-        // Check PIN not used by employee
         const empPins = Store.getAll('employees').map(e => e.pin);
         if (empPins.includes(pin)) {
             alert('This PIN is already used by an employee.');
@@ -1533,6 +2689,462 @@ document.getElementById('serviceModalClose')?.addEventListener('click', () => cl
 document.getElementById('serviceCancel')?.addEventListener('click', () => closeModal(serviceModal));
 
 // ========================================
+// Alerts Panel
+// ========================================
+const renderAlerts = () => {
+    const panel = document.getElementById('panelAlerts');
+    if (!panel) return;
+    const listEl = panel.querySelector('.alerts-list');
+    if (!listEl) return;
+
+    const alerts = Store.getAlerts();
+    const countEl = panel.querySelector('.alerts-count');
+    if (countEl) countEl.textContent = `${alerts.length} active alert${alerts.length !== 1 ? 's' : ''}`;
+
+    if (alerts.length === 0) {
+        listEl.innerHTML = '<p class="empty-state">No alerts — everything looks good!</p>';
+        return;
+    }
+
+    listEl.innerHTML = alerts.map(a => `
+        <div class="alert-card alert-${a.priority}" data-type="${a.type}" data-id="${a.id}">
+            <span class="alert-icon">${a.icon}</span>
+            <div class="alert-info">
+                <strong>${escapeHtml(a.title)}</strong>
+                <span>${escapeHtml(a.detail)}</span>
+            </div>
+            <span class="alert-priority-badge ${a.priority}">${a.priority}</span>
+        </div>
+    `).join('');
+
+    listEl.querySelectorAll('.alert-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const type = card.dataset.type;
+            const id = card.dataset.id;
+            if (type === 'upcoming' || type === 'payment' || type === 'pending') {
+                openBookingModal(id);
+            } else if (type === 'loyalty') {
+                openClientModal(id);
+            } else if (type === 'message') {
+                switchPanel('messages');
+            }
+        });
+    });
+};
+
+// ========================================
+// Loyalty Panel
+// ========================================
+const renderLoyalty = () => {
+    const panel = document.getElementById('panelLoyalty');
+    if (!panel) return;
+    const listEl = panel.querySelector('.loyalty-list');
+    if (!listEl) return;
+
+    const clients = Store.getAll('clients');
+    const tiers = [...(Store.data.settings.loyaltyTiers || [])].sort((a, b) => b.minBookings - a.minBookings);
+
+    // Summary stats
+    const statsEl = panel.querySelector('.loyalty-stats');
+    if (statsEl) {
+        const tierCounts = {};
+        clients.forEach(c => {
+            const tier = Store.getClientLoyaltyTier(c.id);
+            tierCounts[tier.name] = (tierCounts[tier.name] || 0) + 1;
+        });
+        statsEl.innerHTML = tiers.slice().reverse().map(t => `
+            <div class="loyalty-stat-card" style="border-top:3px solid ${t.color}">
+                <span class="loyalty-stat-icon">${t.icon}</span>
+                <strong>${t.name}</strong>
+                <span class="loyalty-stat-count">${tierCounts[t.name] || 0} client${(tierCounts[t.name] || 0) !== 1 ? 's' : ''}</span>
+                <span class="loyalty-stat-discount">${t.discount > 0 ? t.discount + '% off' : 'No discount'}</span>
+            </div>
+        `).join('');
+    }
+
+    // Client list sorted by booking count
+    const clientData = clients.map(c => ({
+        client: c,
+        tier: Store.getClientLoyaltyTier(c.id),
+        bookings: Store.getClientCompletedBookings(c.id),
+        total: Store.getClientTotalBookings(c.id),
+        spent: Store.getAll('bookings').filter(b => b.clientId === c.id && b.paymentStatus === 'paid').reduce((sum, b) => sum + (b.paymentAmount || 0), 0)
+    })).sort((a, b) => b.bookings - a.bookings);
+
+    listEl.innerHTML = clientData.map(d => {
+        const nextTier = tiers.find(t => t.minBookings > d.bookings);
+        const progress = nextTier ? Math.round((d.bookings / nextTier.minBookings) * 100) : 100;
+        return `
+            <div class="loyalty-client-card" data-id="${d.client.id}">
+                <div class="loyalty-client-avatar" style="border-color:${d.tier.color}">${d.client.name.charAt(0)}</div>
+                <div class="loyalty-client-info">
+                    <strong>${escapeHtml(d.client.name)}</strong>
+                    <div class="loyalty-client-stats">
+                        <span>${d.bookings} completed</span>
+                        <span>$${d.spent.toFixed(0)} spent</span>
+                        ${d.client.referralCredits > 0 ? `<span>$${d.client.referralCredits} credit</span>` : ''}
+                    </div>
+                    ${nextTier ? `
+                        <div class="loyalty-progress">
+                            <div class="loyalty-progress-bar" style="width:${progress}%;background:${nextTier.color}"></div>
+                        </div>
+                        <span class="loyalty-progress-label">${d.bookings}/${nextTier.minBookings} to ${nextTier.icon} ${nextTier.name}</span>
+                    ` : '<span class="loyalty-progress-label">Max tier reached!</span>'}
+                </div>
+                <span class="loyalty-badge" style="background:${d.tier.color}20;color:${d.tier.color};border:1px solid ${d.tier.color}40">${d.tier.icon} ${d.tier.name}</span>
+            </div>
+        `;
+    }).join('');
+
+    listEl.querySelectorAll('.loyalty-client-card').forEach(card => {
+        card.addEventListener('click', () => openClientModal(card.dataset.id));
+    });
+};
+
+// ========================================
+// Referrals Panel
+// ========================================
+const renderReferrals = () => {
+    const panel = document.getElementById('panelReferrals');
+    if (!panel) return;
+    const listEl = panel.querySelector('.referrals-list');
+    if (!listEl) return;
+
+    const clients = Store.getAll('clients');
+    const settings = Store.data.settings;
+
+    // Stats
+    const statsEl = panel.querySelector('.referrals-stats');
+    if (statsEl) {
+        const totalReferrals = clients.filter(c => c.referredBy).length;
+        const totalCreditsOut = clients.reduce((sum, c) => sum + (c.referralCredits || 0), 0);
+        const topReferrer = clients.reduce((best, c) => {
+            const count = Store.getClientReferrals(c.id).length;
+            return count > best.count ? { name: c.name, count } : best;
+        }, { name: '—', count: 0 });
+
+        statsEl.innerHTML = `
+            <div class="ref-stat-card"><span class="ref-stat-val">${totalReferrals}</span><span>Total Referrals</span></div>
+            <div class="ref-stat-card"><span class="ref-stat-val">$${totalCreditsOut}</span><span>Credits Outstanding</span></div>
+            <div class="ref-stat-card"><span class="ref-stat-val">${escapeHtml(topReferrer.name)}</span><span>Top Referrer (${topReferrer.count})</span></div>
+            <div class="ref-stat-card"><span class="ref-stat-val">$${settings.referralRewardReferrer || 15}</span><span>Referrer Reward</span></div>
+        `;
+    }
+
+    // Referral leaderboard
+    const referrerData = clients.map(c => ({
+        client: c,
+        referrals: Store.getClientReferrals(c.id),
+        credits: c.referralCredits || 0
+    })).filter(d => d.referrals.length > 0 || d.credits > 0)
+      .sort((a, b) => b.referrals.length - a.referrals.length);
+
+    if (referrerData.length === 0) {
+        listEl.innerHTML = `
+            <div class="referral-info-card">
+                <h4>How Referrals Work</h4>
+                <p>Each client gets a unique referral code. When a new client uses it during booking:</p>
+                <ul>
+                    <li>Referrer gets <strong>$${settings.referralRewardReferrer || 15}</strong> credit</li>
+                    <li>New client gets <strong>$${settings.referralRewardReferee || 10}</strong> off first booking</li>
+                </ul>
+                <p>Credits auto-apply to the next booking total.</p>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = referrerData.map((d, i) => `
+        <div class="referral-card">
+            <span class="referral-rank">#${i + 1}</span>
+            <div class="referral-info">
+                <strong>${escapeHtml(d.client.name)}</strong>
+                <span class="referral-code">Code: <code>${escapeHtml(d.client.referralCode)}</code></span>
+            </div>
+            <div class="referral-stats">
+                <span class="ref-count">${d.referrals.length} referral${d.referrals.length !== 1 ? 's' : ''}</span>
+                <span class="ref-credit">$${d.credits} credit</span>
+            </div>
+            <div class="referral-referred">
+                ${d.referrals.map(r => `<span class="referred-tag">${escapeHtml(r.name)}</span>`).join('')}
+            </div>
+        </div>
+    `).join('');
+};
+
+// ========================================
+// Pricing Settings (size, breed, puppy surcharges)
+// ========================================
+const renderPricingSettings = () => {
+    const container = document.getElementById('pricingSettingsSection');
+    if (!container) return;
+    const s = Store.data.settings;
+
+    container.innerHTML = `
+        <div class="settings-subsection">
+            <h4>Size Surcharges <span class="settings-hint">(per unit/day)</span></h4>
+            <div class="surcharge-grid">
+                ${Object.entries(s.sizeSurcharges || {}).map(([size, amt]) => `
+                    <div class="surcharge-row">
+                        <label>${size.charAt(0).toUpperCase() + size.slice(1)}</label>
+                        <div class="surcharge-input-wrap">
+                            <span>+$</span>
+                            <input type="number" class="surcharge-input" data-size="${size}" value="${amt}" min="0" step="1">
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        <div class="settings-subsection">
+            <h4>Breed Category Surcharges <span class="settings-hint">(per unit/day)</span></h4>
+            <div id="breedSurchargesList">
+                ${(s.breedSurcharges || []).map(cat => `
+                    <div class="breed-surcharge-card" data-id="${cat.id}">
+                        <div class="breed-surcharge-header">
+                            <strong>${escapeHtml(cat.label)}</strong>
+                            <span>+$${cat.surcharge}/unit</span>
+                            <button class="btn btn-icon btn-sm breed-surcharge-remove" data-id="${cat.id}">&times;</button>
+                        </div>
+                        <div class="breed-surcharge-breeds">${(cat.breeds || []).map(b => `<span class="breed-tag">${escapeHtml(b)}</span>`).join('')}</div>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-outline btn-sm" id="addBreedSurchargeBtn" style="margin-top:8px">+ Add Breed Category</button>
+        </div>
+        <div class="settings-subsection">
+            <h4>Puppy/Kitten Surcharge <span class="settings-hint">(flat per booking)</span></h4>
+            <div class="surcharge-row">
+                <label>Amount</label>
+                <div class="surcharge-input-wrap">
+                    <span>+$</span>
+                    <input type="number" id="puppySurchargeInput" value="${s.puppySurcharge || 0}" min="0" step="1">
+                </div>
+            </div>
+        </div>
+        <div class="settings-subsection">
+            <h4>Multi-Pet Discount</h4>
+            <div class="surcharge-row">
+                <label>Discount per extra pet</label>
+                <div class="surcharge-input-wrap">
+                    <input type="number" id="multiPetDiscountInput" value="${s.multiPetDiscount || 15}" min="0" max="100" step="1">
+                    <span>%</span>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="savePricingSettings" style="margin-top:12px">Save Pricing</button>
+    `;
+
+    // Save pricing
+    container.querySelector('#savePricingSettings')?.addEventListener('click', () => {
+        // Size surcharges
+        container.querySelectorAll('.surcharge-input[data-size]').forEach(input => {
+            s.sizeSurcharges[input.dataset.size] = parseFloat(input.value) || 0;
+        });
+        s.puppySurcharge = parseFloat(container.querySelector('#puppySurchargeInput')?.value) || 0;
+        s.multiPetDiscount = parseFloat(container.querySelector('#multiPetDiscountInput')?.value) || 15;
+        Store.save();
+        alert('Pricing settings saved!');
+    });
+
+    // Remove breed surcharge
+    container.querySelectorAll('.breed-surcharge-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            s.breedSurcharges = s.breedSurcharges.filter(c => c.id !== btn.dataset.id);
+            Store.save();
+            renderPricingSettings();
+        });
+    });
+
+    // Add breed surcharge
+    container.querySelector('#addBreedSurchargeBtn')?.addEventListener('click', () => {
+        const label = prompt('Category name (e.g., "Giant Breeds"):');
+        if (!label) return;
+        const surcharge = parseFloat(prompt('Surcharge per unit ($):') || '0');
+        const breedsStr = prompt('Comma-separated breeds:');
+        if (!breedsStr) return;
+        s.breedSurcharges.push({
+            id: 'bs-' + crypto.randomUUID().slice(0, 8),
+            label,
+            surcharge,
+            breeds: breedsStr.split(',').map(b => b.trim()).filter(Boolean)
+        });
+        Store.save();
+        renderPricingSettings();
+    });
+};
+
+// ========================================
+// Loyalty Settings
+// ========================================
+const renderLoyaltySettings = () => {
+    const container = document.getElementById('loyaltySettingsSection');
+    if (!container) return;
+    const s = Store.data.settings;
+
+    container.innerHTML = `
+        <div class="settings-subsection">
+            <label class="checkbox-label">
+                <input type="checkbox" id="loyaltyEnabledCb" ${s.loyaltyEnabled ? 'checked' : ''}>
+                <span>Enable Loyalty Program</span>
+            </label>
+        </div>
+        <div class="loyalty-tiers-editor" id="loyaltyTiersEditor">
+            <h4>Loyalty Tiers</h4>
+            ${(s.loyaltyTiers || []).map((t, i) => `
+                <div class="tier-row">
+                    <input type="text" class="tier-icon-input" value="${t.icon}" maxlength="4" title="Icon">
+                    <input type="text" class="tier-name-input" value="${escapeHtml(t.name)}" placeholder="Tier name">
+                    <div class="tier-field"><label>Min bookings</label><input type="number" class="tier-min-input" value="${t.minBookings}" min="0"></div>
+                    <div class="tier-field"><label>Discount %</label><input type="number" class="tier-discount-input" value="${t.discount}" min="0" max="100"></div>
+                    <input type="color" class="tier-color-input" value="${t.color}">
+                    ${i > 0 ? `<button class="btn btn-icon btn-sm tier-remove-btn" data-index="${i}">&times;</button>` : '<span style="width:32px"></span>'}
+                </div>
+            `).join('')}
+            <button class="btn btn-outline btn-sm" id="addLoyaltyTierBtn" style="margin-top:8px">+ Add Tier</button>
+        </div>
+        <button class="btn btn-primary btn-sm" id="saveLoyaltySettings" style="margin-top:12px">Save Loyalty Settings</button>
+    `;
+
+    container.querySelector('#loyaltyEnabledCb')?.addEventListener('change', (e) => {
+        s.loyaltyEnabled = e.target.checked;
+        Store.save();
+    });
+
+    container.querySelector('#saveLoyaltySettings')?.addEventListener('click', () => {
+        const rows = container.querySelectorAll('.tier-row');
+        s.loyaltyTiers = Array.from(rows).map(row => ({
+            icon: row.querySelector('.tier-icon-input').value,
+            name: row.querySelector('.tier-name-input').value,
+            minBookings: parseInt(row.querySelector('.tier-min-input').value) || 0,
+            discount: parseInt(row.querySelector('.tier-discount-input').value) || 0,
+            color: row.querySelector('.tier-color-input').value
+        }));
+        Store.save();
+        alert('Loyalty settings saved!');
+    });
+
+    container.querySelector('#addLoyaltyTierBtn')?.addEventListener('click', () => {
+        s.loyaltyTiers.push({ icon: '🌟', name: 'New Tier', minBookings: 50, discount: 20, color: '#FFD700' });
+        Store.save();
+        renderLoyaltySettings();
+    });
+
+    container.querySelectorAll('.tier-remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            s.loyaltyTiers.splice(parseInt(btn.dataset.index), 1);
+            Store.save();
+            renderLoyaltySettings();
+        });
+    });
+};
+
+// ========================================
+// Referral Settings
+// ========================================
+const renderReferralSettings = () => {
+    const container = document.getElementById('referralSettingsSection');
+    if (!container) return;
+    const s = Store.data.settings;
+
+    container.innerHTML = `
+        <div class="settings-subsection">
+            <label class="checkbox-label">
+                <input type="checkbox" id="referralEnabledCb" ${s.referralEnabled ? 'checked' : ''}>
+                <span>Enable Referral Program</span>
+            </label>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Referrer Reward ($)</label>
+                <input type="number" id="refRewardReferrer" value="${s.referralRewardReferrer || 15}" min="0" step="1">
+            </div>
+            <div class="form-group">
+                <label>New Client Reward ($)</label>
+                <input type="number" id="refRewardReferee" value="${s.referralRewardReferee || 10}" min="0" step="1">
+            </div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="saveReferralSettings" style="margin-top:12px">Save Referral Settings</button>
+    `;
+
+    container.querySelector('#referralEnabledCb')?.addEventListener('change', (e) => {
+        s.referralEnabled = e.target.checked;
+        Store.save();
+    });
+
+    container.querySelector('#saveReferralSettings')?.addEventListener('click', () => {
+        s.referralRewardReferrer = parseFloat(document.getElementById('refRewardReferrer')?.value) || 15;
+        s.referralRewardReferee = parseFloat(document.getElementById('refRewardReferee')?.value) || 10;
+        Store.save();
+        alert('Referral settings saved!');
+    });
+};
+
+// ========================================
+// Discount Codes Settings
+// ========================================
+const renderDiscountCodesSettings = () => {
+    const container = document.getElementById('discountCodesSettingsSection');
+    if (!container) return;
+    const codes = Store.data.settings.discountCodes || [];
+
+    container.innerHTML = `
+        <div id="discountCodesList">
+            ${codes.length === 0 ? '<p class="empty-state" style="padding:12px;font-size:0.85rem">No discount codes yet</p>' : ''}
+            ${codes.map(d => `
+                <div class="discount-code-card ${d.active ? '' : 'inactive'}">
+                    <div class="discount-code-info">
+                        <code class="discount-code">${escapeHtml(d.code)}</code>
+                        <strong>${d.type === 'percent' ? d.value + '% off' : '$' + d.value + ' off'}</strong>
+                        ${d.expiresAt ? `<span>Expires: ${formatDate(d.expiresAt)}</span>` : '<span>No expiry</span>'}
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${d.active ? 'checked' : ''} class="discount-toggle" data-id="${d.id}">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <button class="btn btn-icon btn-sm discount-remove-btn" data-id="${d.id}">&times;</button>
+                </div>
+            `).join('')}
+        </div>
+        <button class="btn btn-outline btn-sm" id="addDiscountCodeBtn" style="margin-top:8px">+ Add Discount Code</button>
+    `;
+
+    container.querySelectorAll('.discount-toggle').forEach(toggle => {
+        toggle.addEventListener('change', () => {
+            const code = codes.find(d => d.id === toggle.dataset.id);
+            if (code) { code.active = toggle.checked; Store.save(); }
+        });
+    });
+
+    container.querySelectorAll('.discount-remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            Store.data.settings.discountCodes = codes.filter(d => d.id !== btn.dataset.id);
+            Store.save();
+            renderDiscountCodesSettings();
+        });
+    });
+
+    container.querySelector('#addDiscountCodeBtn')?.addEventListener('click', () => {
+        const code = prompt('Discount code (e.g., WELCOME10):');
+        if (!code) return;
+        const type = prompt('Type: "percent" or "flat":') || 'percent';
+        const value = parseFloat(prompt(type === 'percent' ? 'Discount %:' : 'Discount $ amount:') || '10');
+        const expiresAt = prompt('Expiry date (YYYY-MM-DD, or leave blank for no expiry):') || '';
+
+        Store.data.settings.discountCodes.push({
+            id: 'disc-' + crypto.randomUUID().slice(0, 8),
+            code: code.toUpperCase(),
+            type: type === 'flat' ? 'flat' : 'percent',
+            value,
+            active: true,
+            expiresAt
+        });
+        Store.save();
+        renderDiscountCodesSettings();
+    });
+};
+
+// ========================================
 // Employee "Today" View
 // ========================================
 const renderToday = () => {
@@ -1561,7 +3173,7 @@ const renderToday = () => {
                 <div class="today-item">
                     <span class="today-item-icon" style="background:${getServiceColor(b.serviceId)}">${getServiceIcon(b.serviceId)}</span>
                     <div class="today-item-info">
-                        <strong>${escapeHtml(dog?.name || 'Unknown')} — ${getServiceLabel(b.serviceId)}</strong>
+                        <strong>${getPetIcon(dog?.petType)} ${escapeHtml(dog?.name || 'Unknown')} — ${getServiceLabel(b.serviceId)}</strong>
                         <span>${escapeHtml(client?.name || 'Unknown')} | ${escapeHtml(client?.phone || '')}</span>
                         ${b.notes ? `<span class="today-item-notes">${escapeHtml(b.notes)}</span>` : ''}
                     </div>
@@ -1595,7 +3207,6 @@ const closeModal = (modal) => {
     if (modal) modal.classList.remove('active');
 };
 
-// Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(modal => {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeModal(modal);
@@ -1617,7 +3228,7 @@ const refreshAll = () => {
 };
 
 // ========================================
-// Public Form → Pending Booking Bridge
+// Public Form -> Pending Booking Bridge
 // ========================================
 window.createBookingFromForm = (formData) => {
     let client = Store.getAll('clients').find(c =>
@@ -1635,24 +3246,49 @@ window.createBookingFromForm = (formData) => {
     }
 
     let dog = Store.getDogsForClient(client.id).find(d =>
-        d.name.toLowerCase() === (formData.dogName || '').toLowerCase()
+        d.name.toLowerCase() === (formData.petName || formData.dogName || '').toLowerCase()
     );
 
-    if (!dog && formData.dogName) {
+    if (!dog && (formData.petName || formData.dogName)) {
         dog = Store.add('dogs', {
             clientId: client.id,
-            name: formData.dogName,
+            petType: formData.petType || 'dog',
+            name: formData.petName || formData.dogName,
             breed: formData.breed || '',
-            size: '', age: '', specialNeeds: '', vetInfo: ''
+            size: formData.petSize || '',
+            age: '', specialNeeds: '', vetInfo: '',
+            allergies: [], temperament: [], tendencies: [], photos: []
         });
     }
 
-    // Map old service keys to serviceId
-    const serviceMap = { overnight: 'svc-overnight', walking: 'svc-walking', dropin: 'svc-dropin', daycare: 'svc-daycare' };
-    const serviceId = serviceMap[formData.service] || formData.service || '';
+    const serviceId = formData.serviceId || formData.service || '';
     const startDate = formData.startDate || todayStr();
     const endDate = formData.endDate || startDate;
-    const amount = calcAmount(serviceId, startDate, endDate);
+    const addonIds = formData.addons || [];
+
+    // Apply referral code if provided
+    if (formData.referralCode && formData.referralCode.trim()) {
+        const referrer = Store.getClientByReferralCode(formData.referralCode.trim().toUpperCase());
+        if (referrer && referrer.id !== client.id) {
+            client.referredBy = formData.referralCode.trim().toUpperCase();
+            Store.update('clients', client.id, { referredBy: client.referredBy });
+            // Credit the referrer
+            const reward = Store.data.settings.referralRewardReferrer || 15;
+            Store.update('clients', referrer.id, { referralCredits: (referrer.referralCredits || 0) + reward });
+            // Credit the new client
+            const newReward = Store.data.settings.referralRewardReferee || 10;
+            Store.update('clients', client.id, { referralCredits: (client.referralCredits || 0) + newReward });
+        }
+    }
+
+    const result = calcAmount(serviceId, startDate, endDate, addonIds, {
+        petSize: formData.petSize || dog?.size,
+        petBreed: formData.breed || dog?.breed,
+        isPuppy: dog?.isPuppy || false,
+        numPets: parseInt(formData.numPets) || 1,
+        clientId: client.id,
+        discountCode: formData.discountCode || ''
+    });
 
     Store.add('bookings', {
         clientId: client.id,
@@ -1663,9 +3299,36 @@ window.createBookingFromForm = (formData) => {
         endDate,
         status: 'pending',
         paymentStatus: 'unpaid',
-        paymentAmount: amount,
+        paymentAmount: result.total,
         paidDate: '',
-        notes: formData.message || ''
+        notes: formData.message || '',
+        addons: addonIds,
+        pricingMeta: { size: formData.petSize, breed: formData.breed, numPets: parseInt(formData.numPets) || 1 }
+    });
+};
+
+// Public message bridge
+window.createMessageFromForm = (formData) => {
+    let client = Store.getAll('clients').find(c =>
+        c.email === formData.email || c.name.toLowerCase() === formData.name.toLowerCase()
+    );
+
+    if (!client) {
+        client = Store.add('clients', {
+            name: formData.name,
+            email: formData.email,
+            phone: '',
+            address: '',
+            notes: ''
+        });
+    }
+
+    Store.add('messages', {
+        clientId: client.id,
+        content: formData.message,
+        sender: 'client',
+        timestamp: new Date().toISOString(),
+        read: false
     });
 };
 
@@ -1673,15 +3336,12 @@ window.createBookingFromForm = (formData) => {
 // Init
 // ========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Setup login form
     document.getElementById('loginBtn')?.addEventListener('click', handleLogin);
     document.getElementById('pinInput')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') handleLogin();
     });
 
-    // Try to restore session
     if (AUTH.restore()) {
-        // If they were on dashboard, init it
         const savedView = localStorage.getItem('pawsView');
         if (savedView === 'dashboard') {
             document.body.classList.add('dashboard-active');

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GenusPupClub — Trusted Dog Sitting</title>
-    <meta name="description" content="Professional, loving dog sitting services in your area. Your pup deserves the best care while you're away.">
+    <title>GenusPupClub.com — Trusted Pet Sitting</title>
+    <meta name="description" content="Professional, loving pet sitting services for dogs and cats. Your pet deserves the best care while you're away.">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="dashboard.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,7 +17,7 @@
         <div class="container nav-content">
             <a href="#" class="logo">
                 <span class="logo-icon">🐾</span>
-                <span class="logo-text">GenusPupClub</span>
+                <span class="logo-text">GenusPupClub.com</span>
             </a>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation menu">
                 <span></span>
@@ -32,6 +32,7 @@
                 <li class="site-nav-item"><a href="#services">Services</a></li>
                 <li class="site-nav-item"><a href="#about">About</a></li>
                 <li class="site-nav-item"><a href="#testimonials">Reviews</a></li>
+                <li class="site-nav-item"><a href="#faq">FAQ</a></li>
                 <li class="site-nav-item"><a href="#pricing">Pricing</a></li>
                 <li class="site-nav-item"><a href="#gallery">Gallery</a></li>
                 <li class="site-nav-item"><a href="#contact" class="btn btn-nav">Book Now</a></li>
@@ -43,15 +44,16 @@
     <header class="hero site-section" id="hero">
         <div class="container hero-content">
             <div class="hero-text">
-                <h1>Your Dog's Home Away from Home</h1>
-                <p class="hero-subtitle">Personalized, loving care for your furry family member. Because they deserve more than just a kennel.</p>
+                <h1>Your Pet's Home Away from Home</h1>
+                <p class="hero-subtitle">Personalized, loving care for your furry family member. Dogs, cats, and more — because they deserve more than just a kennel.</p>
                 <div class="hero-badges">
                     <span class="badge">Insured & Bonded</span>
                     <span class="badge">Pet First Aid Certified</span>
                     <span class="badge">5+ Years Experience</span>
+                    <span class="badge">Dogs & Cats Welcome</span>
                 </div>
                 <div class="hero-actions">
-                    <a href="#contact" class="btn btn-primary btn-lg">Book a Meet & Greet</a>
+                    <a href="#contact" class="btn btn-primary btn-lg">Book Now</a>
                     <a href="#services" class="btn btn-outline btn-lg">View Services</a>
                 </div>
             </div>
@@ -64,58 +66,15 @@
         </div>
     </header>
 
-    <!-- Services Section -->
+    <!-- Services Section (rendered dynamically by script.js) -->
     <section class="services site-section" id="services">
         <div class="container">
             <div class="section-header">
                 <h2>Services</h2>
-                <p>Tailored care options to fit your schedule and your pup's needs.</p>
+                <p>Tailored care options to fit your schedule and your pet's needs.</p>
             </div>
-            <div class="services-grid">
-                <div class="service-card">
-                    <div class="service-icon">🏠</div>
-                    <h3>Overnight Sitting</h3>
-                    <p>Your dog stays in my home with 24/7 attention, cozy sleeping spots, and plenty of playtime. Just like being at a friend's house.</p>
-                    <ul class="service-includes">
-                        <li>Feeding & fresh water</li>
-                        <li>Multiple walks per day</li>
-                        <li>Bedtime cuddles</li>
-                        <li>Daily photo updates</li>
-                    </ul>
-                </div>
-                <div class="service-card">
-                    <div class="service-icon">🚶</div>
-                    <h3>Dog Walking</h3>
-                    <p>Energizing walks tailored to your dog's pace and personality. Whether they're a sniffer or a sprinter, I've got them covered.</p>
-                    <ul class="service-includes">
-                        <li>30 or 60 minute walks</li>
-                        <li>GPS-tracked routes</li>
-                        <li>Post-walk report</li>
-                        <li>Fresh water provided</li>
-                    </ul>
-                </div>
-                <div class="service-card">
-                    <div class="service-icon">👋</div>
-                    <h3>Drop-In Visits</h3>
-                    <p>Perfect for long workdays. I'll stop by to feed, play, and let your pup out so they're not waiting too long between potty breaks.</p>
-                    <ul class="service-includes">
-                        <li>30-minute home visits</li>
-                        <li>Feeding & medication</li>
-                        <li>Potty break & play</li>
-                        <li>Mail & plant care</li>
-                    </ul>
-                </div>
-                <div class="service-card">
-                    <div class="service-icon">🎉</div>
-                    <h3>Doggy Daycare</h3>
-                    <p>A full day of fun, socialization, and supervision at my home. Your dog comes home tired, happy, and ready for dinner.</p>
-                    <ul class="service-includes">
-                        <li>All-day supervision</li>
-                        <li>Structured play & rest</li>
-                        <li>Socialization time</li>
-                        <li>Lunch included</li>
-                    </ul>
-                </div>
+            <div class="services-grid" id="publicServicesGrid">
+                <!-- Rendered dynamically from Store.getEnabledServices() -->
             </div>
         </div>
     </section>
@@ -132,8 +91,8 @@
             <div class="about-text">
                 <h2>Meet Your Sitter</h2>
                 <h3 class="about-name">[Your Name]</h3>
-                <p>Hey there! I'm a lifelong dog lover who turned a passion into a career. After years of volunteering at local shelters and caring for friends' pets, I started GenusPupClub to give every dog the individualized attention they deserve.</p>
-                <p>I treat every pup like my own — which means belly rubs on demand, walks rain or shine, and a safe, loving environment. My home is fully dog-proofed with a fenced yard, and I keep my bookings limited so your dog always gets one-on-one care.</p>
+                <p>Hey there! I'm a lifelong animal lover who turned a passion into a career. After years of volunteering at local shelters and caring for friends' pets, I started GenusPupClub.com to give every pet the individualized attention they deserve.</p>
+                <p>I treat every pet like my own — which means belly rubs on demand, walks rain or shine, and a safe, loving environment. My home is fully pet-proofed with a fenced yard, and I keep my bookings limited so your pet always gets one-on-one care.</p>
                 <div class="about-stats">
                     <div class="stat">
                         <span class="stat-number">500+</span>
@@ -154,113 +113,53 @@
                         <li>Pet First Aid & CPR Certified</li>
                         <li>Insured & Bonded</li>
                         <li>Background Checked</li>
-                        <li>Ongoing canine behavior education</li>
+                        <li>Ongoing canine & feline behavior education</li>
                     </ul>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Testimonials Section -->
+    <!-- Testimonials Section (rendered dynamically, falls back to defaults) -->
     <section class="testimonials site-section" id="testimonials">
         <div class="container">
             <div class="section-header">
                 <h2>What Pet Parents Say</h2>
                 <p>Don't just take my word for it — hear from happy clients.</p>
             </div>
-            <div class="testimonials-grid">
-                <div class="testimonial-card">
-                    <div class="stars">★★★★★</div>
-                    <p class="testimonial-text">"We were so nervous leaving our anxious rescue for the first time. Within an hour we got a photo of him snoozing on the couch. He came home wagging his tail. We've been coming back every month since!"</p>
-                    <div class="testimonial-author">
-                        <div class="author-avatar">S</div>
-                        <div>
-                            <strong>Sarah M.</strong>
-                            <span>Benny's mom — Repeat client</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="stars">★★★★★</div>
-                    <p class="testimonial-text">"The daily photo updates are amazing. It's clear our dog is having the time of his life. The attention to detail with his medication schedule gave us total peace of mind on vacation."</p>
-                    <div class="testimonial-author">
-                        <div class="author-avatar">J</div>
-                        <div>
-                            <strong>James & Lily K.</strong>
-                            <span>Max's parents — 2 years running</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="stars">★★★★★</div>
-                    <p class="testimonial-text">"I've tried three other sitters and none compare. My dog actually gets excited when we pull into the driveway. That says it all. Wouldn't trust anyone else with our girl."</p>
-                    <div class="testimonial-author">
-                        <div class="author-avatar">R</div>
-                        <div>
-                            <strong>Rachel T.</strong>
-                            <span>Daisy's mom — Weekly daycare</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="testimonials-grid" id="publicTestimonialsGrid">
+                <!-- Rendered dynamically from featured reviews, with hardcoded fallbacks -->
             </div>
         </div>
     </section>
 
-    <!-- Pricing Section -->
+    <!-- FAQ Section -->
+    <section class="faq site-section" id="faq">
+        <div class="container">
+            <div class="section-header">
+                <h2>Frequently Asked Questions</h2>
+                <p>Everything you need to know about our pet care services.</p>
+            </div>
+            <div class="faq-list" id="publicFaqList">
+                <!-- Rendered dynamically from Store settings -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section (rendered dynamically) -->
     <section class="pricing site-section" id="pricing">
         <div class="container">
             <div class="section-header">
                 <h2>Simple, Transparent Pricing</h2>
                 <p>No hidden fees. Discounts available for multi-day bookings and repeat clients.</p>
             </div>
-            <div class="pricing-grid">
-                <div class="pricing-card">
-                    <h3>Overnight Sitting</h3>
-                    <div class="price">$55<span>/night</span></div>
-                    <ul class="pricing-features">
-                        <li>24-hour care in my home</li>
-                        <li>All meals & walks included</li>
-                        <li>Daily photo updates</li>
-                        <li>Pickup & drop-off available</li>
-                    </ul>
-                    <a href="#contact" class="btn btn-primary">Book Now</a>
-                </div>
-                <div class="pricing-card featured">
-                    <div class="popular-badge">Most Popular</div>
-                    <h3>Dog Walking</h3>
-                    <div class="price">$25<span>/walk</span></div>
-                    <ul class="pricing-features">
-                        <li>30-minute neighborhood walk</li>
-                        <li>GPS route tracking</li>
-                        <li>Post-walk report card</li>
-                        <li>Flexible scheduling</li>
-                    </ul>
-                    <a href="#contact" class="btn btn-primary">Book Now</a>
-                </div>
-                <div class="pricing-card">
-                    <h3>Drop-In Visit</h3>
-                    <div class="price">$20<span>/visit</span></div>
-                    <ul class="pricing-features">
-                        <li>30-minute home visit</li>
-                        <li>Feeding & potty break</li>
-                        <li>Playtime & cuddles</li>
-                        <li>Mail & plant check</li>
-                    </ul>
-                    <a href="#contact" class="btn btn-primary">Book Now</a>
-                </div>
-                <div class="pricing-card">
-                    <h3>Doggy Daycare</h3>
-                    <div class="price">$40<span>/day</span></div>
-                    <ul class="pricing-features">
-                        <li>Full-day supervision</li>
-                        <li>Lunch included</li>
-                        <li>Structured play & rest</li>
-                        <li>Socialization time</li>
-                    </ul>
-                    <a href="#contact" class="btn btn-primary">Book Now</a>
-                </div>
+            <div class="pricing-grid" id="publicPricingGrid">
+                <!-- Rendered dynamically from Store.getEnabledServices() -->
             </div>
-            <p class="pricing-note">Multi-dog discount: 15% off for each additional dog. Weekly recurring bookings get 10% off.</p>
+            <div class="addons-pricing" id="publicAddonsPricing">
+                <!-- Add-ons rendered here -->
+            </div>
+            <p class="pricing-note">Multi-pet discount: 15% off for each additional pet. Weekly recurring bookings get 10% off. Holiday rates (1.5x) apply during major holidays.</p>
         </div>
     </section>
 
@@ -268,47 +167,39 @@
     <section class="gallery site-section" id="gallery">
         <div class="container">
             <div class="section-header">
-                <h2>Happy Pups Gallery</h2>
-                <p>A peek at some of the amazing dogs I've had the pleasure of caring for.</p>
+                <h2>Happy Pets Gallery</h2>
+                <p>A peek at some of the amazing pets I've had the pleasure of caring for.</p>
             </div>
-            <div class="gallery-grid">
-                <div class="gallery-item">
-                    <div class="gallery-placeholder">
-                        <span>🐕</span>
-                        <p>Photo 1</p>
-                    </div>
-                </div>
-                <div class="gallery-item">
-                    <div class="gallery-placeholder">
-                        <span>🐶</span>
-                        <p>Photo 2</p>
-                    </div>
-                </div>
-                <div class="gallery-item">
-                    <div class="gallery-placeholder">
-                        <span>🐾</span>
-                        <p>Photo 3</p>
-                    </div>
-                </div>
-                <div class="gallery-item">
-                    <div class="gallery-placeholder">
-                        <span>🦴</span>
-                        <p>Photo 4</p>
-                    </div>
-                </div>
-                <div class="gallery-item">
-                    <div class="gallery-placeholder">
-                        <span>🐕‍🦺</span>
-                        <p>Photo 5</p>
-                    </div>
-                </div>
-                <div class="gallery-item">
-                    <div class="gallery-placeholder">
-                        <span>🐩</span>
-                        <p>Photo 6</p>
-                    </div>
-                </div>
+            <div class="gallery-grid" id="publicGalleryGrid">
+                <!-- Rendered dynamically from pet photos + placeholders -->
             </div>
+        </div>
+    </section>
+
+    <!-- Message Us Section -->
+    <section class="message-us site-section" id="messageus">
+        <div class="container">
+            <div class="section-header">
+                <h2>Message Us</h2>
+                <p>Have a question? Start a conversation and we'll get back to you quickly.</p>
+            </div>
+            <form class="message-form" id="publicMessageForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="msgName">Your Name</label>
+                        <input type="text" id="msgName" name="name" required placeholder="Jane Smith">
+                    </div>
+                    <div class="form-group">
+                        <label for="msgEmail">Email</label>
+                        <input type="email" id="msgEmail" name="email" required placeholder="jane@email.com">
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="msgContent">Message</label>
+                    <textarea id="msgContent" name="message" rows="4" required placeholder="Ask us anything about our services, availability, or your pet's needs..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
+            </form>
         </div>
     </section>
 
@@ -316,8 +207,8 @@
     <section class="contact site-section" id="contact">
         <div class="container">
             <div class="section-header">
-                <h2>Book a Free Meet & Greet</h2>
-                <p>Let's make sure it's a perfect fit — for you and your pup. Fill out the form below and I'll get back to you within 24 hours.</p>
+                <h2>Request a Booking</h2>
+                <p>Fill out the form below and I'll get back to you within 24 hours.</p>
             </div>
             <div class="contact-layout">
                 <form class="contact-form" id="contactForm">
@@ -337,23 +228,41 @@
                             <input type="tel" id="phone" name="phone" placeholder="(555) 123-4567">
                         </div>
                         <div class="form-group">
-                            <label for="dogName">Dog's Name</label>
-                            <input type="text" id="dogName" name="dogName" required placeholder="Buddy">
+                            <label for="contactPetType">Pet Type</label>
+                            <select id="contactPetType" name="petType">
+                                <option value="dog">Dog</option>
+                                <option value="cat">Cat</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="breed">Breed & Size</label>
-                            <input type="text" id="breed" name="breed" placeholder="Golden Retriever, 70 lbs">
+                            <label for="petName">Pet's Name</label>
+                            <input type="text" id="petName" name="petName" required placeholder="Buddy">
                         </div>
                         <div class="form-group">
-                            <label for="service">Service Needed</label>
-                            <select id="service" name="service" required>
+                            <label for="contactBreed">Breed</label>
+                            <select id="contactBreed" name="breed">
+                                <option value="" disabled selected>Select breed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="contactPetSize">Size</label>
+                            <select id="contactPetSize" name="petSize">
+                                <option value="tiny">Tiny (under 10 lbs)</option>
+                                <option value="small">Small (10-25 lbs)</option>
+                                <option value="medium" selected>Medium (25-50 lbs)</option>
+                                <option value="large">Large (50-100 lbs)</option>
+                                <option value="xlarge">X-Large (100+ lbs)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="contactService">Service Needed</label>
+                            <select id="contactService" name="service" required>
                                 <option value="" disabled selected>Select a service</option>
-                                <option value="overnight">Overnight Sitting</option>
-                                <option value="walking">Dog Walking</option>
-                                <option value="dropin">Drop-In Visit</option>
-                                <option value="daycare">Doggy Daycare</option>
+                                <!-- Populated dynamically -->
                             </select>
                         </div>
                     </div>
@@ -367,9 +276,49 @@
                             <input type="date" id="endDate" name="endDate">
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="numPets">Number of Pets</label>
+                            <select id="numPets" name="numPets">
+                                <option value="1">1 pet</option>
+                                <option value="2">2 pets (multi-pet discount)</option>
+                                <option value="3">3 pets (multi-pet discount)</option>
+                                <option value="4">4+ pets (multi-pet discount)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="discountCode">Promo / Discount Code <span class="label-optional">(optional)</span></label>
+                            <input type="text" id="discountCode" name="discountCode" placeholder="e.g. WELCOME10">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="referralCode">Referral Code <span class="label-optional">(optional)</span></label>
+                        <input type="text" id="referralCode" name="referralCode" placeholder="e.g. REF-ABC123">
+                        <span class="form-hint">Referred by a friend? Enter their code for a discount!</span>
+                    </div>
+
+                    <!-- Add-Ons -->
+                    <div class="form-group full-width">
+                        <label>Add-On Services <span class="label-optional">(optional)</span></label>
+                        <div class="contact-addons" id="contactAddons">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Cost Estimate -->
+                    <div class="cost-estimate" id="costEstimate" style="display:none">
+                        <h4>Estimated Cost</h4>
+                        <div class="cost-breakdown" id="costBreakdown"></div>
+                        <div class="cost-total">
+                            <span>Estimated Total</span>
+                            <strong id="costTotalAmount">$0</strong>
+                        </div>
+                        <p class="cost-note">This is an estimate. Final pricing confirmed upon booking.</p>
+                    </div>
+
                     <div class="form-group full-width">
                         <label for="message">Anything else I should know?</label>
-                        <textarea id="message" name="message" rows="4" placeholder="Tell me about your dog's personality, any special needs, dietary requirements, medications, etc."></textarea>
+                        <textarea id="message" name="message" rows="4" placeholder="Tell me about your pet's personality, any special needs, dietary requirements, medications, etc."></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary btn-lg">Send Booking Request</button>
                 </form>
@@ -422,7 +371,7 @@
     <div class="login-overlay" id="loginOverlay">
         <div class="login-box">
             <div class="login-logo">🐾</div>
-            <h2>GenusPupClub</h2>
+            <h2>GenusPupClub.com</h2>
             <p>Enter your PIN to access the dashboard</p>
             <input type="password" id="pinInput" maxlength="6" placeholder="Enter PIN" class="pin-input" inputmode="numeric">
             <p class="login-error" id="loginError"></p>
@@ -467,6 +416,15 @@
                         <p class="empty-state">Click a day to see bookings</p>
                     </div>
                 </div>
+            </section>
+
+            <!-- Alerts Panel -->
+            <section class="dash-panel" id="panelAlerts">
+                <div class="dash-panel-header">
+                    <h2>Alerts</h2>
+                    <span class="alerts-count"></span>
+                </div>
+                <div class="alerts-list"></div>
             </section>
 
             <!-- Bookings Panel -->
@@ -523,15 +481,56 @@
             <!-- Clients Panel -->
             <section class="dash-panel" id="panelClients">
                 <div class="dash-panel-header">
-                    <h2>Clients & Dogs</h2>
+                    <h2>Clients & Pets</h2>
                     <button class="btn btn-primary btn-sm" id="addClientBtn">+ New Client</button>
                 </div>
                 <div class="dash-search">
-                    <input type="text" id="clientSearch" placeholder="Search clients or dogs..." class="dash-search-input">
+                    <input type="text" id="clientSearch" placeholder="Search clients or pets..." class="dash-search-input">
                 </div>
                 <div class="clients-list" id="clientsList">
                     <p class="empty-state">No clients yet. Add your first one!</p>
                 </div>
+            </section>
+
+            <!-- Loyalty Panel -->
+            <section class="dash-panel" id="panelLoyalty">
+                <div class="dash-panel-header">
+                    <h2>Loyalty Program</h2>
+                </div>
+                <div class="loyalty-stats"></div>
+                <div class="loyalty-list"></div>
+            </section>
+
+            <!-- Referrals Panel -->
+            <section class="dash-panel" id="panelReferrals">
+                <div class="dash-panel-header">
+                    <h2>Referral Program</h2>
+                </div>
+                <div class="referrals-stats"></div>
+                <div class="referrals-list"></div>
+            </section>
+
+            <!-- Messages Panel -->
+            <section class="dash-panel" id="panelMessages">
+                <div class="dash-panel-header">
+                    <h2>Messages</h2>
+                </div>
+                <div class="messages-layout">
+                    <div class="message-thread-list"></div>
+                    <div class="message-chat-area">
+                        <p class="empty-state">Select a conversation to view messages</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reviews Panel -->
+            <section class="dash-panel" id="panelReviews">
+                <div class="dash-panel-header">
+                    <h2>Reviews</h2>
+                    <button class="btn btn-primary btn-sm" id="addReviewBtn">+ Add Review</button>
+                </div>
+                <div class="review-stats"></div>
+                <div class="reviews-list"></div>
             </section>
 
             <!-- Employees Panel -->
@@ -586,9 +585,47 @@
 
                 <div class="settings-section">
                     <h3>Services</h3>
-                    <p class="settings-desc">Create, edit, and toggle your services. Disabled services won't appear in booking forms.</p>
+                    <p class="settings-desc">Create, edit, and toggle your services. Disabled services won't appear on the public site.</p>
                     <button class="btn btn-primary btn-sm" id="addServiceBtn" style="margin-bottom:16px">+ Add Service</button>
                     <div class="services-settings-list" id="servicesList"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Holiday Rates</h3>
+                    <p class="settings-desc">Define holiday periods with rate multipliers. Booking costs auto-adjust during these dates.</p>
+                    <button class="btn btn-primary btn-sm" id="addHolidayBtn" style="margin-bottom:16px">+ Add Holiday</button>
+                    <div id="holidaySettingsList"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Grooming & Bathing Add-Ons</h3>
+                    <p class="settings-desc">Add-on services that clients can select when booking.</p>
+                    <button class="btn btn-primary btn-sm" id="addAddonBtn" style="margin-bottom:16px">+ Add Add-On</button>
+                    <div id="addonSettingsList"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Pricing & Surcharges</h3>
+                    <p class="settings-desc">Customize pricing based on pet size, breed, age, and number of pets.</p>
+                    <div id="pricingSettingsSection"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Loyalty Program</h3>
+                    <p class="settings-desc">Reward repeat clients with automatic discounts based on booking count.</p>
+                    <div id="loyaltySettingsSection"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Referral Program</h3>
+                    <p class="settings-desc">Clients earn credits for referring friends. New clients get a discount on first booking.</p>
+                    <div id="referralSettingsSection"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Discount Codes</h3>
+                    <p class="settings-desc">Create promo codes for seasonal deals, social media campaigns, or special offers.</p>
+                    <div id="discountCodesSettingsSection"></div>
                 </div>
 
                 <div class="settings-section">
@@ -596,7 +633,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="businessNameInput">Business Name</label>
-                            <input type="text" id="businessNameInput" placeholder="GenusPupClub">
+                            <input type="text" id="businessNameInput" placeholder="GenusPupClub.com">
                         </div>
                         <div class="form-group">
                             <label for="ownerPinInput">Owner PIN</label>
@@ -636,9 +673,9 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="bkDog">Dog</label>
-                        <select id="bkDog" name="dogId" required>
-                            <option value="" disabled selected>Select dog</option>
+                        <label for="bkPet">Pet</label>
+                        <select id="bkPet" name="petId" required>
+                            <option value="" disabled selected>Select pet</option>
                         </select>
                     </div>
                 </div>
@@ -685,10 +722,18 @@
                         <input type="date" id="bkEnd" name="endDate" required>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label>Add-On Services</label>
+                    <div class="addon-checkboxes" id="bkAddonsContainer"></div>
+                </div>
+                <div class="bk-cost-breakdown" id="bkCostBreakdown" style="display:none"></div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="bkAmount">Amount ($)</label>
                         <input type="number" id="bkAmount" name="paymentAmount" step="0.01" min="0" placeholder="Auto-calculated">
+                    </div>
+                    <div class="form-group" style="justify-content:flex-end">
+                        <span class="holiday-badge" id="bkHolidayInfo" style="display:none">Holiday rate applies</span>
                     </div>
                 </div>
                 <div class="form-group">
@@ -867,7 +912,7 @@
                 <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="svcEnabled" checked>
-                        <span>Enabled (visible in booking forms)</span>
+                        <span>Enabled (visible on public site and booking forms)</span>
                     </label>
                 </div>
                 <div class="modal-actions">
@@ -881,7 +926,7 @@
 
     <!-- Client Modal -->
     <div class="modal-overlay" id="clientModal">
-        <div class="modal modal-lg">
+        <div class="modal modal-lg modal-xl">
             <div class="modal-header">
                 <h3 id="clientModalTitle">New Client</h3>
                 <button class="modal-close" id="clientModalClose" aria-label="Close">&times;</button>
@@ -913,12 +958,12 @@
                     <textarea id="clNotes" name="notes" rows="2" placeholder="Any notes about this client..."></textarea>
                 </div>
 
-                <div class="dog-section">
-                    <div class="dog-section-header">
-                        <h4>Dogs</h4>
-                        <button type="button" class="btn btn-outline btn-sm" id="addDogFieldBtn">+ Add Dog</button>
+                <div class="pet-section">
+                    <div class="pet-section-header">
+                        <h4>Pets</h4>
+                        <button type="button" class="btn btn-outline btn-sm" id="addPetFieldBtn">+ Add Pet</button>
                     </div>
-                    <div id="dogFields"></div>
+                    <div id="petFields"></div>
                 </div>
 
                 <div class="modal-actions">
@@ -930,46 +975,226 @@
         </div>
     </div>
 
-    <!-- Dog Field Template (hidden) -->
-    <template id="dogFieldTemplate">
-        <div class="dog-field-group">
-            <div class="dog-field-header">
-                <strong class="dog-field-title">Dog</strong>
-                <button type="button" class="btn btn-icon btn-sm dog-remove" aria-label="Remove dog">&times;</button>
+    <!-- Review Modal -->
+    <div class="modal-overlay" id="reviewModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h3 id="reviewModalTitle">New Review</h3>
+                <button class="modal-close" id="reviewModalClose" aria-label="Close">&times;</button>
+            </div>
+            <form id="reviewForm">
+                <input type="hidden" id="reviewIdField" name="reviewId">
+                <input type="hidden" id="rvRating" name="rating" value="5">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rvClient">Client</label>
+                        <select id="rvClient" name="clientId">
+                            <option value="" disabled selected>Select client</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rvPet">Pet</label>
+                        <select id="rvPet" name="petId">
+                            <option value="">No specific pet</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Rating</label>
+                    <div class="star-rating-input" id="starRatingContainer"></div>
+                </div>
+                <div class="form-group">
+                    <label for="rvText">Review Text</label>
+                    <textarea id="rvText" name="text" rows="4" required placeholder="What did the client say about their experience?"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rvDate">Date</label>
+                        <input type="date" id="rvDate" name="date">
+                    </div>
+                    <div class="form-group" style="justify-content:center">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rvFeatured" name="featured">
+                            <span>Featured on public site</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="rvResponse">Owner Response (optional)</label>
+                    <textarea id="rvResponse" name="response" rows="2" placeholder="Write a response to this review..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" id="reviewCancel">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="reviewDelete" style="display:none">Delete</button>
+                    <button type="submit" class="btn btn-primary">Save Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pet Field Template (hidden) -->
+    <template id="petFieldTemplate">
+        <div class="pet-field-group">
+            <div class="pet-field-header">
+                <strong class="pet-field-title">🐕 Dog</strong>
+                <button type="button" class="btn btn-icon btn-sm pet-remove" aria-label="Remove pet">&times;</button>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" name="dogName" required placeholder="Buddy">
-                </div>
-                <div class="form-group">
-                    <label>Breed</label>
-                    <input type="text" name="dogBreed" placeholder="Golden Retriever">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Size</label>
-                    <select name="dogSize">
-                        <option value="small">Small (under 25 lbs)</option>
-                        <option value="medium">Medium (25-50 lbs)</option>
-                        <option value="large" selected>Large (50-100 lbs)</option>
-                        <option value="xlarge">X-Large (100+ lbs)</option>
+                    <label>Pet Type</label>
+                    <select name="petType">
+                        <option value="dog">Dog</option>
+                        <option value="cat">Cat</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Age</label>
-                    <input type="text" name="dogAge" placeholder="3 years">
+                    <label>Name</label>
+                    <input type="text" name="petName" required placeholder="Buddy">
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Special Needs / Medications</label>
-                <textarea name="dogSpecialNeeds" rows="2" placeholder="Allergies, medications, behavioral notes..."></textarea>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Vet Info</label>
-                    <input type="text" name="dogVetInfo" placeholder="Dr. Smith — (555) 999-0000">
+                    <label>Breed</label>
+                    <input type="text" class="breed-search-input" placeholder="Search breeds...">
+                    <select name="petBreed">
+                        <option value="" disabled selected>Select breed</option>
+                    </select>
+                    <input type="text" name="petBreedOther" placeholder="Enter breed name" style="display:none;margin-top:6px">
+                </div>
+                <div class="form-group">
+                    <label>Size</label>
+                    <select name="petSize">
+                        <option value="tiny">Tiny (under 10 lbs)</option>
+                        <option value="small">Small (10-25 lbs)</option>
+                        <option value="medium" selected>Medium (25-50 lbs)</option>
+                        <option value="large">Large (50-100 lbs)</option>
+                        <option value="xlarge">X-Large (100+ lbs)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="text" name="petAge" placeholder="3 years">
+                </div>
+                <div class="form-group" style="justify-content:flex-end">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="petIsPuppy">
+                        <span>Puppy / Kitten</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Pet Profile Details (expandable) -->
+            <button type="button" class="pet-details-toggle">Tell Me More About This Pet ▾</button>
+            <div class="pet-details-section">
+                <!-- Allergies -->
+                <div class="profile-subsection">
+                    <h5>Allergies</h5>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-label"><input type="checkbox" name="allergy" value="Chicken"><span>Chicken</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="allergy" value="Beef"><span>Beef</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="allergy" value="Grain"><span>Grain</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="allergy" value="Flea Meds"><span>Flea Meds</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="allergy" value="Dairy"><span>Dairy</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="allergy" value="Fish"><span>Fish</span></label>
+                    </div>
+                    <input type="text" name="allergyOther" placeholder="Other allergies..." style="margin-top:6px">
+                </div>
+
+                <!-- Temperament -->
+                <div class="profile-subsection">
+                    <h5>Temperament</h5>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-label"><input type="checkbox" name="temperament" value="Friendly"><span>Friendly</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="temperament" value="Shy"><span>Shy</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="temperament" value="Anxious"><span>Anxious</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="temperament" value="Energetic"><span>Energetic</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="temperament" value="Calm"><span>Calm</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="temperament" value="Aggressive with dogs"><span>Aggressive w/ dogs</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="temperament" value="Aggressive with cats"><span>Aggressive w/ cats</span></label>
+                    </div>
+                </div>
+
+                <!-- Tendencies -->
+                <div class="profile-subsection">
+                    <h5>Tendencies</h5>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-label"><input type="checkbox" name="tendency" value="Chewer"><span>Chewer</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="tendency" value="Digger"><span>Digger</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="tendency" value="Jumper"><span>Jumper</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="tendency" value="Barker"><span>Barker</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="tendency" value="Escape Artist"><span>Escape Artist</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="tendency" value="Resource Guarder"><span>Resource Guarder</span></label>
+                        <label class="checkbox-label"><input type="checkbox" name="tendency" value="Separation Anxiety"><span>Separation Anxiety</span></label>
+                    </div>
+                </div>
+
+                <!-- Feeding -->
+                <div class="profile-subsection">
+                    <h5>Feeding</h5>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Schedule</label>
+                            <select name="feedingSchedule">
+                                <option value="">Not specified</option>
+                                <option value="1x/day">1x/day</option>
+                                <option value="2x/day">2x/day</option>
+                                <option value="3x/day">3x/day</option>
+                                <option value="Free feed">Free feed</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Food Brand</label>
+                            <input type="text" name="foodBrand" placeholder="e.g. Blue Buffalo">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount per Meal</label>
+                        <input type="text" name="foodAmount" placeholder="e.g. 1 cup">
+                    </div>
+                </div>
+
+                <!-- Medical -->
+                <div class="profile-subsection">
+                    <h5>Medical</h5>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="spayedNeutered">
+                            <span>Spayed / Neutered</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Medications</label>
+                        <textarea name="medications" rows="2" placeholder="List any medications, dosage, and schedule..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Vet Info</label>
+                        <input type="text" name="vetInfo" placeholder="Dr. Smith — (555) 999-0000">
+                    </div>
+                </div>
+
+                <!-- House Training -->
+                <div class="profile-subsection">
+                    <h5>House Training</h5>
+                    <select name="houseTraining">
+                        <option value="">Not specified</option>
+                        <option value="Fully trained">Fully trained</option>
+                        <option value="Mostly trained">Mostly trained</option>
+                        <option value="In progress">In progress</option>
+                        <option value="Not trained">Not trained</option>
+                    </select>
+                </div>
+
+                <!-- Photos -->
+                <div class="profile-subsection">
+                    <h5>Photos (max 5)</h5>
+                    <input type="hidden" name="petPhotos" value="[]">
+                    <div class="pet-photo-gallery"></div>
+                    <label class="btn btn-outline btn-sm photo-upload-label">
+                        Upload Photo
+                        <input type="file" accept="image/*" class="pet-photo-input" style="display:none">
+                    </label>
                 </div>
             </div>
         </div>
@@ -980,16 +1205,17 @@
         <div class="container footer-content">
             <div class="footer-brand">
                 <span class="logo-icon">🐾</span>
-                <span class="logo-text">GenusPupClub</span>
+                <span class="logo-text">GenusPupClub.com</span>
                 <p>Loving care for your best friend.</p>
             </div>
             <div class="footer-links">
                 <a href="#services">Services</a>
                 <a href="#about">About</a>
                 <a href="#pricing">Pricing</a>
+                <a href="#faq">FAQ</a>
                 <a href="#contact">Contact</a>
             </div>
-            <p class="footer-copy">&copy; 2026 GenusPupClub. All rights reserved.</p>
+            <p class="footer-copy">&copy; 2026 GenusPupClub.com. All rights reserved.</p>
         </div>
     </footer>
 
@@ -998,8 +1224,18 @@
         <div class="modal">
             <span class="modal-icon">🎉</span>
             <h3>Request Sent!</h3>
-            <p>Thanks for reaching out! I'll get back to you within 24 hours to schedule your free meet & greet.</p>
+            <p>Thanks for reaching out! I'll get back to you within 24 hours to get your booking set up.</p>
             <button class="btn btn-primary" id="modalClose">Got It</button>
+        </div>
+    </div>
+
+    <!-- Message Success Modal -->
+    <div class="modal-overlay" id="messageSuccessModal">
+        <div class="modal">
+            <span class="modal-icon">💬</span>
+            <h3>Message Sent!</h3>
+            <p>Thanks for your message! We'll get back to you as soon as possible.</p>
+            <button class="btn btn-primary" id="messageModalClose">Got It</button>
         </div>
     </div>
 

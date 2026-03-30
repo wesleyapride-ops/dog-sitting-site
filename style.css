@@ -361,7 +361,7 @@ h1, h2, h3, h4 {
 
 .services-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 24px;
 }
 
@@ -525,7 +525,7 @@ h1, h2, h3, h4 {
 
 .testimonials-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 28px;
 }
 
@@ -591,17 +591,103 @@ h1, h2, h3, h4 {
     color: var(--color-text-muted);
 }
 
+.review-owner-response {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: var(--color-bg-alt);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    color: var(--color-text-light);
+    border-left: 3px solid var(--color-primary-light);
+}
+
+/* ========================================
+   FAQ
+   ======================================== */
+.faq {
+    padding: 100px 0;
+    background: var(--color-bg);
+}
+
+.faq-list {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.faq-item {
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all var(--transition);
+}
+
+.faq-item:hover {
+    border-color: var(--color-primary-light);
+}
+
+.faq-question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 20px 24px;
+    background: var(--color-white);
+    border: none;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: pointer;
+    text-align: left;
+    gap: 16px;
+    transition: background var(--transition);
+}
+
+.faq-question:hover {
+    background: var(--color-bg-alt);
+}
+
+.faq-icon {
+    font-size: 1.4rem;
+    color: var(--color-primary);
+    transition: transform var(--transition);
+    flex-shrink: 0;
+    font-weight: 300;
+}
+
+.faq-item.open .faq-icon {
+    transform: rotate(45deg);
+}
+
+.faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.3s ease;
+}
+
+.faq-item.open .faq-answer {
+    max-height: 300px;
+}
+
+.faq-answer p {
+    padding: 0 24px 20px;
+    color: var(--color-text-light);
+    font-size: 0.95rem;
+    line-height: 1.8;
+}
+
 /* ========================================
    Pricing
    ======================================== */
 .pricing {
     padding: 100px 0;
-    background: var(--color-bg);
+    background: var(--color-bg-alt);
 }
 
 .pricing-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 24px;
     align-items: start;
 }
@@ -703,12 +789,65 @@ h1, h2, h3, h4 {
     font-style: italic;
 }
 
+/* Add-ons Pricing */
+.addons-section {
+    margin-top: 48px;
+    text-align: center;
+}
+
+.addons-section h3 {
+    font-size: 1.4rem;
+    color: var(--color-primary-dark);
+    margin-bottom: 24px;
+}
+
+.addons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.addon-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 16px;
+    background: var(--color-white);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    transition: all var(--transition);
+}
+
+.addon-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-primary-light);
+}
+
+.addon-card .addon-icon {
+    font-size: 2rem;
+}
+
+.addon-card strong {
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.addon-price {
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: 1.1rem;
+}
+
 /* ========================================
    Gallery
    ======================================== */
 .gallery {
     padding: 100px 0;
-    background: var(--color-bg-alt);
+    background: var(--color-bg);
 }
 
 .gallery-grid {
@@ -721,11 +860,36 @@ h1, h2, h3, h4 {
     border-radius: var(--radius-md);
     overflow: hidden;
     transition: all var(--transition);
+    position: relative;
 }
 
 .gallery-item:hover {
     transform: scale(1.03);
     box-shadow: var(--shadow-lg);
+}
+
+.gallery-photo {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+}
+
+.gallery-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 16px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.6));
+    color: var(--color-white);
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+
+.gallery-item:hover .gallery-overlay {
+    opacity: 1;
 }
 
 .gallery-placeholder {
@@ -744,6 +908,29 @@ h1, h2, h3, h4 {
 .gallery-placeholder span {
     font-size: 3rem;
     margin-bottom: 8px;
+}
+
+/* ========================================
+   Message Us Section
+   ======================================== */
+.message-us {
+    padding: 80px 0;
+    background: var(--color-primary-bg);
+}
+
+.message-form {
+    max-width: 600px;
+    margin: 0 auto;
+    background: var(--color-white);
+    padding: 40px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border-light);
+}
+
+.message-form .btn {
+    width: 100%;
+    margin-top: 8px;
 }
 
 /* ========================================
@@ -835,6 +1022,159 @@ h1, h2, h3, h4 {
 .contact-form .btn {
     width: 100%;
     margin-top: 8px;
+}
+
+/* Contact Add-Ons */
+.contact-addons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.contact-addon-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--color-bg);
+    flex: 1 1 calc(50% - 5px);
+    min-width: 180px;
+}
+
+.contact-addon-label:hover {
+    border-color: var(--color-primary-light);
+    background: var(--color-primary-bg);
+}
+
+.contact-addon-label:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-bg);
+}
+
+.contact-addon-cb {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.contact-addon-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.contact-addon-icon {
+    font-size: 1.2rem;
+}
+
+.contact-addon-price {
+    font-weight: 600;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.label-optional {
+    font-weight: 400;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+/* Cost Estimate */
+.cost-estimate {
+    background: linear-gradient(135deg, var(--color-primary-bg) 0%, #eaf7ef 100%);
+    border: 2px solid var(--color-primary-light);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    margin: 8px 0;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.cost-estimate h4 {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    color: var(--color-primary-dark);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cost-estimate h4::before {
+    content: '💰';
+}
+
+.cost-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.cost-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+}
+
+.cost-line span:last-child {
+    font-weight: 600;
+    color: var(--color-primary-dark);
+    font-size: 1rem;
+}
+
+.cost-holiday-tag {
+    display: inline-block;
+    background: var(--color-accent);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.cost-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--color-primary-dark);
+    border-radius: var(--radius-sm);
+    color: white;
+    font-size: 1.05rem;
+}
+
+.cost-total strong {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.cost-note {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    margin-top: 10px;
+    font-style: italic;
 }
 
 .info-card {
@@ -1020,6 +1360,22 @@ h1, h2, h3, h4 {
 }
 
 /* ========================================
+   Holiday Badge
+   ======================================== */
+.holiday-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: 50px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* ========================================
    Animations
    ======================================== */
 .fade-in {
@@ -1053,14 +1409,6 @@ h1, h2, h3, h4 {
 
     .hero-actions {
         justify-content: center;
-    }
-
-    .services-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .pricing-grid {
-        grid-template-columns: repeat(2, 1fr);
     }
 
     .pricing-card.featured {
@@ -1144,16 +1492,11 @@ h1, h2, h3, h4 {
         font-size: 1.8rem;
     }
 
-    .services-grid {
-        grid-template-columns: 1fr;
-    }
-
     .testimonials-grid {
         grid-template-columns: 1fr;
     }
 
     .pricing-grid {
-        grid-template-columns: 1fr;
         max-width: 400px;
         margin: 0 auto;
     }
@@ -1170,6 +1513,10 @@ h1, h2, h3, h4 {
         padding: 28px 20px;
     }
 
+    .message-form {
+        padding: 28px 20px;
+    }
+
     .about-stats {
         gap: 24px;
     }
@@ -1183,6 +1530,10 @@ h1, h2, h3, h4 {
         flex-wrap: wrap;
         justify-content: center;
         gap: 16px;
+    }
+
+    .addons-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -1211,4 +1562,24 @@ h1, h2, h3, h4 {
     .gallery-grid {
         grid-template-columns: 1fr;
     }
+
+    .addons-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ========================================
+   Enhanced Cost Estimate
+   ======================================== */
+.cost-line.discount {
+    color: #2d6a4f;
+    font-weight: 600;
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.78rem;
+    color: #888;
+    margin-top: 4px;
+    font-style: italic;
 }
