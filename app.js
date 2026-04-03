@@ -258,8 +258,21 @@ document.querySelectorAll('.services-grid, .pricing-grid, .reviews-grid').forEac
     });
 });
 
+// ---- Footer Services ----
+const renderFooterServices = () => {
+    const footerEl = document.getElementById('footerServices');
+    if (!footerEl) return;
+    const services = gpcLoad('services', []).filter(s => s.active);
+    if (services.length) {
+        footerEl.innerHTML = '<h4>Services</h4>' + services.map(s => `<a href="#services">${s.name}</a>`).join('');
+    } else {
+        footerEl.innerHTML = '<h4>Services</h4><a href="#services">Dog Walking</a><a href="#services">Drop-In Visits</a><a href="#services">Daycare</a><a href="#services">Overnight Sitting</a>';
+    }
+};
+
 // ---- Init ----
 renderDynamicPricing();
+renderFooterServices();
 
 // Re-render pricing cards after they're added to DOM (for scroll animation)
 setTimeout(() => {
