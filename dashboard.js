@@ -3514,8 +3514,68 @@ const saveEditBooking = (id) => { const b = bookings.find(x => x.id === id); if 
 const editReview = (id) => { const r = reviews.find(x => x.id === id); if (!r) return; let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Review</div><div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="erName" value="${escHTML(r.name||'')}"></div><div class="form-group"><label class="form-label">Pet</label><input class="form-input" id="erPet" value="${escHTML(r.pet||'')}"></div></div><div class="form-group"><label class="form-label">Stars</label><select class="form-select" id="erStars">${[5,4,3,2,1].map(s=>`<option ${r.stars===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Review</label><textarea class="form-textarea" id="erText" rows="3">${escHTML(r.text||'')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditReview('${r.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
 const saveEditReview = (id) => { const r = reviews.find(x => x.id === id); if (!r) return; r.name = document.getElementById('erName')?.value?.trim() || r.name; r.pet = document.getElementById('erPet')?.value?.trim() || ''; r.stars = parseInt(document.getElementById('erStars')?.value) || r.stars; r.text = document.getElementById('erText')?.value?.trim() || ''; save('reviews', reviews); closeModal(); renderTab(); };
 
-const editPet = (id) => { const p = pets.find(x => x.id === id); if (!p) return; const clientOpts = clients.map(c => `<option value="${c.id}" ${p.clientId === c.id ? 'selected' : ''}>${escHTML(c.name)}</option>`).join(''); let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(p.name)}</div><div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="epBreed" value="${escHTML(p.breed||'')}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="epAge" value="${escHTML(p.age||'')}"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="epWeight" value="${escHTML(p.weight||'')}"></div></div><div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="epOwner"><option value="">None</option>${clientOpts}</select></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="epNotes" rows="2">${escHTML(p.notes||'')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditPet('${p.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
-const saveEditPet = (id) => { const p = pets.find(x => x.id === id); if (!p) return; p.name = document.getElementById('epName')?.value?.trim() || p.name; p.breed = document.getElementById('epBreed')?.value?.trim() || ''; p.age = document.getElementById('epAge')?.value?.trim() || ''; p.weight = document.getElementById('epWeight')?.value?.trim() || ''; p.clientId = document.getElementById('epOwner')?.value || ''; p.notes = document.getElementById('epNotes')?.value?.trim() || ''; save('pets', pets); closeModal(); renderTab(); };
+const editPet = (id) => {
+    const p = pets.find(x => x.id === id);
+    if (!p) return;
+    const clientOpts = clients.map(c => `<option value="${c.id}" ${p.clientId === c.id ? 'selected' : ''}>${escHTML(c.name)}</option>`).join('');
+    const sitterOptions = sitters.filter(s => s.status === 'active').map(s => `<option value="${escHTML(s.name)}" ${p.preferredSitter === s.name ? 'selected' : ''}>${escHTML(s.name)}</option>`).join('');
+    const genderOpts = ['Male', 'Female'].map(g => `<option ${(p.gender || '') === g ? 'selected' : ''}>${g}</option>`).join('');
+    const fixedOpts = ['Yes', 'No'].map(f => `<option ${(p.fixed || '') === f ? 'selected' : ''}>${f}</option>`).join('');
+    const coatOpts = ['Short', 'Medium', 'Long', 'Wire/Rough', 'Curly', 'Double Coat', 'Hairless'].map(c => `<option ${(p.coatType || '') === c ? 'selected' : ''}>${c}</option>`).join('');
+    const groomFreqOpts = ['Monthly', 'Every 2 weeks', 'Weekly', 'Every 6 weeks', 'As needed'].map(f => `<option ${(p.groomFrequency || '') === f ? 'selected' : ''}>${f}</option>`).join('');
+    const shampooOpts = ['Standard', 'Hypoallergenic', 'Oatmeal', 'Medicated', 'De-shedding', 'Whitening', 'Owner provides'].map(s => `<option ${(p.shampoo || '') === s ? 'selected' : ''}>${s}</option>`).join('');
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal" style="max-width:560px">
+        <div class="modal-title">Edit: ${escHTML(p.name)}</div>
+        ${p.photo ? `<div style="text-align:center;margin-bottom:12px"><img src="${p.photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover"></div>` : ''}
+        <div class="form-group"><label class="form-label">Photo</label><input type="file" accept="image/*" class="form-input" id="epPhoto" onchange="previewEditPetPhoto(this)"><input type="hidden" id="epPhotoData" value="${p.photo || ''}"></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div><div class="form-group"><label class="form-label">Breed</label>${typeof breedSelectHTML === 'function' ? breedSelectHTML('epBreed', p.breed || '') : `<input class="form-input" id="epBreed" value="${escHTML(p.breed || '')}">`}</div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="epAge" value="${escHTML(p.age || '')}" placeholder="e.g. 3 years"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="epWeight" value="${escHTML(p.weight || '')}" placeholder="e.g. 45 lbs"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Gender</label><select class="form-select" id="epGender">${genderOpts}</select></div><div class="form-group"><label class="form-label">Spayed/Neutered</label><select class="form-select" id="epFixed">${fixedOpts}</select></div></div>
+        <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="epOwner"><option value="">None</option>${clientOpts}</select></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Vet Name & Phone</label><input class="form-input" id="epVet" value="${escHTML(p.vet || '')}"></div><div class="form-group"><label class="form-label">Allergies</label><input class="form-input" id="epAllergies" value="${escHTML(p.allergies || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Medications</label><input class="form-input" id="epMeds" value="${escHTML(p.medications || '')}"></div><div class="form-group"><label class="form-label">Feeding Schedule</label><input class="form-input" id="epFeeding" value="${escHTML(p.feedingSchedule || '')}" placeholder="e.g. 1 cup AM, 1 cup PM"></div></div>
+        <div class="form-group"><label class="form-label">Temperament Tags</label><input class="form-input" id="epTags" value="${escHTML(p.tags || '')}" placeholder="e.g. friendly, leash reactive, food motivated"></div>
+        <div class="form-group"><label class="form-label">Preferred Sitter</label><select class="form-select" id="epPreferredSitter"><option value="">No preference</option>${sitterOptions}</select></div>
+        <div style="margin:12px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Grooming Preferences</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Coat Type</label><select class="form-select" id="epCoat">${coatOpts}</select></div><div class="form-group"><label class="form-label">Grooming Frequency</label><select class="form-select" id="epGroomFreq">${groomFreqOpts}</select></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Shampoo Preference</label><select class="form-select" id="epShampoo">${shampooOpts}</select></div><div class="form-group"><label class="form-label">Grooming Notes</label><input class="form-input" id="epGroomNotes" value="${escHTML(p.groomNotes || '')}" placeholder="e.g. Sensitive ears, hates dryer"></div></div>
+        <div class="form-group"><label class="form-label">Special Notes</label><textarea class="form-textarea" id="epNotes" rows="2">${escHTML(p.notes || '')}</textarea></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditPet('${p.id}')">Save</button></div>
+    </div>`;
+    overlay.classList.add('open');
+};
+window.previewEditPetPhoto = (input) => {
+    if (!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => { document.getElementById('epPhotoData').value = e.target.result; };
+    reader.readAsDataURL(input.files[0]);
+};
+const saveEditPet = (id) => {
+    const p = pets.find(x => x.id === id); if (!p) return;
+    p.name = document.getElementById('epName')?.value?.trim() || p.name;
+    p.breed = document.getElementById('epBreed')?.value?.trim() || '';
+    p.age = document.getElementById('epAge')?.value?.trim() || '';
+    p.weight = document.getElementById('epWeight')?.value?.trim() || '';
+    p.gender = document.getElementById('epGender')?.value || '';
+    p.fixed = document.getElementById('epFixed')?.value || '';
+    p.clientId = document.getElementById('epOwner')?.value || '';
+    p.vet = document.getElementById('epVet')?.value?.trim() || '';
+    p.allergies = document.getElementById('epAllergies')?.value?.trim() || '';
+    p.medications = document.getElementById('epMeds')?.value?.trim() || '';
+    p.feedingSchedule = document.getElementById('epFeeding')?.value?.trim() || '';
+    p.tags = document.getElementById('epTags')?.value?.trim() || '';
+    p.preferredSitter = document.getElementById('epPreferredSitter')?.value || '';
+    p.coatType = document.getElementById('epCoat')?.value || '';
+    p.groomFrequency = document.getElementById('epGroomFreq')?.value || '';
+    p.shampoo = document.getElementById('epShampoo')?.value || '';
+    p.groomNotes = document.getElementById('epGroomNotes')?.value?.trim() || '';
+    p.notes = document.getElementById('epNotes')?.value?.trim() || '';
+    const newPhoto = document.getElementById('epPhotoData')?.value;
+    if (newPhoto) p.photo = newPhoto;
+    save('pets', pets); closeModal(); renderTab();
+};
 
 // Init
 renderTab();
