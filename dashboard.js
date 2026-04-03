@@ -233,7 +233,7 @@ const renderBookingTable = (items) => `
     <div class="table-wrap"><table>
         <thead><tr><th>Dates</th><th>Time</th><th>Drop-Off</th><th>Pick-Up</th><th>Client</th><th>Pet</th><th>Service</th><th>Add-ons</th><th>Total</th><th>Status</th><th></th></tr></thead>
         <tbody>${items.length ? items.map(b => `<tr>
-            <td>${b.date}${b.endDate ? `<br><span style="font-size:.72rem;color:var(--text-muted)">→ ${b.endDate}</span>` : ''}</td><td>${b.time || '—'}</td><td style="font-size:.82rem">${b.dropoffTime ? b.dropoffTime.replace('T', '<br>') : '—'}</td><td style="font-size:.82rem">${b.pickupTime ? b.pickupTime.replace('T', '<br>') : '—'}</td><td>${escHTML(b.clientName)}</td><td>${escHTML(b.petName)}</td>
+            <td>${b.date}${b.endDate ? `<br><span style="font-size:.72rem;color:var(--text-muted)">→ ${b.endDate} (${calcDays(b.date, b.endDate)} day${calcDays(b.date, b.endDate) > 1 ? 's' : ''})</span>` : ''}</td><td>${b.time || '—'}</td><td style="font-size:.82rem">${b.dropoffTime ? b.dropoffTime.replace('T', '<br>') : '—'}</td><td style="font-size:.82rem">${b.pickupTime ? b.pickupTime.replace('T', '<br>') : '—'}</td><td>${escHTML(b.clientName)}</td><td>${escHTML(b.petName)}</td>
             <td>${escHTML(b.service)}${b.pickupAddr ? `<br><span style="font-size:.72rem;color:var(--text-muted)">From: ${escHTML(b.pickupAddr)}</span>` : ''}</td>
             <td>${b.addons?.length ? b.addons.map(a => `<span class="badge badge-completed">${escHTML(a)}</span>`).join(' ') : '—'}</td>
             <td><strong>${fmt(calcBookingTotal(b))}</strong></td>
@@ -248,8 +248,18 @@ const renderBookingTable = (items) => `
     </table></div>
 `;
 
+const calcDays = (start, end) => {
+    if (!start || !end) return 1;
+    const s = new Date(start + 'T00:00:00');
+    const e = new Date(end + 'T00:00:00');
+    const diff = Math.round((e - s) / 86400000);
+    return diff > 0 ? diff : 1;
+};
+
 const calcBookingTotal = (b) => {
-    let total = parseFloat(b.amount) || 0;
+    const baseRate = parseFloat(b.amount) || 0;
+    const days = calcDays(b.date, b.endDate);
+    let total = baseRate * days;
     if (b.addons?.length) {
         b.addons.forEach(aName => {
             const addon = addons.find(a => a.name === aName);
@@ -260,7 +270,7 @@ const calcBookingTotal = (b) => {
         const zone = zones.find(z => z.name === b.zone);
         if (zone) total += zone.surcharge;
     }
-    if (b.extraDogs) total += (b.extraDogs * (businessSettings.multiDogDiscount || 10));
+    if (b.extraDogs) total += (b.extraDogs * (businessSettings.multiDogDiscount || 10)) * days;
     return total;
 };
 
@@ -2553,14 +2563,23 @@ const addPetForClient = (clientId, clientName) => {
 
 const updateBookingPrice = () => {
     const svc = services.find(s => s.name === document.getElementById('mService')?.value);
-    let total = svc?.price || 0;
+    const baseRate = svc?.price || 0;
+    const startDate = document.getElementById('mDate')?.value || '';
+    const endDate = document.getElementById('mEndDate')?.value || '';
+    const days = calcDays(startDate, endDate);
+    const extraDogs = parseInt(document.getElementById('mExtraDogs')?.value) || 0;
+    let total = baseRate * days;
+    total += extraDogs * (businessSettings.multiDogDiscount || 10) * days;
     document.querySelectorAll('.addon-check:checked').forEach(cb => { total += parseFloat(cb.dataset.price) || 0; });
     const preview = document.getElementById('mPricePreview');
-    if (preview) preview.textContent = fmt(total);
+    if (preview) preview.textContent = `${fmt(total)}${days > 1 ? ` (${days} days × ${fmt(baseRate)})` : ''}`;
 };
 
-// Wire addon checkboxes to price update
-document.addEventListener('change', (e) => { if (e.target.classList.contains('addon-check')) updateBookingPrice(); });
+// Wire addon checkboxes + date changes to price update
+document.addEventListener('change', (e) => {
+    if (e.target.classList.contains('addon-check')) updateBookingPrice();
+    if (e.target.id === 'mDate' || e.target.id === 'mEndDate' || e.target.id === 'mExtraDogs') updateBookingPrice();
+});
 
 const saveModal = (type) => {
     const v = (id) => document.getElementById(id)?.value?.trim() || '';
@@ -2748,12 +2767,19 @@ const saveModal = (type) => {
     } else if (type === 'message') {
         const toClientId = v('mTo');
         const toClient = clients.find(c => c.id === toClientId);
+        const msgText = v('mText');
+        const msgPet = v('mPet');
         messages.push({
             id: uid(), from: v('mFrom'), to: toClient?.name || toClientId, toClientId,
-            pet: v('mPet'), type: v('mType'), text: v('mText'),
+            pet: msgPet, type: v('mType'), text: msgText,
             date: todayStr(), time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
         });
         save('messages', messages);
+        // Send email to client
+        if (toClient?.email && typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendEmail('message', { to: toClient.name, clientEmail: toClient.email, pet: msgPet, text: msgText });
+            GPC_NOTIFY.onNewMessage({ from: 'GenusPupClub', to: toClient.name, text: msgText });
+        }
     }
     closeModal();
     renderTab();
@@ -2809,10 +2835,22 @@ const updateBooking = (id, status) => {
     b.status = status;
     save('bookings', bookings);
 
-    // Fire notifications
+    // Ensure booking has clientEmail for notifications
+    if (!b.clientEmail && b.clientId) {
+        const client = clients.find(c => c.id === b.clientId);
+        if (client) b.clientEmail = client.email;
+    }
+    if (!b.clientEmail && b.clientName) {
+        const client = clients.find(c => c.name === b.clientName);
+        if (client) b.clientEmail = client.email;
+    }
+    save('bookings', bookings);
+
+    // Fire notifications + emails
     if (typeof GPC_NOTIFY !== 'undefined') {
         if (status === 'confirmed') GPC_NOTIFY.onBookingConfirmed(b);
         if (status === 'completed') GPC_NOTIFY.onBookingCompleted(b);
+        if (status === 'cancelled') GPC_NOTIFY.onBookingCancelled(b);
     }
 
     // On complete: prompt for invoice + tip + rating
