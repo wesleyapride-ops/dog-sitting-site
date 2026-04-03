@@ -148,7 +148,7 @@ const renderTab = () => {
     sitters = load('sitters', sitters); reviews = load('reviews', reviews);
     messages = load('messages', []); businessSettings = load('settings', businessSettings);
 
-    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, website: renderWebsiteEditor, settings: renderSettings };
+    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, emails: renderEmailCenter, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, website: renderWebsiteEditor, settings: renderSettings };
     (views[activeTab] || renderOverview)();
 };
 
@@ -1053,6 +1053,250 @@ const renderMessages = () => {
             `).join('') : '<div class="empty"><div class="empty-icon">💬</div><p>No messages yet. Send updates to owners during visits.</p></div>'}
         </div>
     `;
+};
+
+// ============================================
+// EMAIL CENTER
+// ============================================
+const renderEmailCenter = () => {
+    const emailLog = load('email_log', []).slice().reverse();
+    const templates = load('email_templates_custom', {});
+    const autoSettings = load('email_auto_settings', {
+        onBooking: true, onConfirm: true, onComplete: true, onCancel: true,
+        onPayment: true, onWelcome: true, onPasswordReset: true, onInvoice: true,
+        onReminder: false, onReportCard: false
+    });
+    const clientOptions = clients.map(c => `<option value="${c.id}" data-email="${escHTML(c.email || '')}">${escHTML(c.name)}${c.email ? ' (' + escHTML(c.email) + ')' : ''}</option>`).join('');
+
+    // Default template names
+    const templateNames = {
+        booking_confirmation: 'Booking Confirmation',
+        booking_confirmed: 'Booking Confirmed',
+        visit_complete: 'Visit Complete',
+        payment_receipt: 'Payment Receipt',
+        invoice: 'Invoice',
+        reminder: 'Day-Before Reminder',
+        report_card: 'Report Card',
+        message: 'Direct Message',
+        welcome: 'Welcome / Signup Invite',
+        password_reset: 'Password Reset',
+        waitlist: 'Waitlist Spot Available'
+    };
+
+    el.innerHTML = `
+        <!-- Compose Email -->
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><span class="card-title">Compose Email</span></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">To</label><select class="form-select" id="emTo" onchange="const o=this.selectedOptions[0];document.getElementById('emToEmail').value=o?.dataset?.email||''"><option value="">Select client</option>${clientOptions}</select></div>
+                <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" id="emToEmail" placeholder="or type email directly"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Subject</label><input class="form-input" id="emSubject" placeholder="Email subject line"></div>
+            <div class="form-group"><label class="form-label">Message</label><textarea class="form-textarea" id="emBody" rows="6" placeholder="Write your email..."></textarea></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                <span style="font-size:.82rem;color:var(--text-muted);line-height:2">Quick templates:</span>
+                <button class="btn btn-ghost btn-sm" onclick="fillEmailTemplate('visit_update')">Visit Update</button>
+                <button class="btn btn-ghost btn-sm" onclick="fillEmailTemplate('booking_reminder')">Booking Reminder</button>
+                <button class="btn btn-ghost btn-sm" onclick="fillEmailTemplate('checkout_ready')">Checkout Ready</button>
+                <button class="btn btn-ghost btn-sm" onclick="fillEmailTemplate('payment_request')">Payment Request</button>
+                <button class="btn btn-ghost btn-sm" onclick="fillEmailTemplate('thank_you')">Thank You</button>
+                <button class="btn btn-ghost btn-sm" onclick="fillEmailTemplate('promo')">Promo / Offer</button>
+            </div>
+            <button class="btn btn-primary" onclick="sendComposeEmail()">Send Email</button>
+        </div>
+
+        <!-- Auto-Send Settings -->
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><span class="card-title">Auto-Send Settings</span></div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Toggle which emails are sent automatically. Turn off to send manually from here instead.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                ${Object.entries(autoSettings).map(([key, val]) => {
+                    const label = key.replace('on', '').replace(/([A-Z])/g, ' $1').trim();
+                    return `<label style="display:flex;gap:6px;align-items:center;font-size:.88rem;cursor:pointer;padding:8px;border-radius:8px;border:1px solid var(--border);background:${val ? 'rgba(0,184,148,.04)' : 'transparent'}">
+                        <input type="checkbox" class="auto-email-toggle" data-key="${key}" ${val ? 'checked' : ''}>
+                        <span>${label}</span>
+                        <span style="margin-left:auto;font-size:.72rem;color:${val ? 'var(--accent)' : 'var(--text-muted)'}">${val ? 'AUTO' : 'MANUAL'}</span>
+                    </label>`;
+                }).join('')}
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveAutoEmailSettings()">Save Auto-Send Settings</button>
+        </div>
+
+        <!-- Edit Templates -->
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><span class="card-title">Email Templates</span></div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Customize the subject and body of automated emails. Leave blank to use the default template.</p>
+            <div class="form-group"><label class="form-label">Select Template</label><select class="form-select" id="emTemplateSelect" onchange="loadTemplateForEdit()">
+                ${Object.entries(templateNames).map(([key, name]) => `<option value="${key}">${name}</option>`).join('')}
+            </select></div>
+            <div class="form-group"><label class="form-label">Custom Subject</label><input class="form-input" id="emTemplateSubject" placeholder="Leave blank for default"></div>
+            <div class="form-group"><label class="form-label">Custom Body</label><textarea class="form-textarea" id="emTemplateBody" rows="6" placeholder="Leave blank for default. Use variables: {{clientName}}, {{petName}}, {{service}}, {{date}}, {{amount}}"></textarea></div>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-primary btn-sm" onclick="saveCustomTemplate()">Save Template</button>
+                <button class="btn btn-ghost btn-sm" onclick="resetTemplate()">Reset to Default</button>
+                <button class="btn btn-ghost btn-sm" onclick="previewTemplate()">Preview</button>
+            </div>
+            <div id="emTemplatePreview" style="margin-top:12px"></div>
+        </div>
+
+        <!-- Sent Email Log -->
+        <div class="card">
+            <div class="card-header"><span class="card-title">Sent Emails (${emailLog.length})</span><button class="btn btn-ghost btn-sm" onclick="clearEmailLog()">Clear Log</button></div>
+            ${emailLog.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Date</th><th>Time</th><th>To</th><th>Subject</th><th>Template</th><th>Status</th><th></th></tr></thead>
+                <tbody>${emailLog.slice(0, 50).map(e => `<tr>
+                    <td style="font-size:.82rem">${e.date || ''}</td>
+                    <td style="font-size:.82rem">${e.time || ''}</td>
+                    <td style="font-size:.82rem">${escHTML(e.to || '')}</td>
+                    <td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">${escHTML((e.subject || '').substring(0, 50))}</td>
+                    <td><span class="badge badge-completed">${escHTML(e.template || 'direct')}</span></td>
+                    <td><span class="badge badge-${e.status === 'sent' ? 'confirmed' : 'cancelled'}">${e.status || '?'}</span></td>
+                    <td><button class="btn btn-ghost btn-sm" onclick="resendEmail('${e.id}')">Resend</button></td>
+                </tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty"><div class="empty-icon">📧</div><p>No emails sent yet. Compose one above or enable auto-send.</p></div>'}
+        </div>
+    `;
+
+    // Load first template
+    loadTemplateForEdit();
+};
+
+// Compose email quick templates
+const fillEmailTemplate = (type) => {
+    const templates = {
+        visit_update: { subject: 'Visit Update — Your Pup is Having a Great Time!', body: 'Hi!\n\nJust wanted to send a quick update — your pup is having a wonderful time! They ate well, got plenty of exercise, and are in great spirits.\n\nWe\'ll send photos shortly!\n\n— GenusPupClub' },
+        booking_reminder: { subject: 'Reminder: Your Booking is Tomorrow!', body: 'Hi!\n\nJust a friendly reminder — your booking is tomorrow!\n\nPlease have your pup ready with their leash, food, and any medications.\n\nSee you soon!\n— GenusPupClub' },
+        checkout_ready: { subject: 'Your Pup is Ready for Pickup!', body: 'Hi!\n\nYour pup is all checked out and ready for pickup! Everything went great today.\n\nSee you next time!\n— GenusPupClub' },
+        payment_request: { subject: 'Payment Request — GenusPupClub', body: 'Hi!\n\nThis is a friendly reminder about your outstanding balance.\n\nYou can pay via:\n• Venmo: @GenusPupClub\n• Zelle: Genuspupclub@gmail.com\n• CashApp: $m3lop3z\n• Apple Pay: (804) 258-3830\n\nThank you!\n— GenusPupClub' },
+        thank_you: { subject: 'Thank You for Choosing GenusPupClub!', body: 'Hi!\n\nThank you for trusting us with your pup! We loved every minute.\n\nIf you had a great experience, we\'d love a review — it helps other dog parents find us.\n\nSee you next time!\n— GenusPupClub' },
+        promo: { subject: 'Special Offer from GenusPupClub!', body: 'Hi!\n\nWe have a special offer just for you:\n\n[DESCRIBE YOUR OFFER HERE]\n\nBook now through your portal or call us at (804) 258-3830.\n\nLimited spots available!\n— GenusPupClub' }
+    };
+    const t = templates[type];
+    if (t) {
+        document.getElementById('emSubject').value = t.subject;
+        document.getElementById('emBody').value = t.body;
+    }
+};
+
+// Send composed email
+const sendComposeEmail = () => {
+    const clientId = document.getElementById('emTo')?.value;
+    const toEmail = document.getElementById('emToEmail')?.value?.trim();
+    const subject = document.getElementById('emSubject')?.value?.trim();
+    const body = document.getElementById('emBody')?.value?.trim();
+
+    if (!toEmail) { alert('Enter a recipient email address'); return; }
+    if (!subject) { alert('Enter a subject line'); return; }
+    if (!body) { alert('Write a message'); return; }
+
+    const client = clientId ? clients.find(c => c.id === clientId) : null;
+
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.sendDirectEmail(toEmail, client?.name || '', subject, body);
+    }
+
+    // Also save as message
+    messages.push({
+        id: uid(), from: 'GenusPupClub', to: client?.name || toEmail, toClientId: clientId || '',
+        pet: '', type: 'email', text: `[${subject}]\n\n${body}`,
+        date: todayStr(), time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    });
+    save('messages', messages);
+
+    document.getElementById('emSubject').value = '';
+    document.getElementById('emBody').value = '';
+    document.getElementById('emTo').value = '';
+    document.getElementById('emToEmail').value = '';
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Sent', `Email sent to ${toEmail}`, 'success');
+};
+
+// Auto-send settings
+const saveAutoEmailSettings = () => {
+    const settings = {};
+    document.querySelectorAll('.auto-email-toggle').forEach(cb => {
+        settings[cb.dataset.key] = cb.checked;
+    });
+    save('email_auto_settings', settings);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Auto-send settings updated', 'success');
+    renderTab();
+};
+
+// Template editing
+const loadTemplateForEdit = () => {
+    const key = document.getElementById('emTemplateSelect')?.value;
+    if (!key) return;
+    const customs = load('email_templates_custom', {});
+    const custom = customs[key];
+    document.getElementById('emTemplateSubject').value = custom?.subject || '';
+    document.getElementById('emTemplateBody').value = custom?.body || '';
+};
+
+const saveCustomTemplate = () => {
+    const key = document.getElementById('emTemplateSelect')?.value;
+    if (!key) return;
+    const subject = document.getElementById('emTemplateSubject')?.value?.trim();
+    const body = document.getElementById('emTemplateBody')?.value?.trim();
+    const customs = load('email_templates_custom', {});
+    if (subject || body) {
+        customs[key] = { subject, body };
+    } else {
+        delete customs[key];
+    }
+    save('email_templates_custom', customs);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Email template updated', 'success');
+};
+
+const resetTemplate = () => {
+    const key = document.getElementById('emTemplateSelect')?.value;
+    if (!key) return;
+    const customs = load('email_templates_custom', {});
+    delete customs[key];
+    save('email_templates_custom', customs);
+    document.getElementById('emTemplateSubject').value = '';
+    document.getElementById('emTemplateBody').value = '';
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Reset', 'Template reset to default', 'info');
+};
+
+const previewTemplate = () => {
+    const key = document.getElementById('emTemplateSelect')?.value;
+    const customSubject = document.getElementById('emTemplateSubject')?.value?.trim();
+    const customBody = document.getElementById('emTemplateBody')?.value?.trim();
+    const preview = document.getElementById('emTemplatePreview');
+    if (!preview) return;
+
+    // Show what the email would look like with sample data
+    const sampleData = { clientName: 'John Smith', petName: 'Buddy', service: 'Dog Walking (30 min)', date: todayStr(), amount: '25.00', time: '10:00 AM' };
+    let subject = customSubject || `[Default ${key} subject]`;
+    let body = customBody || `[Default ${key} body — leave blank to use built-in template]`;
+
+    // Replace variables
+    Object.entries(sampleData).forEach(([k, v]) => {
+        subject = subject.replace(new RegExp(`{{${k}}}`, 'gi'), v);
+        body = body.replace(new RegExp(`{{${k}}}`, 'gi'), v);
+    });
+
+    preview.innerHTML = `
+        <div style="padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--bg-alt)">
+            <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:4px">PREVIEW (sample data)</div>
+            <div style="font-weight:600;margin-bottom:8px">${escHTML(subject)}</div>
+            <div style="font-size:.88rem;white-space:pre-wrap;color:var(--text-light)">${escHTML(body)}</div>
+        </div>
+    `;
+};
+
+const resendEmail = (logId) => {
+    const log = load('email_log', []);
+    const entry = log.find(e => e.id === logId);
+    if (!entry) return;
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.sendDirectEmail(entry.to, '', entry.subject, '(Resent) — check original email for full content');
+    }
+};
+
+const clearEmailLog = () => {
+    if (!confirm('Clear all email logs?')) return;
+    save('email_log', []);
+    renderTab();
 };
 
 // ============================================

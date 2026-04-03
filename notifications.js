@@ -115,32 +115,38 @@ const GPC_NOTIFY = (() => {
     }
 
     // ============================================
+    // AUTO-SEND CHECK
+    // ============================================
+    const shouldAutoSend = (key) => {
+        const settings = load('email_auto_settings', { onBooking: true, onConfirm: true, onComplete: true, onCancel: true, onPayment: true, onWelcome: true, onPasswordReset: true, onInvoice: true, onReminder: false, onReportCard: false });
+        return settings[key] !== false;
+    };
+
+    // ============================================
     // BOOKING NOTIFICATIONS
     // ============================================
     const onNewBooking = (booking) => {
-        // Notify admin
         notify('booking', 'New Booking!', `${booking.clientName} booked ${booking.service} for ${booking.petName} on ${booking.date}`, 'admin');
-        // Notify client
-        notify('booking', 'Booking Confirmed', `Your ${booking.service} for ${booking.petName} is booked for ${booking.date} at ${booking.time || 'TBD'}. We'll confirm shortly!`, 'client', booking.clientId);
-        // Send email
-        sendEmail('booking_confirmation', booking);
+        notify('booking', 'Booking Received', `Your ${booking.service} for ${booking.petName} is booked for ${booking.date} at ${booking.time || 'TBD'}. Awaiting approval.`, 'client', booking.clientId);
+        if (shouldAutoSend('onBooking')) sendEmail('booking_confirmation', booking);
     };
 
     const onBookingConfirmed = (booking) => {
         notify('success', 'Booking Confirmed', `${booking.clientName}'s ${booking.service} on ${booking.date} has been confirmed.`, 'admin');
         notify('success', 'Confirmed!', `Your ${booking.service} on ${booking.date} at ${booking.time || ''} is confirmed! See you then.`, 'client', booking.clientId);
-        sendEmail('booking_confirmed', booking);
+        if (shouldAutoSend('onConfirm')) sendEmail('booking_confirmed', booking);
     };
 
     const onBookingCompleted = (booking) => {
         notify('success', 'Visit Complete', `${booking.petName}'s ${booking.service} is done! Time to invoice.`, 'admin');
         notify('success', 'Visit Complete!', `${booking.petName} had a great ${booking.service}! Check your portal for photos and invoice.`, 'client', booking.clientId);
-        sendEmail('visit_complete', booking);
+        if (shouldAutoSend('onComplete')) sendEmail('visit_complete', booking);
     };
 
     const onBookingCancelled = (booking) => {
         notify('warning', 'Booking Cancelled', `${booking.clientName} cancelled their ${booking.service} on ${booking.date}.`, 'admin');
         notify('warning', 'Booking Cancelled', `Your ${booking.service} on ${booking.date} has been cancelled.`, 'client', booking.clientId);
+        if (shouldAutoSend('onCancel')) sendEmail('booking_confirmed', { ...booking, service: booking.service + ' (CANCELLED)' });
     };
 
     // ============================================
@@ -150,7 +156,7 @@ const GPC_NOTIFY = (() => {
         const tipNote = payment.tip > 0 ? ` (+ $${Number(payment.tip).toFixed(2)} tip!)` : '';
         notify('payment', 'Payment Received!', `$${Number(payment.amount).toFixed(2)}${tipNote} via ${payment.method} from ${payment.clientName || 'client'}`, 'admin');
         notify('payment', 'Payment Confirmed', `Your payment of $${Number(payment.amount).toFixed(2)}${tipNote} has been received. Thank you!`, 'client', payment.clientId);
-        sendEmail('payment_receipt', payment);
+        if (shouldAutoSend('onPayment')) sendEmail('payment_receipt', payment);
     };
 
     const onPaymentPending = (payment) => {
@@ -250,7 +256,20 @@ const GPC_NOTIFY = (() => {
             return;
         }
 
-        const content = tmpl(data);
+        // Check for custom template override
+        const customs = load('email_templates_custom', {});
+        let content;
+        if (customs[template]?.subject || customs[template]?.body) {
+            const c = customs[template];
+            let subject = c.subject || tmpl(data).subject;
+            let body = c.body || tmpl(data).body;
+            // Replace variables
+            const vars = { clientName: data.clientName || data.to || data.name || '', petName: data.petName || data.pet || '', service: data.service || '', date: data.date || '', amount: data.amount ? '$' + Number(data.amount).toFixed(2) : '', time: data.time || '' };
+            Object.entries(vars).forEach(([k, v]) => { subject = subject.replace(new RegExp(`{{${k}}}`, 'gi'), v); body = body.replace(new RegExp(`{{${k}}}`, 'gi'), v); });
+            content = { subject, body };
+        } else {
+            content = tmpl(data);
+        }
         const clientEmail = data.clientEmail || data.email || '';
 
         // Resolve client email from stored data if not in payload
