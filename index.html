@@ -291,7 +291,31 @@
                     </div>
                     <div class="form-row">
                         <input type="text" id="bookingPetName" placeholder="Dog's Name & Breed">
-                        <input type="date" id="bookingDate">
+                        <input type="date" id="bookingStartDate">
+                    </div>
+                    <div class="form-row">
+                        <div style="display:flex;align-items:center;gap:8px;flex:1">
+                            <label style="color:rgba(255,255,255,.5);font-size:.85rem;white-space:nowrap">End Date</label>
+                            <input type="date" id="bookingEndDate" style="flex:1">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;flex:1">
+                            <label style="color:rgba(255,255,255,.5);font-size:.85rem;white-space:nowrap">Preferred Time</label>
+                            <select id="bookingTime" style="flex:1">
+                                <option value="">Any time</option>
+                                <option value="07:00">7:00 AM</option>
+                                <option value="08:00">8:00 AM</option>
+                                <option value="09:00">9:00 AM</option>
+                                <option value="10:00">10:00 AM</option>
+                                <option value="11:00">11:00 AM</option>
+                                <option value="12:00">12:00 PM</option>
+                                <option value="13:00">1:00 PM</option>
+                                <option value="14:00">2:00 PM</option>
+                                <option value="15:00">3:00 PM</option>
+                                <option value="16:00">4:00 PM</option>
+                                <option value="17:00">5:00 PM</option>
+                                <option value="18:00">6:00 PM</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-row">
                         <select id="bookingNumDogs">

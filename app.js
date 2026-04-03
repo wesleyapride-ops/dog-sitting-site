@@ -169,7 +169,9 @@ bookingForm?.addEventListener('submit', (e) => {
     const email = document.getElementById('bookingEmail')?.value?.trim() || '';
     const phone = document.getElementById('bookingPhone')?.value?.trim() || '';
     const petName = document.getElementById('bookingPetName')?.value?.trim() || '';
-    const date = document.getElementById('bookingDate')?.value || new Date().toISOString().split('T')[0];
+    const startDate = document.getElementById('bookingStartDate')?.value || new Date().toISOString().split('T')[0];
+    const endDate = document.getElementById('bookingEndDate')?.value || '';
+    const time = document.getElementById('bookingTime')?.value || '';
     const notes = document.getElementById('bookingNotes')?.value?.trim() || '';
     const selectedService = document.getElementById('bookingServiceSelect')?.value || '';
     const numDogs = parseInt(document.getElementById('bookingNumDogs')?.value) || 1;
@@ -189,8 +191,9 @@ bookingForm?.addEventListener('submit', (e) => {
         petName,
         service: selectedService.replace('PKG:', ''),
         amount: svc?.price || 0,
-        date,
-        time: '10:00',
+        date: startDate,
+        endDate,
+        time: time || '10:00',
         dropoffTime: '',
         pickupTime: '',
         zone: '',
@@ -327,6 +330,20 @@ const applyCMS = () => {
     if (cms.accentColor) document.documentElement.style.setProperty('--accent', cms.accentColor);
     if (cms.bgColor) document.documentElement.style.setProperty('--bg', cms.bgColor);
 };
+
+// ---- Date Range Setup ----
+const todayISO = new Date().toISOString().split('T')[0];
+const bkStartDate = document.getElementById('bookingStartDate');
+const bkEndDate = document.getElementById('bookingEndDate');
+if (bkStartDate) {
+    bkStartDate.min = todayISO;
+    bkStartDate.value = todayISO;
+}
+if (bkEndDate) bkEndDate.min = todayISO;
+bkStartDate?.addEventListener('change', () => {
+    if (bkEndDate) bkEndDate.min = bkStartDate.value;
+    if (bkEndDate && bkEndDate.value && bkEndDate.value < bkStartDate.value) bkEndDate.value = bkStartDate.value;
+});
 
 // ---- Transport Address Toggle ----
 const transportSelect = document.getElementById('bookingTransport');
