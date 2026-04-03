@@ -227,9 +227,9 @@ const renderBookings = () => {
 
 const renderBookingTable = (items) => `
     <div class="table-wrap"><table>
-        <thead><tr><th>Date</th><th>Time</th><th>Drop-Off</th><th>Pick-Up</th><th>Client</th><th>Pet</th><th>Service</th><th>Add-ons</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Dates</th><th>Time</th><th>Drop-Off</th><th>Pick-Up</th><th>Client</th><th>Pet</th><th>Service</th><th>Add-ons</th><th>Total</th><th>Status</th><th></th></tr></thead>
         <tbody>${items.length ? items.map(b => `<tr>
-            <td>${b.date}</td><td>${b.time || '—'}</td><td>${b.dropoffTime || '—'}</td><td>${b.pickupTime || '—'}</td><td>${escHTML(b.clientName)}</td><td>${escHTML(b.petName)}</td>
+            <td>${b.date}${b.endDate ? `<br><span style="font-size:.72rem;color:var(--text-muted)">→ ${b.endDate}</span>` : ''}</td><td>${b.time || '—'}</td><td style="font-size:.82rem">${b.dropoffTime ? b.dropoffTime.replace('T', '<br>') : '—'}</td><td style="font-size:.82rem">${b.pickupTime ? b.pickupTime.replace('T', '<br>') : '—'}</td><td>${escHTML(b.clientName)}</td><td>${escHTML(b.petName)}</td>
             <td>${escHTML(b.service)}${b.pickupAddr ? `<br><span style="font-size:.72rem;color:var(--text-muted)">From: ${escHTML(b.pickupAddr)}</span>` : ''}</td>
             <td>${b.addons?.length ? b.addons.map(a => `<span class="badge badge-completed">${escHTML(a)}</span>`).join(' ') : '—'}</td>
             <td><strong>${fmt(calcBookingTotal(b))}</strong></td>
@@ -2252,19 +2252,25 @@ const showModal = (type) => {
     const catOptions = ['Walking', 'Visits', 'Daycare', 'Sitting', 'Specialty', 'Transport', 'Grooming', 'Training', 'Other'].map(c => `<option>${c}</option>`).join('');
 
     const modals = {
-        booking: { title: 'New Booking', body: `
+        booking: { title: 'New Booking', body: (() => {
+            const propOptions = properties.map(p => `<option value="${escHTML(p.address)}">${escHTML(p.name)} — ${escHTML(p.address)}</option>`).join('');
+            const clientAddrOptions = clients.filter(c => c.address).map(c => `<option value="${escHTML(c.address)}">${escHTML(c.name)} — ${escHTML(c.address)}</option>`).join('');
+            return `
             <div class="form-row"><div class="form-group"><label class="form-label">Client</label><select class="form-select" id="mClient" onchange="autofillClient(this.value)"><option value="">Select or type below</option>${clientOptions}</select></div><div class="form-group"><label class="form-label">Client Name</label><input class="form-input" id="mClientName"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mPetName"></div><div class="form-group"><label class="form-label">Extra Dogs</label><input class="form-input" id="mExtraDogs" type="number" value="0" min="0"></div></div>
             <div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService" onchange="updateBookingPrice()">${svcOptions}</select></div>
             <div class="form-group"><label class="form-label">Add-ons</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="mAddons">${addonChecks}</div></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="mDate" type="date" value="${todayStr()}"></div><div class="form-group"><label class="form-label">Time</label><input class="form-input" id="mTime" type="time" value="10:00"></div></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Drop-Off Time</label><input class="form-input" id="mDropoff" type="time" placeholder="If applicable"></div><div class="form-group"><label class="form-label">Pick-Up Time</label><input class="form-input" id="mPickup" type="time" placeholder="If applicable"></div></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Zone</label><select class="form-select" id="mZone"><option value="">No zone</option>${zoneOptions}</select></div><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="mSitter"><option value="">Auto-assign</option>${sitterOptions}</select></div></div>
-            <div style="margin:8px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Transport (if applicable)</div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Pickup Address</label><input class="form-input" id="mPickupAddr" placeholder="Client's home or custom address"></div><div class="form-group"><label class="form-label">Dropoff Address</label><input class="form-input" id="mDropoffAddr" placeholder="Our facility, vet, groomer, etc."></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="mDate" type="date" value="${todayStr()}"></div><div class="form-group"><label class="form-label">End Date</label><input class="form-input" id="mEndDate" type="date"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Time</label><input class="form-input" id="mTime" type="time" value="10:00"></div><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="mSitter"><option value="">Auto-assign</option>${sitterOptions}</select></div></div>
+            <div style="margin:8px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Drop-Off & Pick-Up</div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Drop-Off Date & Time</label><input class="form-input" id="mDropoff" type="datetime-local"></div><div class="form-group"><label class="form-label">Pick-Up Date & Time</label><input class="form-input" id="mPickup" type="datetime-local"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Zone</label><select class="form-select" id="mZone"><option value="">No zone</option>${zoneOptions}</select></div></div>
+            <div style="margin:8px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Transport</div>
+            <div class="form-group"><label class="form-label">Pickup Address</label><select class="form-select" id="mPickupAddr" onchange="if(this.value==='custom'){this.style.display='none';document.getElementById('mPickupAddrCustom').style.display='block'}"><option value="">Select address</option><optgroup label="Client Addresses">${clientAddrOptions}</optgroup><option value="custom">Enter custom address...</option></select><input class="form-input" id="mPickupAddrCustom" style="display:none;margin-top:4px" placeholder="Enter pickup address"></div>
+            <div class="form-group"><label class="form-label">Dropoff Address</label><select class="form-select" id="mDropoffAddr" onchange="if(this.value==='custom'){this.style.display='none';document.getElementById('mDropoffAddrCustom').style.display='block'}"><option value="">Select address</option><optgroup label="Our Locations">${propOptions}</optgroup><optgroup label="Client Addresses">${clientAddrOptions}</optgroup><option value="custom">Enter custom address...</option></select><input class="form-input" id="mDropoffAddrCustom" style="display:none;margin-top:4px" placeholder="Enter dropoff address (vet, groomer, etc.)"></div>
             <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="mNotes" rows="2"></textarea></div>
             <div style="background:rgba(255,107,53,0.05);padding:12px;border-radius:8px;text-align:right"><span style="font-size:.85rem;color:var(--text-muted)">Estimated Total:</span> <strong style="font-size:1.3rem;color:var(--primary)" id="mPricePreview">${fmt(services[0]?.price || 0)}</strong></div>
-        ` },
+        `; })() },
         client: { title: 'Add Client', body: `
             <div class="form-group"><label class="form-label">Photo</label><input type="file" id="mClientPhoto" accept="image/*" class="form-input" style="padding:8px" onchange="previewProfilePic(this,'mClientPhotoPreview')"><div id="mClientPhotoPreview" style="margin-top:6px"></div><input type="hidden" id="mClientPhotoData"></div>
             <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="mName"></div>
@@ -2448,6 +2454,19 @@ const autofillClient = (clientId) => {
     const c = clients.find(x => x.id === clientId);
     if (c) {
         document.getElementById('mClientName').value = c.name;
+        // Autofill pickup address from client profile
+        const pickupSelect = document.getElementById('mPickupAddr');
+        if (pickupSelect && c.address) {
+            // Check if their address is in the dropdown
+            const match = [...pickupSelect.options].find(o => o.value === c.address);
+            if (match) { pickupSelect.value = c.address; }
+            else {
+                // Show custom input with their address
+                pickupSelect.style.display = 'none';
+                const custom = document.getElementById('mPickupAddrCustom');
+                if (custom) { custom.style.display = 'block'; custom.value = c.address; }
+            }
+        }
         const clientPets = pets.filter(p => p.clientId === c.id);
         const petNameInput = document.getElementById('mPetName');
         if (clientPets.length === 1) {
@@ -2546,7 +2565,9 @@ const saveModal = (type) => {
         const selectedAddons = [...document.querySelectorAll('.addon-check:checked')].map(cb => cb.value);
         const svc = services.find(s => s.name === v('mService'));
         const clientId = v('mClient') || null;
-        bookings.push({ id: uid(), clientId, clientName: v('mClientName'), petName: v('mPetName'), service: v('mService'), amount: svc?.price || 0, addons: selectedAddons, extraDogs: parseInt(v('mExtraDogs')) || 0, date: v('mDate'), time: v('mTime'), dropoffTime: v('mDropoff'), pickupTime: v('mPickup'), pickupAddr: v('mPickupAddr'), dropoffAddr: v('mDropoffAddr'), zone: v('mZone'), sitter: v('mSitter'), notes: v('mNotes'), status: 'pending' });
+        const pickupAddr = v('mPickupAddrCustom') || v('mPickupAddr');
+        const dropoffAddr = v('mDropoffAddrCustom') || v('mDropoffAddr');
+        bookings.push({ id: uid(), clientId, clientName: v('mClientName'), petName: v('mPetName'), service: v('mService'), amount: svc?.price || 0, addons: selectedAddons, extraDogs: parseInt(v('mExtraDogs')) || 0, date: v('mDate'), endDate: v('mEndDate'), time: v('mTime'), dropoffTime: v('mDropoff'), pickupTime: v('mPickup'), pickupAddr, dropoffAddr, zone: v('mZone'), sitter: v('mSitter'), notes: v('mNotes'), status: 'pending' });
         save('bookings', bookings);
     } else if (type === 'client') {
         const clientEmail = v('mEmail');
@@ -2987,14 +3008,18 @@ const editBooking = (id) => {
     const statuses = ['pending', 'confirmed', 'completed', 'cancelled'];
     let overlay = document.getElementById('modalOverlay');
     if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    const ebPropOptions = properties.map(p => `<option value="${escHTML(p.address)}" ${b.dropoffAddr === p.address ? 'selected' : ''}>${escHTML(p.name)} — ${escHTML(p.address)}</option>`).join('');
+    const ebClientAddrs = clients.filter(c => c.address).map(c => `<option value="${escHTML(c.address)}" ${b.pickupAddr === c.address || b.dropoffAddr === c.address ? 'selected' : ''}>${escHTML(c.name)} — ${escHTML(c.address)}</option>`).join('');
     overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Booking</div>
         <div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="ebClient" value="${escHTML(b.clientName || '')}"></div><div class="form-group"><label class="form-label">Pet</label><input class="form-input" id="ebPet" value="${escHTML(b.petName || '')}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="ebService">${svcOpts}</select></div><div class="form-group"><label class="form-label">Amount ($)</label><input class="form-input" id="ebAmount" type="number" step="0.01" value="${b.amount || 0}"></div></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="ebDate" type="date" value="${b.date || ''}"></div><div class="form-group"><label class="form-label">Time</label><input class="form-input" id="ebTime" type="time" value="${b.time || ''}"></div></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Drop-Off Time</label><input class="form-input" id="ebDropoff" type="time" value="${b.dropoffTime || ''}"></div><div class="form-group"><label class="form-label">Pick-Up Time</label><input class="form-input" id="ebPickup" type="time" value="${b.pickupTime || ''}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="ebDate" type="date" value="${b.date || ''}"></div><div class="form-group"><label class="form-label">End Date</label><input class="form-input" id="ebEndDate" type="date" value="${b.endDate || ''}"></div></div>
+        <div class="form-group"><label class="form-label">Time</label><input class="form-input" id="ebTime" type="time" value="${b.time || ''}"></div>
+        <div style="margin:8px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Drop-Off & Pick-Up</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Drop-Off Date & Time</label><input class="form-input" id="ebDropoff" type="datetime-local" value="${b.dropoffTime || ''}"></div><div class="form-group"><label class="form-label">Pick-Up Date & Time</label><input class="form-input" id="ebPickup" type="datetime-local" value="${b.pickupTime || ''}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="ebSitter"><option value="">Unassigned</option>${sitterOpts}</select></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ebStatus">${statuses.map(s => `<option ${b.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
         <div style="margin:8px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Transport</div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Pickup Address</label><input class="form-input" id="ebPickupAddr" value="${escHTML(b.pickupAddr || '')}"></div><div class="form-group"><label class="form-label">Dropoff Address</label><input class="form-input" id="ebDropoffAddr" value="${escHTML(b.dropoffAddr || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Pickup Address</label><select class="form-select" id="ebPickupAddr"><option value="">None</option><optgroup label="Client Addresses">${ebClientAddrs}</optgroup><option value="${escHTML(b.pickupAddr || '')}" selected>${escHTML(b.pickupAddr || 'None')}</option></select></div><div class="form-group"><label class="form-label">Dropoff Address</label><select class="form-select" id="ebDropoffAddr"><option value="">None</option><optgroup label="Our Locations">${ebPropOptions}</optgroup><optgroup label="Client Addresses">${ebClientAddrs}</optgroup><option value="${escHTML(b.dropoffAddr || '')}" selected>${escHTML(b.dropoffAddr || 'None')}</option></select></div></div>
         <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ebNotes" rows="2">${escHTML(b.notes || '')}</textarea></div>
         <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditBooking('${b.id}')">Save</button></div>
     </div>`; overlay.classList.add('open');
@@ -3008,9 +3033,10 @@ const saveEditBooking = (id) => {
     b.date = document.getElementById('ebDate')?.value || b.date;
     b.time = document.getElementById('ebTime')?.value || b.time;
     b.dropoffTime = document.getElementById('ebDropoff')?.value || '';
+    b.endDate = document.getElementById('ebEndDate')?.value || '';
     b.pickupTime = document.getElementById('ebPickup')?.value || '';
-    b.pickupAddr = document.getElementById('ebPickupAddr')?.value?.trim() || '';
-    b.dropoffAddr = document.getElementById('ebDropoffAddr')?.value?.trim() || '';
+    b.pickupAddr = document.getElementById('ebPickupAddr')?.value || '';
+    b.dropoffAddr = document.getElementById('ebDropoffAddr')?.value || '';
     b.sitter = document.getElementById('ebSitter')?.value || '';
     b.status = document.getElementById('ebStatus')?.value || b.status;
     b.notes = document.getElementById('ebNotes')?.value?.trim() || '';
