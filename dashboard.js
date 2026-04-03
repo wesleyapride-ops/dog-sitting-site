@@ -1052,7 +1052,7 @@ const sendPhotoToOwner = (photoId, method) => {
         const email = client?.email || prompt('Enter email address:');
         if (!email) return;
         if (typeof GPC_NOTIFY !== 'undefined') {
-            GPC_NOTIFY.sendDirectEmail(email, client?.name || '', `📸 Photo of ${photo.petName} — GenusPupClub`, `Hi!\n\nHere's a photo of ${photo.petName} from their visit!\n\n${caption}\n\nView all photos in your portal: genuspupclub.com/portal.html\n\n— GenusPupClub`);
+            GPC_NOTIFY.sendDirectEmail(email, client?.name || '', `📸 Photo of ${photo.petName} — GenusPupClub`, `Here's a photo of ${photo.petName} from their visit!\n\n${caption}\n\nView all photos in your portal: genuspupclub.com/portal.html`);
         }
     }
     if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Sent!', `Photo sent via ${method.toUpperCase()}`, 'success');
@@ -1196,12 +1196,12 @@ const renderEmailCenter = () => {
 // Compose email quick templates
 const fillEmailTemplate = (type) => {
     const templates = {
-        visit_update: { subject: 'Visit Update — Your Pup is Having a Great Time!', body: 'Hi!\n\nJust wanted to send a quick update — your pup is having a wonderful time! They ate well, got plenty of exercise, and are in great spirits.\n\nWe\'ll send photos shortly!\n\n— GenusPupClub' },
-        booking_reminder: { subject: 'Reminder: Your Booking is Tomorrow!', body: 'Hi!\n\nJust a friendly reminder — your booking is tomorrow!\n\nPlease have your pup ready with their leash, food, and any medications.\n\nSee you soon!\n— GenusPupClub' },
-        checkout_ready: { subject: 'Your Pup is Ready for Pickup!', body: 'Hi!\n\nYour pup is all checked out and ready for pickup! Everything went great today.\n\nSee you next time!\n— GenusPupClub' },
-        payment_request: { subject: 'Payment Request — GenusPupClub', body: 'Hi!\n\nThis is a friendly reminder about your outstanding balance.\n\nYou can pay via:\n• Venmo: @GenusPupClub\n• Zelle: Genuspupclub@gmail.com\n• CashApp: $m3lop3z\n• Apple Pay: (804) 258-3830\n\nThank you!\n— GenusPupClub' },
-        thank_you: { subject: 'Thank You for Choosing GenusPupClub!', body: 'Hi!\n\nThank you for trusting us with your pup! We loved every minute.\n\nIf you had a great experience, we\'d love a review — it helps other dog parents find us.\n\nSee you next time!\n— GenusPupClub' },
-        promo: { subject: 'Special Offer from GenusPupClub!', body: 'Hi!\n\nWe have a special offer just for you:\n\n[DESCRIBE YOUR OFFER HERE]\n\nBook now through your portal or call us at (804) 258-3830.\n\nLimited spots available!\n— GenusPupClub' }
+        visit_update: { subject: 'Visit Update — Your Pup is Having a Great Time!', body: 'Just wanted to send a quick update — your pup is having a wonderful time! They ate well, got plenty of exercise, and are in great spirits.\n\nWe\'ll send photos shortly!' },
+        booking_reminder: { subject: 'Reminder: Your Booking is Tomorrow!', body: 'Just a friendly reminder — your booking is tomorrow!\n\nPlease have your pup ready with their leash, food, and any medications.\n\nSee you soon!' },
+        checkout_ready: { subject: 'Your Pup is Ready for Pickup!', body: 'Your pup is all checked out and ready for pickup! Everything went great today.\n\nSee you next time!' },
+        payment_request: { subject: 'Payment Request — GenusPupClub', body: 'This is a friendly reminder about your outstanding balance.\n\nYou can pay via:\n• Venmo: @GenusPupClub\n• Zelle: Genuspupclub@gmail.com\n• CashApp: $m3lop3z\n• Apple Pay: (804) 258-3830' },
+        thank_you: { subject: 'Thank You for Choosing GenusPupClub!', body: 'Thank you for trusting us with your pup! We loved every minute.\n\nIf you had a great experience, we\'d love a review — it helps other dog parents find us.\n\nSee you next time!' },
+        promo: { subject: 'Special Offer from GenusPupClub!', body: 'We have a special offer just for you:\n\n[DESCRIBE YOUR OFFER HERE]\n\nBook now through your portal or call us at (804) 258-3830.\n\nLimited spots available!' }
     };
     const t = templates[type];
     if (t) {
@@ -2260,7 +2260,7 @@ const emailClientCreds = (userId) => {
     if (typeof GPC_NOTIFY !== 'undefined') {
         GPC_NOTIFY.sendDirectEmail(u.email, u.name,
             'Your GenusPupClub Login Credentials',
-            `Hi ${u.name}!\n\nHere are your GenusPupClub login details:\n\nEmail: ${u.email}\nPassword: ${u.plainPassword}\n\nLog in at your client portal anytime.\n\nIf you have questions, call us at (804) 258-3830.\n\n— GenusPupClub`
+            `Here are your GenusPupClub login details:\n\nEmail: ${u.email}\nPassword: ${u.plainPassword}\n\nLog in at your client portal anytime.\n\nIf you have questions, call us at (804) 258-3830.`
         );
     }
 };
@@ -2983,7 +2983,7 @@ const saveModal = (type) => {
         if (clientEmail && typeof GPC_NOTIFY !== 'undefined') {
             GPC_NOTIFY.sendDirectEmail(clientEmail, clientName,
                 'Welcome to GenusPupClub — Create Your Account',
-                `Hi ${clientName}!\n\nYou've been added to GenusPupClub — Richmond's #1 dog care service.\n\nCreate your free account to:\n• Book walks, daycare, sitting, and grooming\n• Get real-time photo updates of your pup\n• View report cards and invoices\n• Manage your pet profiles\n\nSign up here: ${window.location.origin}/login.html\n\nOr call us at (804) 258-3830 to book your first visit.\n\nWe can't wait to meet your pup!\n— GenusPupClub`
+                `You've been added to GenusPupClub — Richmond's #1 dog care service.\n\nCreate your free account to:\n• Book walks, daycare, sitting, and grooming\n• Get real-time photo updates of your pup\n• View report cards and invoices\n• Manage your pet profiles\n\nSign up here: ${window.location.origin}/login.html\n\nOr call us at (804) 258-3830 to book your first visit.\n\nWe can't wait to meet your pup!`
             );
             GPC_NOTIFY.showToast('Invite Sent', `Signup invite emailed to ${clientEmail}`, 'success');
         }
@@ -3055,7 +3055,7 @@ const saveModal = (type) => {
         if (sendCreds && typeof GPC_NOTIFY !== 'undefined') {
             GPC_NOTIFY.sendDirectEmail(email, name,
                 'Welcome to GenusPupClub — Your Login Credentials',
-                `Hi ${name}!\n\nWelcome to GenusPupClub! An account has been created for you.\n\nEmail: ${email}\nPassword: ${pass}\n\nLog in at your client portal to book services, manage your pets, and more.\n\nQuestions? Call us at (804) 258-3830.\n\n— GenusPupClub`
+                `Welcome to GenusPupClub! An account has been created for you.\n\nEmail: ${email}\nPassword: ${pass}\n\nLog in at your client portal to book services, manage your pets, and more.\n\nQuestions? Call us at (804) 258-3830.`
             );
         }
         if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Account Created', `${name} can now log in`, 'success');
@@ -3160,7 +3160,7 @@ const saveModal = (type) => {
             window.open(`sms:${cleanPhone}?body=${smsMsg}`, '_blank');
         }
         if ((photoSend === 'email' || photoSend === 'both') && photoEmail && typeof GPC_NOTIFY !== 'undefined') {
-            GPC_NOTIFY.sendDirectEmail(photoEmail, '', `📸 New Photo of ${photoPetName} — GenusPupClub`, `Hi!\n\nWe just took a photo of ${photoPetName} during their visit!\n\n${photoCaption}\n\nView all photos in your portal: genuspupclub.com/portal.html\n\n— GenusPupClub`);
+            GPC_NOTIFY.sendDirectEmail(photoEmail, '', `📸 New Photo of ${photoPetName} — GenusPupClub`, `We just took a photo of ${photoPetName} during their visit!\n\n${photoCaption}\n\nView all photos in your portal: genuspupclub.com/portal.html`);
         }
     } else if (type === 'message') {
         const toClientId = v('mTo');
