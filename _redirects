@@ -1,1 +1,12 @@
-/*    /index.html   200
+# Serve actual HTML files directly (no redirect)
+# Only fallback to index.html for unknown routes
+/index.html        /index.html        200
+/login.html        /login.html        200
+/portal.html       /portal.html       200
+/dashboard.html    /dashboard.html    200
+/admin-login.html  /admin-login.html  200
+/waiver.html       /waiver.html       200
+/report-card.html  /report-card.html  200
+/terms.html        /terms.html        200
+/privacy.html      /privacy.html      200
+/*                 /index.html        200

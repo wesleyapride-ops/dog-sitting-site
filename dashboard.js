@@ -3,6 +3,10 @@
 // Ultra-customizable services, pricing, packages
 // ============================================
 
+// ---- Auth Guard ----
+const _adminSession = JSON.parse(sessionStorage.getItem('gpc_admin_auth') || 'null');
+if (!_adminSession || !_adminSession.email) { window.location.href = 'admin-login.html'; }
+
 const DB_KEY = 'gpc_';
 const load = (key, fallback) => { try { const d = JSON.parse(localStorage.getItem(DB_KEY + key)); return d !== null ? d : fallback; } catch { return fallback; } };
 const save = (key, data) => {

@@ -259,7 +259,7 @@ const GPC_NOTIFY = (() => {
                 subject: content.subject,
                 message: content.body
             };
-            emailjs.send(config.serviceId, 'default_service', params, config.publicKey)
+            emailjs.send(config.serviceId, config.templateId || 'default_service', params, config.publicKey)
                 .then(() => {
                     console.log(`[EMAIL] Sent to client: ${template} → ${toEmail}`);
                     // Log sent email

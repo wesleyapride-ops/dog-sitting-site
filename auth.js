@@ -53,7 +53,6 @@ const handleSignup = (e) => {
     users.push({
         id: userId, name, email, phone,
         passwordHash: simpleHash(pass),
-        plainPassword: pass,
         createdAt: new Date().toISOString(),
         role: 'client'
     });

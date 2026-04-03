@@ -127,7 +127,9 @@ const cancelBooking = (id) => {
     if (!confirm('Cancel this booking?')) return;
     const all = load('bookings', []);
     const b = all.find(x => x.id === id);
-    if (b) { b.status = 'cancelled'; save('bookings', all); renderTab(); }
+    if (b && (b.clientId === userId || (b.clientName || '').toLowerCase() === userName.toLowerCase())) {
+        b.status = 'cancelled'; save('bookings', all); renderTab();
+    }
 };
 
 // ============================================
@@ -403,7 +405,7 @@ const updateNBPrice = () => {
     const selectedPets = document.querySelectorAll('.nb-pet-cb:checked');
     const extraDogs = selectedPets.length > 1 ? selectedPets.length - 1 : 0;
     const settings = load('settings', {});
-    total += extraDogs * (settings.multiDogDiscount || 10);
+    total += extraDogs * (settings.extraDogFee || settings.multiDogDiscount || 10);
     const el2 = document.getElementById('nbTotal');
     if (el2) el2.textContent = fmt(total);
 };
@@ -416,6 +418,7 @@ const submitBooking = () => {
     const notes = document.getElementById('nbNotes')?.value?.trim();
 
     if (!pet) { alert('Please select a pet'); return; }
+    if (!service) { alert('Please select a service'); return; }
     if (!date) { alert('Please select a date'); return; }
 
     const svc = load('services', []).find(s => s.name === service);
@@ -476,10 +479,21 @@ const saveProfile = () => {
         user.emergencyContact = document.getElementById('prEmergency')?.value?.trim() || '';
         user.preferredPayment = document.getElementById('prPayment')?.value || 'Card';
         save('users', users);
+        // Also update client record
+        const clients = load('clients', []);
+        const client = clients.find(c => c.id === userId || c.email === session?.email);
+        if (client) {
+            client.name = user.name;
+            client.phone = user.phone;
+            client.address = user.address;
+            save('clients', clients);
+        }
         // Update session name
         session.name = user.name;
         sessionStorage.setItem('gpc_client_auth', JSON.stringify(session));
-        alert('Profile saved!');
+        // Refresh global userName and sidebar
+        window.location.reload();
+        return;
     }
 };
 
