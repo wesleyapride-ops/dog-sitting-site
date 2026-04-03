@@ -286,16 +286,20 @@ const GPC_SUPABASE = (() => {
 
 // Auto-init on load
 document.addEventListener('DOMContentLoaded', async () => {
+    // Loading bar
+    const loader = document.createElement('div');
+    loader.id = 'gpc-sync-loader';
+    loader.style.cssText = 'position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#FF6B35,#00B894,#FF6B35);background-size:200%;animation:gpcLoad 1s ease infinite;z-index:99999;transition:opacity .3s;';
+    if (!document.getElementById('gpc-load-css')) { const s = document.createElement('style'); s.id = 'gpc-load-css'; s.textContent = '@keyframes gpcLoad{0%{background-position:200% 0}100%{background-position:-200% 0}}'; document.head.appendChild(s); }
+    document.body.appendChild(loader);
+
     if (GPC_SUPABASE.init()) {
-        // Start realtime sync — when ANY device saves, this device updates instantly
         GPC_SUPABASE.startRealtime((key, value) => {
             if (typeof renderTab === 'function') renderTab();
             if (typeof renderDynamicPricing === 'function') renderDynamicPricing();
             if (typeof renderFooterServices === 'function') renderFooterServices();
         });
 
-        // On page load: pull ALL cloud data → overwrite local
-        // Cloud is the single source of truth — deletions, edits, everything syncs
         try {
             const result = await GPC_SUPABASE.pullAll();
             if (result.success && result.pulled > 0) {
@@ -305,7 +309,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (typeof renderFooterServices === 'function') renderFooterServices();
             }
         } catch (err) {
-            console.warn('[SYNC] Pull failed:', err);
+            console.warn('[SYNC] Pull failed — using local data:', err);
         }
     }
+
+    // Hide loader
+    loader.style.opacity = '0';
+    setTimeout(() => loader.remove(), 300);
 });

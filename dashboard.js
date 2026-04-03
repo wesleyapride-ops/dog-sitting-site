@@ -194,6 +194,7 @@ const renderOverview = () => {
                 <button class="btn btn-sm btn-ghost" onclick="showModal('manual_payment')">+ Record Payment</button>
                 <a href="waiver.html" target="_blank" class="btn btn-sm btn-ghost" style="text-decoration:none">Send Waiver</a>
                 <button class="btn btn-sm btn-ghost" onclick="showModal('recurring')">+ Recurring Booking</button>
+                <button class="btn btn-sm btn-ghost" onclick="sendTomorrowReminders()">📧 Send Tomorrow's Reminders</button>
             </div>
         </div>
         <div class="card">
@@ -934,6 +935,7 @@ const renderCheckIn = () => {
                             <div style="font-size:.82rem;color:var(--text-light)">Service: ${escHTML(c.service)}</div>
                         </div>
                         <button class="btn btn-success btn-sm" onclick="checkOutDog('${c.id}')">Check Out</button>
+                        <button class="btn btn-ghost btn-sm" onclick="sendReportCardEmail('${c.id}')" style="margin-left:4px">📧 Report Card</button>
                     </div>
                     <div style="margin-top:8px">
                         <div style="font-size:.82rem;font-weight:600;margin-bottom:4px">Drop-off Checklist:</div>
@@ -2954,14 +2956,143 @@ const saveCompletionFlow = (bookingId) => {
         save('reviews', allReviews);
     }
 
-    // Notify
+    // Generate and send invoice
+    const days = calcDays(booking.date, booking.endDate);
+    const extraDogFee = (booking.extraDogs || 0) * (businessSettings.multiDogDiscount || 10) * days;
+    const addonTotal = (booking.addons || []).reduce((s, aName) => { const a = addons.find(x => x.name === aName); return s + (a?.price || 0); }, 0);
+    const zoneSurcharge = booking.zone ? (zones.find(z => z.name === booking.zone)?.surcharge || 0) : 0;
+    const total = (amt * days) + extraDogFee + addonTotal + zoneSurcharge;
+
+    const lineItems = [
+        `${booking.service}: ${fmt(amt)}${days > 1 ? ` × ${days} days = ${fmt(amt * days)}` : ''}`,
+        booking.extraDogs > 0 ? `Extra dogs (${booking.extraDogs}): ${fmt(extraDogFee)}` : null,
+        addonTotal > 0 ? `Add-ons: ${fmt(addonTotal)}` : null,
+        zoneSurcharge > 0 ? `Zone surcharge: ${fmt(zoneSurcharge)}` : null,
+        tip > 0 ? `Tip: ${fmt(tip)}` : null
+    ].filter(Boolean).join('\n');
+
+    const invoiceId = 'INV-' + Date.now().toString(36).toUpperCase();
+
+    // Save invoice
+    const invoices = load('invoices', []);
+    invoices.push({
+        id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName,
+        clientEmail: booking.clientEmail || '', petName: booking.petName,
+        service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate,
+        days, baseRate: amt, extraDogs: booking.extraDogs || 0, extraDogFee,
+        addons: booking.addons, addonTotal, zoneSurcharge, tip,
+        subtotal: total, total: total + tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending'
+    });
+    save('invoices', invoices);
+
+    // Notify + send invoice email
     if (typeof GPC_NOTIFY !== 'undefined') {
-        GPC_NOTIFY.onPaymentReceived({ ...booking, amount: amt, tip, method, clientName: booking.clientName });
+        GPC_NOTIFY.onPaymentReceived({ ...booking, amount: total, tip, method, clientName: booking.clientName });
+        GPC_NOTIFY.sendEmail('invoice', {
+            clientName: booking.clientName, clientEmail: booking.clientEmail, clientId: booking.clientId,
+            invoiceId, date: todayStr(), service: booking.service, petName: booking.petName,
+            days, startDate: booking.date, endDate: booking.endDate || booking.date,
+            lineItems, total: total + tip
+        });
         if (reviewText) GPC_NOTIFY.showToast('New Review', `${rating}★ from ${booking.clientName}`, 'success');
     }
 
     closeModal();
     renderTab();
+};
+
+// ============================================
+// AUTOMATED REMINDERS
+// ============================================
+const sendTomorrowReminders = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowBookings = bookings.filter(b => b.date === tomorrowStr && b.status === 'confirmed');
+
+    if (tomorrowBookings.length === 0) {
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('No Reminders', 'No confirmed bookings for tomorrow', 'info');
+        return;
+    }
+
+    let sent = 0;
+    tomorrowBookings.forEach(b => {
+        if (!b.clientEmail && b.clientId) {
+            const c = clients.find(x => x.id === b.clientId);
+            if (c) b.clientEmail = c.email;
+        }
+        if (!b.clientEmail && b.clientName) {
+            const c = clients.find(x => x.name === b.clientName);
+            if (c) b.clientEmail = c.email;
+        }
+        if (typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendEmail('reminder', {
+                clientName: b.clientName, clientEmail: b.clientEmail, clientId: b.clientId,
+                petName: b.petName, service: b.service, date: b.date, time: b.time,
+                dropoffTime: b.dropoffTime, pickupTime: b.pickupTime
+            });
+            GPC_NOTIFY.notify('reminder', 'Reminder Sent', `Reminder sent to ${b.clientName} for ${b.service} tomorrow`, 'admin');
+            sent++;
+        }
+    });
+    save('bookings', bookings);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Reminders Sent', `${sent} reminder(s) sent for tomorrow's bookings`, 'success');
+};
+
+// ============================================
+// REPORT CARD EMAIL
+// ============================================
+const sendReportCardEmail = (checkinId) => {
+    const c = checkins.find(x => x.id === checkinId);
+    if (!c) return;
+    const client = clients.find(x => x.name === c.ownerName) || {};
+    const details = [
+        `Behavior: ${c.behavior || 'Great'}`,
+        `Energy Level: ${c.energy || 'Normal'}`,
+        `Appetite: ${c.appetite || 'Good'}`,
+        `Mood: ${c.mood || 'Happy'}`,
+        c.exercise ? `Exercise: ${c.exercise}` : null,
+        c.specialInstructions ? `Special Instructions Followed: Yes` : null
+    ].filter(Boolean).join('\n');
+
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.sendEmail('report_card', {
+            clientName: c.ownerName, clientEmail: client.email, clientId: client.id,
+            petName: c.petName, service: c.service, date: c.checkInDate,
+            reportDetails: details, overallRating: '⭐⭐⭐⭐⭐',
+            notes: c.ownerNotes || ''
+        });
+        GPC_NOTIFY.showToast('Report Card Sent', `Emailed to ${c.ownerName}`, 'success');
+    }
+};
+
+// ============================================
+// WAITLIST
+// ============================================
+const checkWaitlist = (date) => {
+    const maxPerDay = businessSettings.maxBookingsPerDay || 8;
+    const dayBookings = bookings.filter(b => b.date === date && b.status !== 'cancelled');
+    return dayBookings.length >= maxPerDay;
+};
+
+const addToWaitlist = (clientName, clientEmail, service, date, petName) => {
+    const waitlist = load('waitlist', []);
+    waitlist.push({ id: uid(), clientName, clientEmail, service, date, petName, addedAt: todayStr(), notified: false });
+    save('waitlist', waitlist);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Waitlisted', `${clientName} added to waitlist for ${date}`, 'info');
+};
+
+const notifyWaitlist = (date) => {
+    const waitlist = load('waitlist', []);
+    const waiting = waitlist.filter(w => w.date === date && !w.notified);
+    waiting.forEach(w => {
+        if (typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendEmail('waitlist', { clientName: w.clientName, clientEmail: w.clientEmail, date: w.date, service: w.service });
+            w.notified = true;
+        }
+    });
+    save('waitlist', waitlist);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Waitlist Notified', `${waiting.length} people notified about ${date}`, 'success');
 };
 const deleteItem = (col, id) => { if (!confirm('Delete?')) return; const map = { bookings, clients, pets, reviews, sitters, messages }; map[col] = map[col].filter(x => x.id !== id); if (col === 'bookings') bookings = map[col]; else if (col === 'clients') clients = map[col]; else if (col === 'pets') pets = map[col]; else if (col === 'reviews') reviews = map[col]; else if (col === 'sitters') sitters = map[col]; save(col, map[col]); renderTab(); };
 const editClient = (id) => {

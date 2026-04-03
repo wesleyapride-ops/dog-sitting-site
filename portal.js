@@ -63,7 +63,7 @@ document.getElementById('menuToggle')?.addEventListener('click', () => document.
 
 const renderTab = () => {
     refreshData();
-    const views = { dashboard: renderDashboard, mybookings: renderMyBookings, mypets: renderMyPets, payments: renderPayments, loyalty: renderMyLoyalty, mymessages: renderMyMessages, newbooking: renderNewBooking, profile: renderProfile };
+    const views = { dashboard: renderDashboard, mybookings: renderMyBookings, mypets: renderMyPets, payments: renderPayments, loyalty: renderMyLoyalty, mymessages: renderMyMessages, newbooking: renderNewBooking, reviews: renderMyReviews, profile: renderProfile };
     (views[activeTab] || renderDashboard)();
 };
 
@@ -90,7 +90,7 @@ const renderDashboard = () => {
                 <div class="card-header"><span class="card-title">Upcoming</span></div>
                 ${upcoming.length ? upcoming.slice(0, 5).map(b => `
                     <div class="schedule-item"><div class="schedule-time">${b.date}<br>${b.time || ''}</div>
-                    <div class="schedule-info"><h4>${esc(b.petName)} — ${esc(b.service)}</h4><p><span class="badge badge-${b.status}">${b.status}</span> ${fmt(b.amount)}</p></div></div>
+                    <div class="schedule-info"><h4>${esc(b.petName)} — ${esc(b.service)}</h4><p><span class="badge badge-${b.status}">${b.status === 'pending' ? 'Awaiting Approval' : b.status}</span> ${fmt(b.amount)}</p></div></div>
                 `).join('') : '<div class="empty"><p>No upcoming bookings. <a href="#" onclick="document.querySelector(\'[data-tab=newbooking]\').click()">Book now</a></p></div>'}
             </div>
             <div class="card">
@@ -115,7 +115,7 @@ const renderMyBookings = () => {
                 <thead><tr><th>Date</th><th>Time</th><th>Pet</th><th>Service</th><th>Amount</th><th>Status</th><th></th></tr></thead>
                 <tbody>${sorted.map(b => `<tr>
                     <td>${b.date}</td><td>${b.time || '—'}</td><td>${esc(b.petName)}</td><td>${esc(b.service)}</td>
-                    <td>${fmt(b.amount)}</td><td><span class="badge badge-${b.status}">${b.status}</span></td>
+                    <td>${fmt(b.amount)}</td><td><span class="badge badge-${b.status}">${b.status === 'pending' ? 'Awaiting Approval' : b.status}</span></td>
                     <td>${b.status === 'pending' ? `<button class="btn btn-ghost btn-sm" onclick="cancelBooking('${b.id}')">Cancel</button>` : ''}</td>
                 </tr>`).join('')}</tbody>
             </table></div>` : '<div class="empty"><p>No bookings yet</p></div>'}
@@ -367,12 +367,15 @@ const renderNewBooking = () => {
             </select></div>
             <div class="form-group"><label class="form-label">Add-ons</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${addons.map(a => `<label style="display:flex;gap:6px;align-items:center;font-size:.88rem;cursor:pointer"><input type="checkbox" class="nb-addon" value="${esc(a.name)}" data-price="${a.price}"> ${esc(a.name)} ${a.price > 0 ? fmt(a.price) : '(free)'}</label>`).join('')}</div></div>
             <div class="form-row">
-                <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="nbDate" value="${todayStr()}"></div>
+                <div class="form-group"><label class="form-label">Start Date</label><input class="form-input" type="date" id="nbDate" value="${todayStr()}" onchange="updateNBPrice()"></div>
+                <div class="form-group"><label class="form-label">End Date (multi-day)</label><input class="form-input" type="date" id="nbEndDate" onchange="updateNBPrice()"></div>
+            </div>
+            <div class="form-row">
                 <div class="form-group"><label class="form-label">Preferred Time</label><select class="form-select" id="nbTime"><option>8:00 AM</option><option>9:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>12:00 PM</option><option>1:00 PM</option><option>2:00 PM</option><option>3:00 PM</option><option>4:00 PM</option><option>5:00 PM</option></select></div>
             </div>
             <div class="form-row">
-                <div class="form-group"><label class="form-label">Drop-Off Time</label><input class="form-input" type="time" id="nbDropoff"></div>
-                <div class="form-group"><label class="form-label">Pick-Up Time</label><input class="form-input" type="time" id="nbPickup"></div>
+                <div class="form-group"><label class="form-label">Drop-Off Date & Time</label><input class="form-input" type="datetime-local" id="nbDropoff"></div>
+                <div class="form-group"><label class="form-label">Pick-Up Date & Time</label><input class="form-input" type="datetime-local" id="nbPickup"></div>
             </div>
             <div class="form-group"><label class="form-label">Need Transport?</label><select class="form-select" id="nbTransport" onchange="document.getElementById('nbTransportAddr').style.display=this.value&&this.value!=='none'?'grid':'none'"><option value="none">No — I'll handle drop-off/pick-up</option><option value="pickup">Pickup from my house</option><option value="dropoff">Dropoff to my house</option><option value="roundtrip">Round trip</option></select></div>
             <div class="form-row" id="nbTransportAddr" style="display:none"><div class="form-group"><label class="form-label">Pickup Address</label><input class="form-input" id="nbPickupAddr"></div><div class="form-group"><label class="form-label">Dropoff Address</label><input class="form-input" id="nbDropoffAddr"></div></div>
@@ -397,17 +400,28 @@ const renderNewBooking = () => {
     });
 };
 
+const calcPortalDays = (start, end) => {
+    if (!start || !end) return 1;
+    const diff = Math.round((new Date(end + 'T00:00:00') - new Date(start + 'T00:00:00')) / 86400000);
+    return diff > 0 ? diff : 1;
+};
+
 const updateNBPrice = () => {
     const svc = document.getElementById('nbService');
-    let total = parseFloat(svc?.selectedOptions?.[0]?.dataset?.price) || 0;
-    document.querySelectorAll('.nb-addon:checked').forEach(cb => total += parseFloat(cb.dataset.price) || 0);
+    const baseRate = parseFloat(svc?.selectedOptions?.[0]?.dataset?.price) || 0;
+    const startDate = document.getElementById('nbDate')?.value || '';
+    const endDate = document.getElementById('nbEndDate')?.value || '';
+    const days = calcPortalDays(startDate, endDate);
     // Extra dogs pricing
     const selectedPets = document.querySelectorAll('.nb-pet-cb:checked');
     const extraDogs = selectedPets.length > 1 ? selectedPets.length - 1 : 0;
     const settings = load('settings', {});
-    total += extraDogs * (settings.extraDogFee || settings.multiDogDiscount || 10);
+    const extraDogFee = settings.extraDogFee || settings.multiDogDiscount || 10;
+    let total = baseRate * days;
+    total += extraDogs * extraDogFee * days;
+    document.querySelectorAll('.nb-addon:checked').forEach(cb => total += parseFloat(cb.dataset.price) || 0);
     const el2 = document.getElementById('nbTotal');
-    if (el2) el2.textContent = fmt(total);
+    if (el2) el2.textContent = `${fmt(total)}${days > 1 ? ` (${days} days)` : ''}`;
 };
 
 const submitBooking = () => {
@@ -430,12 +444,15 @@ const submitBooking = () => {
     const pickupAddr = document.getElementById('nbPickupAddr')?.value?.trim() || '';
     const dropoffAddr = document.getElementById('nbDropoffAddr')?.value?.trim() || '';
 
+    const endDate = document.getElementById('nbEndDate')?.value || '';
+
     const bookings = load('bookings', []);
     bookings.push({
         id: uid(), clientId: userId, clientName: userName, petName: pet,
+        clientEmail: session?.email || '',
         service, amount: svc?.price || 0, addons: selectedAddons, extraDogs,
         numDogs: petNames.length, dropoffTime, pickupTime, pickupAddr, dropoffAddr,
-        date, time, zone: '', sitter: '', notes, status: 'pending', source: 'portal'
+        date, endDate, time, zone: '', sitter: '', notes, status: 'pending', source: 'portal'
     });
     save('bookings', bookings);
 
@@ -454,6 +471,10 @@ const renderProfile = () => {
     el.innerHTML = `
         <div class="card">
             <div class="card-title" style="margin-bottom:16px">My Profile</div>
+            <div class="form-group" style="text-align:center;margin-bottom:16px">
+                ${user.photo ? `<img src="${user.photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block;margin:0 auto 8px">` : `<div style="width:80px;height:80px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin:0 auto 8px">${(user.name || '?').charAt(0)}</div>`}
+                <label class="btn btn-sm btn-ghost" style="cursor:pointer"><input type="file" accept="image/*" style="display:none" onchange="uploadProfilePhoto(this)"> Change Photo</label>
+            </div>
             <div class="form-row">
                 <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="prName" value="${esc(user.name || userName)}"></div>
                 <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="prEmail" value="${esc(user.email || '')}" disabled></div>
@@ -506,6 +527,105 @@ const renderMyLoyalty = () => {
     } else {
         el.innerHTML = '<div class="card"><div class="empty"><p>Rewards coming soon!</p></div></div>';
     }
+};
+
+// ============================================
+// CLIENT REVIEWS
+// ============================================
+const renderMyReviews = () => {
+    const allReviews = load('reviews', []);
+    const myReviews = allReviews.filter(r => r.clientId === userId || (r.name || '').toLowerCase() === userName.toLowerCase());
+    const completedBookings = myBookings.filter(b => b.status === 'completed');
+
+    el.innerHTML = `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><span class="card-title">Leave a Review</span></div>
+            <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:12px">Tell us about your experience!</p>
+            <div class="form-group"><label class="form-label">Which visit?</label><select class="form-select" id="rvBooking">
+                <option value="">General review</option>
+                ${completedBookings.map(b => `<option value="${b.id}">${esc(b.service)} — ${esc(b.petName)} (${b.date})</option>`).join('')}
+            </select></div>
+            <div class="form-group"><label class="form-label">Rating</label>
+                <div id="rvStars" style="display:flex;gap:4px;font-size:2rem;cursor:pointer">
+                    ${[1,2,3,4,5].map(i => `<span data-star="${i}" onclick="setRating(${i})" style="color:#ddd;transition:color .2s">★</span>`).join('')}
+                </div>
+                <input type="hidden" id="rvRating" value="5">
+            </div>
+            <div class="form-group"><label class="form-label">Your review</label><textarea class="form-textarea" id="rvText" rows="3" placeholder="What did you love? How was your pup treated?"></textarea></div>
+            <button class="btn btn-primary" onclick="submitReview()">Submit Review</button>
+        </div>
+        ${myReviews.length ? `<div class="card">
+            <div class="card-title" style="margin-bottom:12px">Your Reviews (${myReviews.length})</div>
+            ${myReviews.map(r => `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+                <div style="color:#FDCB6E;font-size:1.1rem;letter-spacing:2px">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</div>
+                <p style="font-size:.9rem;margin-top:4px">"${esc(r.text)}"</p>
+                <span style="font-size:.78rem;color:var(--text-muted)">${r.date || ''} — ${esc(r.service || 'General')}</span>
+            </div>`).join('')}
+        </div>` : ''}
+    `;
+    // Set initial rating to 5
+    setRating(5);
+};
+
+window.setRating = (n) => {
+    document.getElementById('rvRating').value = n;
+    document.querySelectorAll('#rvStars span').forEach((s, i) => {
+        s.style.color = i < n ? '#FDCB6E' : '#ddd';
+    });
+};
+
+const submitReview = () => {
+    const text = document.getElementById('rvText')?.value?.trim();
+    const rating = parseInt(document.getElementById('rvRating')?.value) || 5;
+    const bookingId = document.getElementById('rvBooking')?.value;
+    if (!text) { alert('Please write a review'); return; }
+
+    const booking = bookingId ? myBookings.find(b => b.id === bookingId) : null;
+    const reviews = load('reviews', []);
+    reviews.push({
+        id: uid(), clientId: userId, name: userName,
+        pet: booking?.petName || (myPets[0]?.name || ''),
+        stars: rating, text, service: booking?.service || 'General',
+        date: todayStr()
+    });
+    save('reviews', reviews);
+    alert('Thank you for your review!');
+    renderTab();
+};
+
+// ============================================
+// PROFILE PHOTO UPLOAD
+// ============================================
+const uploadProfilePhoto = (input) => {
+    if (!input.files?.[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200; canvas.height = 200;
+            const ctx = canvas.getContext('2d');
+            const scale = Math.max(200 / img.width, 200 / img.height);
+            ctx.drawImage(img, (200 - img.width * scale) / 2, (200 - img.height * scale) / 2, img.width * scale, img.height * scale);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            // Save to user record
+            const users = load('users', []);
+            const user = users.find(u => u.id === userId);
+            if (user) { user.photo = dataUrl; save('users', users); }
+            // Save to client record
+            const clients = load('clients', []);
+            const client = clients.find(c => c.id === userId || c.email === session?.email);
+            if (client) { client.photo = dataUrl; save('clients', clients); }
+            // Update sidebar
+            const welcome = document.getElementById('portalWelcome');
+            if (welcome) {
+                welcome.innerHTML = `<div style="text-align:center"><img src="${dataUrl}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin-bottom:8px"><h3 style="color:#fff;font-size:1rem">${esc(userName)}</h3><p>Client Portal</p></div>`;
+            }
+            alert('Profile photo updated!');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
 };
 
 // Init

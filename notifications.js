@@ -212,6 +212,22 @@ const GPC_NOTIFY = (() => {
         password_reset: (data) => ({
             subject: `Your GenusPupClub Password Has Been Reset`,
             body: `Hi ${data.name || 'there'}!\n\nYour password has been reset by our team.\n\nNew Password: ${data.newPassword || '(contact us)'}\n\nPlease log in and change it to something you'll remember.\n\nIf you didn't request this, contact us immediately at (804) 258-3830.\n\n— GenusPupClub`
+        }),
+        invoice: (data) => ({
+            subject: `Invoice from GenusPupClub — ${data.invoiceId || ''}`,
+            body: `Hi ${data.clientName || 'there'}!\n\nHere's your invoice from GenusPupClub:\n\n${'═'.repeat(40)}\nINVOICE #${data.invoiceId || ''}\nDate: ${data.date || ''}\n${'═'.repeat(40)}\n\nService: ${data.service || ''}\nPet: ${data.petName || ''}\n${data.days > 1 ? `Dates: ${data.startDate} → ${data.endDate} (${data.days} days)\n` : `Date: ${data.startDate || data.date}\n`}\n${data.lineItems || ''}\n${'─'.repeat(40)}\nTOTAL: $${Number(data.total || 0).toFixed(2)}\n${'═'.repeat(40)}\n\nPayment Methods:\n• Venmo: @GenusPupClub\n• Zelle: Genuspupclub@gmail.com\n• CashApp: $m3lop3z\n• Apple Pay: (804) 258-3830\n\nThank you for choosing GenusPupClub!\n— GenusPupClub\n(804) 258-3830`
+        }),
+        reminder: (data) => ({
+            subject: `Reminder: ${data.petName || 'Your Pup'}'s ${data.service || 'Visit'} Tomorrow!`,
+            body: `Hi ${data.clientName || 'there'}!\n\nJust a friendly reminder — ${data.petName || 'your pup'}'s ${data.service || 'visit'} is tomorrow!\n\nDate: ${data.date || ''}\nTime: ${data.time || 'TBD'}\n${data.dropoffTime ? 'Drop-off: ' + data.dropoffTime + '\n' : ''}${data.pickupTime ? 'Pick-up: ' + data.pickupTime + '\n' : ''}\nPlease have your pup ready with:\n• Leash and collar\n• Food and medications (if applicable)\n• Any special instructions\n\nNeed to reschedule? Call us at (804) 258-3830 or reply to this email.\n\nSee you tomorrow!\n— GenusPupClub`
+        }),
+        report_card: (data) => ({
+            subject: `${data.petName || 'Your Pup'}'s Report Card — ${data.date || ''}`,
+            body: `Hi ${data.clientName || 'there'}!\n\nHere's ${data.petName || 'your pup'}'s report card from today:\n\n🐕 ${data.petName || ''}\n📅 ${data.date || ''}\n🎯 Service: ${data.service || ''}\n\n${data.reportDetails || ''}\n\nOverall: ${data.overallRating || '⭐⭐⭐⭐⭐'}\n\n${data.notes ? 'Notes: ' + data.notes + '\n\n' : ''}Thank you for trusting us with ${data.petName || 'your pup'}!\n\n— GenusPupClub`
+        }),
+        waitlist: (data) => ({
+            subject: `Spot Available! — ${data.date || ''}`,
+            body: `Hi ${data.clientName || 'there'}!\n\nGreat news — a spot has opened up on ${data.date || 'the date you requested'}!\n\nYou were on our waitlist, and we wanted to give you first dibs.\n\nService: ${data.service || 'Your requested service'}\nDate: ${data.date || ''}\n\nBook now through your portal or call us at (804) 258-3830 to confirm.\n\nSpots fill fast — don't miss out!\n— GenusPupClub`
         })
     };
 
