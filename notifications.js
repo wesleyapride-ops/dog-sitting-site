@@ -193,47 +193,47 @@ const GPC_NOTIFY = (() => {
     const EMAIL_TEMPLATES = {
         booking_confirmation: (data) => ({
             subject: `Booking Received — ${data.petName || 'Your Pup'}`,
-            body: `Hi ${data.clientName || 'there'}!\n\nWe've received your booking request:\n\nService: ${data.service || '—'}\nPet: ${data.petName || '—'}\nDate: ${data.date || 'TBD'}\nTime: ${data.time || 'TBD'}\n\nWe'll confirm within 2 hours and reach out to schedule a meet & greet if this is your first visit.\n\nThanks for choosing GenusPupClub!\n— The GenusPupClub Team\n(804) 258-3830 | Genuspupclub@gmail.com`
+            body: `We've received your booking request:\n\nService: ${data.service || '—'}\nPet: ${data.petName || '—'}\nDate: ${data.date || 'TBD'}\nTime: ${data.time || 'TBD'}\n\nWe'll confirm within 2 hours and reach out to schedule a meet & greet if this is your first visit.\n\n(804) 258-3830 | Genuspupclub@gmail.com`
         }),
         booking_confirmed: (data) => ({
             subject: `Confirmed! ${data.petName || 'Your Pup'}'s ${data.service || 'Visit'} on ${data.date || ''}`,
-            body: `Hi ${data.clientName || 'there'}!\n\nGreat news — your booking is confirmed!\n\nService: ${data.service || '—'}\nPet: ${data.petName || '—'}\nDate: ${data.date || ''}\nTime: ${data.time || ''}\n\nReminders:\n• Have your pup ready with leash, food, and medications\n• We'll send photo updates during the visit\n• Cancel 24+ hrs in advance for a full refund\n\nSee you soon!\n— GenusPupClub`
+            body: `Great news — your booking is confirmed!\n\nService: ${data.service || '—'}\nPet: ${data.petName || '—'}\nDate: ${data.date || ''}\nTime: ${data.time || ''}\n\nReminders:\n• Have your pup ready with leash, food, and medications\n• We'll send photo updates during the visit\n• Cancel 24+ hrs in advance for a full refund\n\nSee you soon!`
         }),
         visit_complete: (data) => ({
             subject: `Visit Complete — ${data.petName || 'Your Pup'} Had a Great Time!`,
-            body: `Hi ${data.clientName || 'there'}!\n\n${data.petName || 'Your pup'}'s ${data.service || 'visit'} is all wrapped up!\n\nCheck your portal for photos, a report card, and your invoice.\n\nAmount: ${data.amount ? '$' + Number(data.amount).toFixed(2) : 'See invoice'}\n\nThank you for trusting us with ${data.petName || 'your pup'}. We loved every minute!\n\n— GenusPupClub`
+            body: `${data.petName || 'Your pup'}'s ${data.service || 'visit'} is all wrapped up!\n\nCheck your portal for photos, a report card, and your invoice.\n\nAmount: ${data.amount ? '$' + Number(data.amount).toFixed(2) : 'See invoice'}\n\nWe loved every minute with ${data.petName || 'your pup'}!`
         }),
         payment_receipt: (data) => ({
             subject: `Payment Received — $${Number(data.amount || 0).toFixed(2)}`,
-            body: `Hi ${data.clientName || 'there'}!\n\nWe've received your payment:\n\nAmount: $${Number(data.amount || 0).toFixed(2)}${data.tip > 0 ? '\nTip: $' + Number(data.tip).toFixed(2) + ' (Thank you!)' : ''}\nMethod: ${data.method || '—'}\nDate: ${data.date || new Date().toISOString().split('T')[0]}\n\nThank you for your payment!\n\n— GenusPupClub`
+            body: `We've received your payment:\n\nAmount: $${Number(data.amount || 0).toFixed(2)}${data.tip > 0 ? '\nTip: $' + Number(data.tip).toFixed(2) + ' (Thank you!)' : ''}\nMethod: ${data.method || '—'}\nDate: ${data.date || new Date().toISOString().split('T')[0]}`
         }),
         message: (data) => ({
             subject: `Message from GenusPupClub${data.pet ? ' — re: ' + data.pet : ''}`,
-            body: `Hi ${data.to || 'there'}!\n\n${data.text || data.message || ''}\n\n— GenusPupClub\n(804) 258-3830 | Genuspupclub@gmail.com`
+            body: `${data.text || data.message || ''}\n\n(804) 258-3830 | Genuspupclub@gmail.com`
         }),
         welcome: (data) => ({
             subject: `Welcome to GenusPupClub, ${data.name || ''}!`,
-            body: `Hi ${data.name || 'there'}!\n\nWelcome to GenusPupClub — Richmond's #1 dog sitting service!\n\nYour account is all set up. Here's what you can do:\n• Book visits, walks, daycare, and more\n• Track your pup with real-time photo updates\n• Manage your pets and view report cards\n• Pay securely via Venmo, Zelle, CashApp, or Apple Pay\n\nLog in anytime at your portal.\n\nQuestions? Reply to this email or call us at (804) 258-3830.\n\n— The GenusPupClub Team`
+            body: `Welcome to GenusPupClub — Richmond's #1 dog care service!\n\nYour account is all set up. Here's what you can do:\n• Book walks, daycare, sitting, and grooming\n• Get real-time photo updates of your pup\n• View report cards and invoices\n• Manage your pet profiles\n\nSign up here: https://genuspupclub.com/login.html\n\nOr call us at (804) 258-3830 to book your first visit.\n\nWe can't wait to meet your pup!`
         }),
         password_reset: (data) => ({
             subject: `Your GenusPupClub Password Has Been Reset`,
-            body: `Hi ${data.name || 'there'}!\n\nYour password has been reset by our team.\n\nNew Password: ${data.newPassword || '(contact us)'}\n\nPlease log in and change it to something you'll remember.\n\nIf you didn't request this, contact us immediately at (804) 258-3830.\n\n— GenusPupClub`
+            body: `Your password has been reset by our team.\n\nNew Password: ${data.newPassword || '(contact us)'}\n\nPlease log in and change it to something you'll remember.\n\nIf you didn't request this, contact us immediately at (804) 258-3830.`
         }),
         invoice: (data) => ({
             subject: `Invoice from GenusPupClub — ${data.invoiceId || ''}`,
-            body: `Hi ${data.clientName || 'there'}!\n\nHere's your invoice from GenusPupClub:\n\n${'═'.repeat(40)}\nINVOICE #${data.invoiceId || ''}\nDate: ${data.date || ''}\n${'═'.repeat(40)}\n\nService: ${data.service || ''}\nPet: ${data.petName || ''}\n${data.days > 1 ? `Dates: ${data.startDate} → ${data.endDate} (${data.days} days)\n` : `Date: ${data.startDate || data.date}\n`}\n${data.lineItems || ''}\n${'─'.repeat(40)}\nTOTAL: $${Number(data.total || 0).toFixed(2)}\n${'═'.repeat(40)}\n\nPayment Methods:\n• Venmo: @GenusPupClub\n• Zelle: Genuspupclub@gmail.com\n• CashApp: $m3lop3z\n• Apple Pay: (804) 258-3830\n\nThank you for choosing GenusPupClub!\n— GenusPupClub\n(804) 258-3830`
+            body: `Here's your invoice from GenusPupClub:\n\n${'═'.repeat(40)}\nINVOICE #${data.invoiceId || ''}\nDate: ${data.date || ''}\n${'═'.repeat(40)}\n\nService: ${data.service || ''}\nPet: ${data.petName || ''}\n${data.days > 1 ? `Dates: ${data.startDate} → ${data.endDate} (${data.days} days)\n` : `Date: ${data.startDate || data.date}\n`}\n${data.lineItems || ''}\n${'─'.repeat(40)}\nTOTAL: $${Number(data.total || 0).toFixed(2)}\n${'═'.repeat(40)}\n\nPayment Methods:\n• Venmo: @GenusPupClub\n• Zelle: Genuspupclub@gmail.com\n• CashApp: $m3lop3z\n• Apple Pay: (804) 258-3830`
         }),
         reminder: (data) => ({
             subject: `Reminder: ${data.petName || 'Your Pup'}'s ${data.service || 'Visit'} Tomorrow!`,
-            body: `Hi ${data.clientName || 'there'}!\n\nJust a friendly reminder — ${data.petName || 'your pup'}'s ${data.service || 'visit'} is tomorrow!\n\nDate: ${data.date || ''}\nTime: ${data.time || 'TBD'}\n${data.dropoffTime ? 'Drop-off: ' + data.dropoffTime + '\n' : ''}${data.pickupTime ? 'Pick-up: ' + data.pickupTime + '\n' : ''}\nPlease have your pup ready with:\n• Leash and collar\n• Food and medications (if applicable)\n• Any special instructions\n\nNeed to reschedule? Call us at (804) 258-3830 or reply to this email.\n\nSee you tomorrow!\n— GenusPupClub`
+            body: `Just a friendly reminder — ${data.petName || 'your pup'}'s ${data.service || 'visit'} is tomorrow!\n\nDate: ${data.date || ''}\nTime: ${data.time || 'TBD'}\n${data.dropoffTime ? 'Drop-off: ' + data.dropoffTime + '\n' : ''}${data.pickupTime ? 'Pick-up: ' + data.pickupTime + '\n' : ''}\nPlease have your pup ready with:\n• Leash and collar\n• Food and medications (if applicable)\n• Any special instructions\n\nNeed to reschedule? Call us at (804) 258-3830 or reply to this email.\n\nSee you tomorrow!`
         }),
         report_card: (data) => ({
             subject: `${data.petName || 'Your Pup'}'s Report Card — ${data.date || ''}`,
-            body: `Hi ${data.clientName || 'there'}!\n\nHere's ${data.petName || 'your pup'}'s report card from today:\n\n🐕 ${data.petName || ''}\n📅 ${data.date || ''}\n🎯 Service: ${data.service || ''}\n\n${data.reportDetails || ''}\n\nOverall: ${data.overallRating || '⭐⭐⭐⭐⭐'}\n\n${data.notes ? 'Notes: ' + data.notes + '\n\n' : ''}Thank you for trusting us with ${data.petName || 'your pup'}!\n\n— GenusPupClub`
+            body: `Here's ${data.petName || 'your pup'}'s report card from today:\n\n🐕 ${data.petName || ''}\n📅 ${data.date || ''}\n🎯 Service: ${data.service || ''}\n\n${data.reportDetails || ''}\n\nOverall: ${data.overallRating || '⭐⭐⭐⭐⭐'}\n\n${data.notes ? 'Notes: ' + data.notes + '\n\n' : ''}We loved spending time with ${data.petName || 'your pup'}!`
         }),
         waitlist: (data) => ({
             subject: `Spot Available! — ${data.date || ''}`,
-            body: `Hi ${data.clientName || 'there'}!\n\nGreat news — a spot has opened up on ${data.date || 'the date you requested'}!\n\nYou were on our waitlist, and we wanted to give you first dibs.\n\nService: ${data.service || 'Your requested service'}\nDate: ${data.date || ''}\n\nBook now through your portal or call us at (804) 258-3830 to confirm.\n\nSpots fill fast — don't miss out!\n— GenusPupClub`
+            body: `Great news — a spot has opened up on ${data.date || 'the date you requested'}!\n\nYou were on our waitlist, and we wanted to give you first dibs.\n\nService: ${data.service || 'Your requested service'}\nDate: ${data.date || ''}\n\nBook now through your portal or call us at (804) 258-3830 to confirm.\n\nSpots fill fast — don't miss out!`
         })
     };
 
