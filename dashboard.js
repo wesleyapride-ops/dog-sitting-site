@@ -25,6 +25,12 @@ const DEFAULT_SERVICES = [
     { id: 'senior', name: 'Senior Dog Care', price: 25, duration: 30, category: 'Specialty', description: 'Gentle care for older dogs, medication admin', active: true },
     { id: 'taxi', name: 'Pet Taxi', price: 15, duration: 0, category: 'Transport', description: 'One-way vet/groomer transport (per trip)', active: true },
     { id: 'taxiwait', name: 'Pet Taxi + Wait', price: 35, duration: 0, category: 'Transport', description: 'Transport + wait at appointment + return', active: true },
+    { id: 'bath', name: 'Bath & Brush', price: 35, duration: 45, category: 'Grooming', description: 'Full bath, shampoo, blow dry, brush out', active: true },
+    { id: 'fullgroom', name: 'Full Grooming', price: 60, duration: 90, category: 'Grooming', description: 'Bath, brush, nail trim, ear clean, sanitary trim', active: true },
+    { id: 'nailonly', name: 'Nail Trim', price: 15, duration: 15, category: 'Grooming', description: 'Quick nail clip or Dremel grind', active: true },
+    { id: 'teethclean', name: 'Teeth Brushing', price: 10, duration: 10, category: 'Grooming', description: 'Dental hygiene brushing with dog-safe paste', active: true },
+    { id: 'deshed', name: 'De-Shedding Treatment', price: 45, duration: 60, category: 'Grooming', description: 'Deep de-shedding shampoo, blow out, undercoat removal', active: true },
+    { id: 'pawcare', name: 'Paw & Pad Care', price: 15, duration: 15, category: 'Grooming', description: 'Paw pad moisturizing, nail trim, fur trim between pads', active: true },
 ];
 
 const DEFAULT_ADDONS = [
@@ -38,6 +44,12 @@ const DEFAULT_ADDONS = [
     { id: 'training', name: 'Training Reinforcement', price: 10, description: 'Basic commands practice during visit' },
     { id: 'grooming', name: 'Brush Out', price: 10, description: 'Thorough brushing session' },
     { id: 'holiday', name: 'Holiday Surcharge', price: 15, description: 'Major holidays premium' },
+    { id: 'flea', name: 'Flea Treatment', price: 15, description: 'Topical flea/tick treatment' },
+    { id: 'cologne', name: 'Dog Cologne/Spritz', price: 5, description: 'Fresh scent after bath' },
+    { id: 'bandana', name: 'Bandana', price: 5, description: 'Fresh bandana after grooming' },
+    { id: 'toothbrush', name: 'Teeth Brushing Add-on', price: 8, description: 'Add to any grooming service' },
+    { id: 'earclean', name: 'Ear Cleaning', price: 8, description: 'Gentle ear cleaning with solution' },
+    { id: 'pawbalm', name: 'Paw Balm', price: 5, description: 'Moisturizing paw pad treatment' },
 ];
 
 const DEFAULT_PACKAGES = [
@@ -64,7 +76,13 @@ let addons = load('addons', DEFAULT_ADDONS);
 let packages = load('packages', DEFAULT_PACKAGES);
 let zones = load('zones', DEFAULT_ZONES);
 let sitters = load('sitters', [
-    { id: uid(), name: 'Wesley P.', phone: '(804) 701-6631', email: 'wesley@genuspupclub.com', rate: 25, status: 'active', specialty: 'All breeds', bio: 'Founder & lead sitter. 3+ years experience with all breeds.', certifications: 'Pet First Aid, CPR', maxDogs: 3, availability: 'Mon-Sun' }
+    { id: 'wesley', name: 'Wesley', phone: '(804) 258-3830', email: 'Genuspupclub@gmail.com', rate: 25, status: 'active', specialty: 'All breeds', bio: 'Founder & lead sitter. All breeds, all sizes.', certifications: 'Pet First Aid, CPR', maxDogs: 4, availability: 'Mon-Sun' },
+    { id: 'maria', name: 'Maria', phone: '', email: '', rate: 20, status: 'active', specialty: 'Small & medium breeds', bio: 'Experienced sitter, great with anxious dogs.', certifications: '', maxDogs: 3, availability: 'Mon-Fri' },
+    { id: 'aj', name: 'AJ', phone: '', email: '', rate: 20, status: 'active', specialty: 'Large breeds, high energy', bio: 'Active sitter, loves long walks and playtime.', certifications: '', maxDogs: 3, availability: 'Mon-Sun' }
+]);
+let properties = load('properties', [
+    { id: 'prop1', name: 'Penobscot House', address: '8216 Penobscot Rd, Richmond, VA', capacity: 6, features: 'Fenced yard, large living room, 2 crates', assignedSitters: ['Wesley', 'Maria'], notes: 'Primary location' },
+    { id: 'prop2', name: 'Tuxedo House', address: '3208 Tuxedo Blvd, Richmond, VA', capacity: 4, features: 'Backyard, quiet neighborhood', assignedSitters: ['AJ'], notes: 'Secondary location' }
 ]);
 let reviews = load('reviews', [
     { id: uid(), name: 'Sarah M.', pet: 'Luna', stars: 5, text: 'My anxious rescue dog actually gets EXCITED when he sees the sitter pull up.', date: '2026-03-28', service: 'Dog Walking' },
@@ -87,7 +105,8 @@ if (!localStorage.getItem(DB_KEY + 'addons')) save('addons', addons);
 if (!localStorage.getItem(DB_KEY + 'packages')) save('packages', packages);
 if (!localStorage.getItem(DB_KEY + 'zones')) save('zones', zones);
 if (!localStorage.getItem(DB_KEY + 'settings')) save('settings', businessSettings);
-save('sitters', sitters);
+if (!localStorage.getItem(DB_KEY + 'sitters')) save('sitters', sitters);
+if (!localStorage.getItem(DB_KEY + 'properties')) save('properties', properties);
 save('reviews', reviews);
 
 // ---- Date Header ----
@@ -116,7 +135,7 @@ const renderTab = () => {
     sitters = load('sitters', sitters); reviews = load('reviews', reviews);
     messages = load('messages', []); businessSettings = load('settings', businessSettings);
 
-    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, settings: renderSettings };
+    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, settings: renderSettings };
     (views[activeTab] || renderOverview)();
 };
 
@@ -763,6 +782,102 @@ const sendSitterMsg = (sitterId, name) => {
 };
 
 // ============================================
+// PROPERTIES (Locations)
+// ============================================
+const renderProperties = () => {
+    properties = load('properties', []);
+    const checkins = load('checkins', []).filter(c => !c.checkedOut);
+
+    el.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Properties</div><div class="stat-value">${properties.length}</div></div>
+            <div class="stat-card green"><div class="stat-label">Total Capacity</div><div class="stat-value">${properties.reduce((s, p) => s + (p.capacity || 0), 0)} dogs</div></div>
+            <div class="stat-card blue"><div class="stat-label">Currently Checked In</div><div class="stat-value">${checkins.length}</div></div>
+        </div>
+
+        ${properties.map(p => {
+            const pCheckins = checkins.filter(c => c.property === p.name);
+            const assignedSitters = p.assignedSitters || [];
+            return `<div class="card" style="margin-bottom:16px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <h3 style="font-family:var(--font-display);margin-bottom:4px">${escHTML(p.name)}</h3>
+                        <div style="font-size:.88rem;color:var(--text-light)">${escHTML(p.address)}</div>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn btn-sm btn-ghost" onclick="editProperty('${p.id}')">✎ Edit</button>
+                        <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="deleteProperty('${p.id}')">✕</button>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+                    <div style="text-align:center"><div style="font-size:1.3rem;font-weight:700">${p.capacity || '?'}</div><div style="font-size:.72rem;color:var(--text-muted)">Max Dogs</div></div>
+                    <div style="text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--primary)">${pCheckins.length}</div><div style="font-size:.72rem;color:var(--text-muted)">Current</div></div>
+                    <div style="text-align:center"><div style="font-size:1.3rem;font-weight:700">${p.capacity - pCheckins.length}</div><div style="font-size:.72rem;color:var(--text-muted)">Available</div></div>
+                    <div style="text-align:center"><div style="font-size:1.3rem;font-weight:700">${assignedSitters.length}</div><div style="font-size:.72rem;color:var(--text-muted)">Sitters</div></div>
+                </div>
+
+                <div style="margin-top:12px">
+                    <div style="font-size:.82rem;font-weight:600;margin-bottom:6px">Assigned Sitters:</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        ${assignedSitters.map(s => `<span style="padding:4px 12px;border-radius:50px;background:rgba(255,107,53,.08);color:var(--primary);font-size:.82rem;font-weight:600">${escHTML(s)}</span>`).join('') || '<span style="font-size:.82rem;color:var(--text-muted)">None assigned</span>'}
+                    </div>
+                </div>
+
+                ${p.features ? `<div style="margin-top:8px;font-size:.82rem;color:var(--text-muted)"><strong>Features:</strong> ${escHTML(p.features)}</div>` : ''}
+                ${p.notes ? `<div style="font-size:.82rem;color:var(--text-muted)"><strong>Notes:</strong> ${escHTML(p.notes)}</div>` : ''}
+
+                ${pCheckins.length ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+                    <div style="font-size:.82rem;font-weight:600;margin-bottom:6px">Dogs Currently Here:</div>
+                    ${pCheckins.map(c => `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.85rem"><span>🐕 <strong>${escHTML(c.petName)}</strong> (${escHTML(c.ownerName)})</span><span style="color:var(--text-muted)">${c.checkInTime}</span></div>`).join('')}
+                </div>` : ''}
+            </div>`;
+        }).join('')}
+
+        <div style="text-align:center;margin-top:12px">
+            <button class="btn btn-primary" onclick="showModal('property')">+ Add Property</button>
+        </div>
+    `;
+};
+
+const editProperty = (id) => {
+    const p = properties.find(x => x.id === id);
+    if (!p) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal">
+        <div class="modal-title">Edit: ${escHTML(p.name)}</div>
+        <div class="form-group"><label class="form-label">Property Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div>
+        <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="epAddr" value="${escHTML(p.address)}"></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Max Dogs</label><input class="form-input" id="epCap" type="number" value="${p.capacity || 4}"></div><div class="form-group"><label class="form-label">Features</label><input class="form-input" id="epFeat" value="${escHTML(p.features || '')}"></div></div>
+        <div class="form-group"><label class="form-label">Assigned Sitters</label><div style="display:flex;gap:6px;flex-wrap:wrap">${sitters.map(s => `<label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="ep-sitter" value="${escHTML(s.name)}" ${(p.assignedSitters || []).includes(s.name) ? 'checked' : ''}> ${escHTML(s.name)}</label>`).join('')}</div></div>
+        <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="epNotes" value="${escHTML(p.notes || '')}"></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditProperty('${p.id}')">Save</button></div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+const saveEditProperty = (id) => {
+    const p = properties.find(x => x.id === id);
+    if (!p) return;
+    p.name = document.getElementById('epName')?.value?.trim() || p.name;
+    p.address = document.getElementById('epAddr')?.value?.trim() || p.address;
+    p.capacity = parseInt(document.getElementById('epCap')?.value) || p.capacity;
+    p.features = document.getElementById('epFeat')?.value?.trim() || '';
+    p.notes = document.getElementById('epNotes')?.value?.trim() || '';
+    p.assignedSitters = [...document.querySelectorAll('.ep-sitter:checked')].map(cb => cb.value);
+    save('properties', properties);
+    closeModal(); renderTab();
+};
+
+const deleteProperty = (id) => {
+    if (!confirm('Delete property?')) return;
+    properties = properties.filter(x => x.id !== id);
+    save('properties', properties);
+    renderTab();
+};
+
+// ============================================
 // CHECK-IN / CHECK-OUT (Drop-off Checklist)
 // ============================================
 let checkins = load('checkins', []);
@@ -1081,6 +1196,10 @@ const showModal = (type) => {
             <div class="form-row"><div class="form-group"><label class="form-label">Vet Name & Phone</label><input class="form-input" id="mVet"></div><div class="form-group"><label class="form-label">Allergies</label><input class="form-input" id="mAllergies"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Medications</label><input class="form-input" id="mMeds"></div><div class="form-group"><label class="form-label">Feeding Schedule</label><input class="form-input" id="mFeeding" placeholder="e.g. 1 cup AM, 1 cup PM"></div></div>
             <div class="form-group"><label class="form-label">Temperament Tags</label><input class="form-input" id="mTags" placeholder="e.g. friendly, leash reactive, food motivated"></div>
+            <div class="form-group"><label class="form-label">Preferred Sitter</label><select class="form-select" id="mPreferredSitter"><option value="">No preference</option>${sitterOptions}</select></div>
+            <div style="margin:12px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Grooming Preferences</div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Coat Type</label><select class="form-select" id="mCoat"><option>Short</option><option>Medium</option><option>Long</option><option>Wire/Rough</option><option>Curly</option><option>Double Coat</option><option>Hairless</option></select></div><div class="form-group"><label class="form-label">Grooming Frequency</label><select class="form-select" id="mGroomFreq"><option>Monthly</option><option>Every 2 weeks</option><option>Weekly</option><option>Every 6 weeks</option><option>As needed</option></select></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Shampoo Preference</label><select class="form-select" id="mShampoo"><option>Standard</option><option>Hypoallergenic</option><option>Oatmeal</option><option>Medicated</option><option>De-shedding</option><option>Whitening</option><option>Owner provides</option></select></div><div class="form-group"><label class="form-label">Grooming Notes</label><input class="form-input" id="mGroomNotes" placeholder="e.g. Sensitive ears, hates dryer, matting prone"></div></div>
             <div class="form-group"><label class="form-label">Special Notes</label><textarea class="form-textarea" id="mNotes" rows="2" placeholder="Fears, quirks, commands they know..."></textarea></div>
         ` },
         review: { title: 'Add Review', body: `
@@ -1119,6 +1238,13 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Areas Covered</label><input class="form-input" id="mAreas" placeholder="e.g. Goochland, Powhatan"></div>
             <div class="form-group"><label class="form-label">Surcharge ($)</label><input class="form-input" id="mSurcharge" type="number" step="0.01" value="0"></div>
         ` },
+        property: { title: 'Add Property', body: `
+            <div class="form-group"><label class="form-label">Property Name</label><input class="form-input" id="mName" placeholder="e.g. Main House"></div>
+            <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="mAddress" placeholder="Full address"></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Max Dogs</label><input class="form-input" id="mCapacity" type="number" value="4"></div><div class="form-group"><label class="form-label">Features</label><input class="form-input" id="mFeatures" placeholder="e.g. Fenced yard, crates"></div></div>
+            <div class="form-group"><label class="form-label">Assigned Sitters</label><div style="display:flex;gap:6px;flex-wrap:wrap">${sitters.map(s => `<label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="prop-sitter" value="${escHTML(s.name)}"> ${escHTML(s.name)}</label>`).join('')}</div></div>
+            <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="mNotes"></div>
+        ` },
         expense: { title: 'Add Business Expense', body: `
             <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="mDesc" placeholder="e.g. Dog treats, gas, leashes"></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="mAmount" type="number" step="0.01"></div><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="mDate" type="date" value="${todayStr()}"></div></div>
@@ -1138,6 +1264,7 @@ const showModal = (type) => {
         checkin: { title: 'Check In Dog', body: `
             <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mPetName"></div><div class="form-group"><label class="form-label">Owner Name</label><input class="form-input" id="mOwnerName"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService">${svcOptions}</select></div><div class="form-group"><label class="form-label">Owner Phone</label><input class="form-input" id="mPhone" type="tel"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Location</label><select class="form-select" id="mProperty">${(load('properties',[])).map(p => `<option>${escHTML(p.name)} — ${escHTML(p.address)}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Assigned Sitter</label><select class="form-select" id="mSitter"><option value="">Auto</option>${sitterOptions}</select></div></div>
             <div style="margin:12px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Drop-Off Checklist</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px" id="mChecklist">
                 ${['Leash', 'Collar with ID', 'Food (bag/container)', 'Food bowl', 'Water bowl', 'Treats', 'Medications', 'Favorite toy', 'Bed/blanket', 'Crate', 'Harness', 'Poop bags', 'Jacket/sweater', 'Vaccination records'].map(item => `<label style="display:flex;gap:6px;align-items:center;font-size:.85rem;cursor:pointer"><input type="checkbox" class="checklist-item" value="${item}"> ${item}</label>`).join('')}
@@ -1214,7 +1341,7 @@ const saveModal = (type) => {
         clients.push({ id: uid(), name: v('mName'), email: v('mEmail'), phone: v('mPhone'), address: v('mAddress'), source: v('mSource'), notes: v('mNotes') });
         save('clients', clients);
     } else if (type === 'pet') {
-        pets.push({ id: uid(), name: v('mName'), breed: v('mBreed'), age: v('mAge'), weight: v('mWeight'), gender: v('mGender'), fixed: v('mFixed'), clientId: v('mOwner'), vet: v('mVet'), allergies: v('mAllergies'), medications: v('mMeds'), feedingSchedule: v('mFeeding'), tags: v('mTags'), notes: v('mNotes') });
+        pets.push({ id: uid(), name: v('mName'), breed: v('mBreed'), age: v('mAge'), weight: v('mWeight'), gender: v('mGender'), fixed: v('mFixed'), clientId: v('mOwner'), vet: v('mVet'), allergies: v('mAllergies'), medications: v('mMeds'), feedingSchedule: v('mFeeding'), tags: v('mTags'), notes: v('mNotes'), preferredSitter: v('mPreferredSitter'), coatType: v('mCoat'), groomFrequency: v('mGroomFreq'), shampoo: v('mShampoo'), groomNotes: v('mGroomNotes') });
         save('pets', pets);
     } else if (type === 'review') {
         reviews.push({ id: uid(), name: v('mName'), pet: v('mPet'), stars: parseInt(v('mStars')) || 5, text: v('mText'), service: v('mService'), date: todayStr() });
@@ -1234,6 +1361,10 @@ const saveModal = (type) => {
     } else if (type === 'zone') {
         zones.push({ id: uid(), name: v('mName'), areas: v('mAreas'), surcharge: parseFloat(v('mSurcharge')) || 0 });
         save('zones', zones);
+    } else if (type === 'property') {
+        properties = load('properties', []);
+        properties.push({ id: uid(), name: v('mName'), address: v('mAddress'), capacity: parseInt(v('mCapacity')) || 4, features: v('mFeatures'), notes: v('mNotes'), assignedSitters: [...document.querySelectorAll('.prop-sitter:checked')].map(cb => cb.value) });
+        save('properties', properties);
     } else if (type === 'expense') {
         expenses = load('expenses', []);
         expenses.push({ id: uid(), description: v('mDesc'), amount: parseFloat(v('mAmount')) || 0, date: v('mDate'), category: v('mCategory'), method: v('mMethod'), notes: v('mNotes') });
@@ -1251,7 +1382,8 @@ const saveModal = (type) => {
         document.querySelectorAll('.checklist-item').forEach(cb => { checklist[cb.value] = cb.checked; });
         checkins.push({
             id: uid(), petName: v('mPetName'), ownerName: v('mOwnerName'), ownerPhone: v('mPhone'),
-            service: v('mService'), checklist, belongings: v('mBelongings'),
+            service: v('mService'), property: v('mProperty'), sitter: v('mSitter'),
+            checklist, belongings: v('mBelongings'),
             specialInstructions: v('mInstructions'), ownerNotes: v('mNotes'),
             checkInDate: todayStr(), checkInTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             checkedOut: false
@@ -1294,7 +1426,128 @@ const previewUpload = (input) => {
     reader.readAsDataURL(input.files[0]);
 };
 
-const updateBooking = (id, status) => { const b = bookings.find(x => x.id === id); if (b) { b.status = status; save('bookings', bookings); renderTab(); } };
+const updateBooking = (id, status) => {
+    const b = bookings.find(x => x.id === id);
+    if (!b) return;
+    b.status = status;
+    save('bookings', bookings);
+
+    // Fire notifications
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        if (status === 'confirmed') GPC_NOTIFY.onBookingConfirmed(b);
+        if (status === 'completed') GPC_NOTIFY.onBookingCompleted(b);
+    }
+
+    // On complete: prompt for invoice + tip + rating
+    if (status === 'completed') {
+        showCompletionFlow(b);
+    } else {
+        renderTab();
+    }
+};
+
+const showCompletionFlow = (booking) => {
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+
+    const tipPercents = [0, 15, 18, 20, 25, 30];
+    const amt = parseFloat(booking.amount) || 0;
+
+    overlay.innerHTML = `<div class="modal" style="max-width:500px">
+        <div class="modal-title" style="color:var(--success)">✓ Visit Complete!</div>
+        <div style="padding:12px;background:rgba(0,184,148,.05);border-radius:8px;margin-bottom:16px">
+            <strong>${escHTML(booking.petName)}</strong> — ${escHTML(booking.service)} on ${booking.date}<br>
+            <span style="font-size:.88rem;color:var(--text-muted)">Client: ${escHTML(booking.clientName)} · Sitter: ${escHTML(booking.sitter || 'Unassigned')}</span>
+        </div>
+
+        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Payment (${fmt(amt)})</div>
+        <div class="form-group"><label class="form-label">Payment Method</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${['Card', 'CashApp', 'Venmo', 'Zelle', 'Cash', 'Prepaid/Package'].map(m => `<button type="button" class="btn btn-sm btn-ghost cf-method" onclick="document.querySelectorAll('.cf-method').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('cfMethod').value='${m}'">${m}</button>`).join('')}
+            </div>
+            <input type="hidden" id="cfMethod" value="Cash">
+        </div>
+
+        <div style="font-size:.92rem;font-weight:600;margin:12px 0 8px">Tip</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            ${tipPercents.map(p => `<button type="button" class="btn btn-sm btn-ghost cf-tip" onclick="document.querySelectorAll('.cf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('cfTip').value='${(amt * p / 100).toFixed(2)}';document.getElementById('cfTipCustom').value='';updateCFTotal(${amt})">${p === 0 ? 'No tip' : p + '% (' + fmt(amt * p / 100) + ')'}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <span style="font-size:.85rem">Custom:</span>
+            <input type="number" id="cfTipCustom" step="0.01" min="0" placeholder="$0.00" class="form-input" style="width:100px" oninput="document.getElementById('cfTip').value=this.value;document.querySelectorAll('.cf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});updateCFTotal(${amt})">
+        </div>
+        <input type="hidden" id="cfTip" value="0">
+        <div style="padding:12px;background:rgba(255,107,53,.05);border-radius:8px;text-align:right;margin-bottom:16px">
+            <span style="font-size:.88rem;color:var(--text-muted)">Service: ${fmt(amt)} + Tip: <strong id="cfTipDisplay">$0.00</strong> = </span>
+            <strong style="font-size:1.3rem;color:var(--primary)" id="cfTotalDisplay">${fmt(amt)}</strong>
+        </div>
+
+        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Client Rating</div>
+        <div style="display:flex;gap:4px;margin-bottom:8px" id="cfStars">
+            ${[1,2,3,4,5].map(s => `<button type="button" style="font-size:1.8rem;background:none;border:none;cursor:pointer;color:#ddd;transition:color .15s" onclick="setCFStars(${s})" data-star="${s}">★</button>`).join('')}
+        </div>
+        <input type="hidden" id="cfRating" value="5">
+        <div class="form-group"><label class="form-label">Review (optional)</label><textarea class="form-textarea" id="cfReview" rows="2" placeholder="How was the visit?"></textarea></div>
+
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal();renderTab()">Skip</button>
+            <button class="btn btn-primary" onclick="saveCompletionFlow('${booking.id}')">Save & Close</button>
+        </div>
+    </div>`;
+    overlay.classList.add('open');
+
+    // Default to 5 stars
+    setCFStars(5);
+};
+
+window.setCFStars = (n) => {
+    document.getElementById('cfRating').value = n;
+    document.querySelectorAll('#cfStars button').forEach(b => {
+        b.style.color = parseInt(b.dataset.star) <= n ? '#FDCB6E' : '#ddd';
+    });
+};
+
+window.updateCFTotal = (amt) => {
+    const tip = parseFloat(document.getElementById('cfTip')?.value) || 0;
+    document.getElementById('cfTipDisplay').textContent = fmt(tip);
+    document.getElementById('cfTotalDisplay').textContent = fmt(amt + tip);
+};
+
+const saveCompletionFlow = (bookingId) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) { closeModal(); renderTab(); return; }
+
+    const method = document.getElementById('cfMethod')?.value || 'Cash';
+    const tip = parseFloat(document.getElementById('cfTip')?.value) || 0;
+    const rating = parseInt(document.getElementById('cfRating')?.value) || 5;
+    const reviewText = document.getElementById('cfReview')?.value?.trim() || '';
+    const amt = parseFloat(booking.amount) || 0;
+
+    // Record payment
+    const payments = load('payments', []);
+    payments.push({
+        id: uid(), clientId: booking.clientId, clientName: booking.clientName, bookingId,
+        amount: amt, tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending',
+        service: booking.service, date: todayStr()
+    });
+    save('payments', payments);
+
+    // Record review if provided
+    if (reviewText || rating) {
+        const allReviews = load('reviews', []);
+        allReviews.push({ id: uid(), name: booking.clientName, pet: booking.petName, stars: rating, text: reviewText || `Great ${booking.service} experience!`, service: booking.service, sitter: booking.sitter, date: todayStr() });
+        save('reviews', allReviews);
+    }
+
+    // Notify
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.onPaymentReceived({ ...booking, amount: amt, tip, method, clientName: booking.clientName });
+        if (reviewText) GPC_NOTIFY.showToast('New Review', `${rating}★ from ${booking.clientName}`, 'success');
+    }
+
+    closeModal();
+    renderTab();
+};
 const deleteItem = (col, id) => { if (!confirm('Delete?')) return; const map = { bookings, clients, pets, reviews, sitters, messages }; map[col] = map[col].filter(x => x.id !== id); if (col === 'bookings') bookings = map[col]; else if (col === 'clients') clients = map[col]; else if (col === 'pets') pets = map[col]; else if (col === 'reviews') reviews = map[col]; else if (col === 'sitters') sitters = map[col]; save(col, map[col]); renderTab(); };
 const editClient = (id) => { /* TODO: edit modal */ };
 
