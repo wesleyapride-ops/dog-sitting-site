@@ -72,17 +72,5 @@
     <script src="notifications.js"></script>
     <script src="referral.js"></script>
     <script src="dashboard.js"></script>
-    <script>
-        // Auto-sync from cloud on dashboard load
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (GPC_DB.isCloudConnected()) {
-                const result = await GPC_DB.syncFromCloud();
-                if (result.success) {
-                    console.log('[SYNC] Cloud sync complete:', result);
-                    if (typeof renderTab === 'function') renderTab();
-                }
-            }
-        });
-    </script>
 </body>
 </html>

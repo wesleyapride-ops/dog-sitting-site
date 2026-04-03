@@ -287,23 +287,25 @@ const GPC_SUPABASE = (() => {
 // Auto-init on load
 document.addEventListener('DOMContentLoaded', async () => {
     if (GPC_SUPABASE.init()) {
-        // Start realtime sync — auto-refreshes localStorage when another device saves
+        // Start realtime sync — when ANY device saves, this device updates instantly
         GPC_SUPABASE.startRealtime((key, value) => {
             if (typeof renderTab === 'function') renderTab();
+            if (typeof renderDynamicPricing === 'function') renderDynamicPricing();
+            if (typeof renderFooterServices === 'function') renderFooterServices();
         });
 
-        // Auto smart-sync: merge local data with cloud on every page load
-        // This ensures phone data gets pushed up and cloud data gets pulled down
+        // On page load: pull ALL cloud data → overwrite local
+        // Cloud is the single source of truth — deletions, edits, everything syncs
         try {
-            const result = await GPC_SUPABASE.smartSync();
-            if (result.success && (result.pushed > 0 || result.pulled > 0 || result.merged > 0)) {
-                console.log(`[AUTO-SYNC] Merged: ${result.merged}, Pushed: ${result.pushed}, Pulled: ${result.pulled}`);
+            const result = await GPC_SUPABASE.pullAll();
+            if (result.success && result.pulled > 0) {
+                console.log(`[SYNC] Pulled ${result.pulled} keys from cloud`);
                 if (typeof renderTab === 'function') renderTab();
                 if (typeof renderDynamicPricing === 'function') renderDynamicPricing();
                 if (typeof renderFooterServices === 'function') renderFooterServices();
             }
         } catch (err) {
-            console.warn('[AUTO-SYNC] Failed:', err);
+            console.warn('[SYNC] Pull failed:', err);
         }
     }
 });

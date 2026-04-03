@@ -68,13 +68,5 @@
     <script src="notifications.js"></script>
     <script src="referral.js"></script>
     <script src="portal.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (GPC_DB.isCloudConnected()) {
-                await GPC_DB.syncFromCloud();
-                if (typeof renderTab === 'function') renderTab();
-            }
-        });
-    </script>
 </body>
 </html>

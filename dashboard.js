@@ -1449,7 +1449,7 @@ const renderSettings = () => {
                     <button class="btn btn-sm btn-ghost" onclick="testSupabase()">Test Connection</button>
                     <button class="btn btn-sm btn-ghost" onclick="pushToCloud()">Push Local → Cloud</button>
                     <button class="btn btn-sm btn-ghost" onclick="pullFromCloud()">Pull Cloud → Local</button>
-                    <button class="btn btn-sm btn-ghost" onclick="smartSyncCloud()">Smart Merge (Recommended)</button>
+                    <button class="btn btn-sm btn-ghost" onclick="smartSyncCloud()">Smart Merge (First-Time Only)</button>
                 </div>
                 <div style="margin-top:12px;padding:10px;background:rgba(139,92,246,.04);border-radius:8px;font-size:.82rem;color:var(--text-muted)">
                     <strong>Setup:</strong> 1) Go to <a href="https://supabase.com" target="_blank" style="color:var(--primary)">supabase.com</a> → Create free project. 2) Go to SQL Editor → paste contents of <code>supabase-schema.sql</code> → Run. 3) Go to Settings → API → copy Project URL and anon public key here. 4) Click "Push Local → Cloud" to upload your existing data.
