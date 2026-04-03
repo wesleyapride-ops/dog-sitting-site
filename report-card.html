@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenusPupClub — Visit Report Card</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#FFFAF5;color:#2D3436;padding:24px}
+        .rc{max-width:600px;margin:0 auto;background:#fff;border-radius:20px;box-shadow:0 8px 30px rgba(0,0,0,.06);overflow:hidden}
+        .rc-header{background:linear-gradient(135deg,#FF6B35,#E55A2B);color:#fff;padding:28px;text-align:center}
+        .rc-header h1{font-family:'Fredoka',sans-serif;font-size:1.5rem}
+        .rc-header p{opacity:.8;font-size:.88rem;margin-top:4px}
+        .rc-body{padding:28px}
+        .rc-section{margin-bottom:20px}
+        .rc-section h3{font-family:'Fredoka',sans-serif;font-size:1rem;margin-bottom:8px;color:#FF6B35}
+        .rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .rc-item{padding:12px;background:#F8F9FA;border-radius:10px}
+        .rc-item .label{font-size:.72rem;color:#B2BEC3;text-transform:uppercase;letter-spacing:.5px}
+        .rc-item .value{font-size:1rem;font-weight:600;margin-top:2px}
+        .rc-mood{display:flex;gap:8px;flex-wrap:wrap}
+        .mood-tag{padding:4px 12px;border-radius:50px;font-size:.82rem;font-weight:600}
+        .mood-happy{background:rgba(0,184,148,.1);color:#00B894}
+        .mood-playful{background:rgba(255,107,53,.1);color:#FF6B35}
+        .mood-calm{background:rgba(116,185,255,.1);color:#3B82F6}
+        .mood-anxious{background:rgba(253,203,110,.2);color:#E17055}
+        .mood-tired{background:rgba(178,190,195,.15);color:#636E72}
+        .rc-photos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .rc-photos img{width:100%;height:150px;object-fit:cover;border-radius:10px}
+        .rc-notes{background:#F8F9FA;border-radius:10px;padding:14px;font-size:.9rem;color:#636E72;line-height:1.6}
+        .rc-footer{text-align:center;padding:20px 28px;border-top:1px solid #f0f0f0}
+        .rc-footer p{font-size:.82rem;color:#B2BEC3}
+        .btn{padding:10px 24px;border-radius:8px;font-weight:600;font-size:.9rem;cursor:pointer;border:none;font-family:'Inter',sans-serif}
+        .btn-primary{background:#FF6B35;color:#fff}
+        .form-group{margin-bottom:12px}.form-label{display:block;font-size:.82rem;font-weight:600;color:#636E72;margin-bottom:4px}
+        .form-input,.form-select,.form-textarea{width:100%;padding:10px;border:2px solid #e9ecef;border-radius:8px;font-size:.9rem;font-family:'Inter',sans-serif}
+        .form-input:focus{outline:none;border-color:#FF6B35}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        @media(max-width:500px){.rc-grid,.form-row,.rc-photos{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+    <!-- ADMIN FILL-OUT FORM -->
+    <div class="rc" id="reportForm">
+        <div class="rc-header">
+            <div style="font-size:2rem">🐶</div>
+            <h1>Post-Visit Report Card</h1>
+            <p>Fill out after each visit — client sees this in their portal</p>
+        </div>
+        <div class="rc-body">
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="rpPet"></div>
+                <div class="form-group"><label class="form-label">Client Name</label><input class="form-input" id="rpClient"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Service</label><input class="form-input" id="rpService" placeholder="Dog Walking, Daycare, etc."></div>
+                <div class="form-group"><label class="form-label">Sitter</label><input class="form-input" id="rpSitter"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="rpDate" type="date"></div>
+                <div class="form-group"><label class="form-label">Duration</label><input class="form-input" id="rpDuration" placeholder="e.g. 30 min, 1 hr"></div>
+            </div>
+
+            <div class="rc-section">
+                <h3>Activities</h3>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Walk"> Walk</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Play"> Play</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Training"> Training</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Fed"> Fed</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Water"> Water</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Potty (#1)"> Potty (#1)</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Potty (#2)"> Potty (#2)</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Meds Given"> Meds Given</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Nap"> Nap</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Socialization"> Socialization</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Grooming"> Grooming</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-activity" value="Treats"> Treats</label>
+                </div>
+            </div>
+
+            <div class="rc-section">
+                <h3>Mood / Behavior</h3>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-mood" value="Happy"> Happy</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-mood" value="Playful"> Playful</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-mood" value="Calm"> Calm</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-mood" value="Energetic"> Energetic</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-mood" value="Tired"> Tired</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-mood" value="Anxious"> Anxious</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-mood" value="Shy"> Shy</label>
+                    <label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rp-mood" value="Friendly"> Friendly</label>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Appetite</label><select class="form-select" id="rpAppetite"><option>Ate everything</option><option>Ate most</option><option>Ate some</option><option>Didn't eat</option><option>N/A</option></select></div>
+                <div class="form-group"><label class="form-label">Energy Level</label><select class="form-select" id="rpEnergy"><option>High</option><option>Normal</option><option>Low</option><option>Very Low</option></select></div>
+            </div>
+
+            <div class="form-group"><label class="form-label">Notes / Highlights</label><textarea class="form-textarea" id="rpNotes" rows="3" placeholder="What happened during the visit? Anything the owner should know?"></textarea></div>
+            <div class="form-group"><label class="form-label">Concerns (if any)</label><textarea class="form-textarea" id="rpConcerns" rows="2" placeholder="Any health or behavior concerns to flag?"></textarea></div>
+
+            <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="saveReport()">Save Report Card</button>
+        </div>
+    </div>
+
+    <div class="rc" id="reportSuccess" style="display:none">
+        <div class="rc-header" style="background:#00B894">
+            <div style="font-size:2rem">✓</div>
+            <h1>Report Saved!</h1>
+            <p>Client can view this in their portal.</p>
+        </div>
+        <div class="rc-body" style="text-align:center">
+            <a href="dashboard.html" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:12px">Back to Dashboard</a>
+            <button class="btn" style="margin-top:8px;background:transparent;color:#636E72" onclick="document.getElementById('reportForm').style.display='block';document.getElementById('reportSuccess').style.display='none'">Fill Another</button>
+        </div>
+    </div>
+
+    <script>
+        const DB = 'gpc_';
+        const load = (k, fb) => { try { return JSON.parse(localStorage.getItem(DB + k)) || fb; } catch { return fb; } };
+        const save = (k, d) => localStorage.setItem(DB + k, JSON.stringify(d));
+        const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+        document.getElementById('rpDate').value = new Date().toISOString().split('T')[0];
+
+        const saveReport = () => {
+            const v = (id) => document.getElementById(id)?.value?.trim() || '';
+            if (!v('rpPet') || !v('rpClient')) { alert('Pet name and client name required'); return; }
+
+            const activities = [...document.querySelectorAll('.rp-activity:checked')].map(c => c.value);
+            const moods = [...document.querySelectorAll('.rp-mood:checked')].map(c => c.value);
+
+            const reports = load('report_cards', []);
+            reports.push({
+                id: uid(), petName: v('rpPet'), clientName: v('rpClient'),
+                service: v('rpService'), sitter: v('rpSitter'),
+                date: v('rpDate'), duration: v('rpDuration'),
+                activities, moods,
+                appetite: v('rpAppetite'), energy: v('rpEnergy'),
+                notes: v('rpNotes'), concerns: v('rpConcerns'),
+                createdAt: new Date().toISOString()
+            });
+            save('report_cards', reports);
+
+            document.getElementById('reportForm').style.display = 'none';
+            document.getElementById('reportSuccess').style.display = 'block';
+        };
+    </script>
+</body>
+</html>

@@ -172,8 +172,19 @@ const renderOverview = () => {
                 ${reviews.slice(0, 3).map(r => `<div class="review-item"><div class="review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</div><div class="review-text">"${escHTML(r.text)}"</div><div class="review-author">${escHTML(r.name)} — ${escHTML(r.pet)}</div></div>`).join('')}
             </div>
         </div>
+        <!-- Quick Actions -->
+        <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="showModal('booking')">+ New Booking</button>
+                <button class="btn btn-sm btn-ghost" onclick="showModal('checkin')">+ Check In Dog</button>
+                <a href="report-card.html" target="_blank" class="btn btn-sm btn-ghost" style="text-decoration:none">+ Report Card</a>
+                <button class="btn btn-sm btn-ghost" onclick="showModal('manual_payment')">+ Record Payment</button>
+                <a href="waiver.html" target="_blank" class="btn btn-sm btn-ghost" style="text-decoration:none">Send Waiver</a>
+                <button class="btn btn-sm btn-ghost" onclick="showModal('recurring')">+ Recurring Booking</button>
+            </div>
+        </div>
         <div class="card">
-            <div class="card-header"><span class="card-title">Upcoming Bookings</span><button class="btn btn-primary btn-sm" onclick="showModal('booking')">+ New Booking</button></div>
+            <div class="card-header"><span class="card-title">Upcoming Bookings</span></div>
             ${renderBookingTable(bookings.filter(b => b.date >= todayStr() && b.status !== 'cancelled').sort((a, b) => a.date.localeCompare(b.date)).slice(0, 10))}
         </div>
     `;
@@ -1452,6 +1463,16 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Areas Covered</label><input class="form-input" id="mAreas" placeholder="e.g. Goochland, Powhatan"></div>
             <div class="form-group"><label class="form-label">Surcharge ($)</label><input class="form-input" id="mSurcharge" type="number" step="0.01" value="0"></div>
         ` },
+        recurring: { title: 'Set Up Recurring Booking', body: `
+            <div class="form-row"><div class="form-group"><label class="form-label">Client</label><select class="form-select" id="mClient" onchange="autofillClient(this.value)"><option value="">Select</option>${clientOptions}</select></div><div class="form-group"><label class="form-label">Client Name</label><input class="form-input" id="mClientName"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mPetName"></div><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService">${svcOptions}</select></div></div>
+            <div class="form-group"><label class="form-label">Frequency</label><select class="form-select" id="mFreq"><option>Weekly</option><option>Twice a Week</option><option>3x a Week</option><option>Daily (Mon-Fri)</option><option>Every Other Week</option><option>Monthly</option></select></div>
+            <div class="form-group"><label class="form-label">Days</label><div style="display:flex;gap:6px;flex-wrap:wrap">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<label style="display:flex;gap:4px;align-items:center;font-size:.88rem"><input type="checkbox" class="rec-day" value="${d}"> ${d}</label>`).join('')}</div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Time</label><input class="form-input" id="mTime" type="time" value="10:00"></div><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="mSitter"><option value="">Auto</option>${sitterOptions}</select></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="mStartDate" type="date" value="${todayStr()}"></div><div class="form-group"><label class="form-label">Weeks to Generate</label><input class="form-input" id="mWeeks" type="number" value="4" min="1" max="52"></div></div>
+            <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="mNotes" rows="2"></textarea></div>
+            <div style="padding:10px;background:rgba(0,184,148,.05);border-radius:8px;font-size:.82rem;color:var(--text-muted)">This will auto-generate individual bookings for the selected days over the specified number of weeks. Recurring discount (${businessSettings.recurringDiscount || 15}%) applied automatically.</div>
+        ` },
         property: { title: 'Add Property', body: `
             <div class="form-group"><label class="form-label">Property Name</label><input class="form-input" id="mName" placeholder="e.g. Main House"></div>
             <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="mAddress" placeholder="Full address"></div>
@@ -1575,6 +1596,34 @@ const saveModal = (type) => {
     } else if (type === 'zone') {
         zones.push({ id: uid(), name: v('mName'), areas: v('mAreas'), surcharge: parseFloat(v('mSurcharge')) || 0 });
         save('zones', zones);
+    } else if (type === 'recurring') {
+        const days = [...document.querySelectorAll('.rec-day:checked')].map(cb => cb.value);
+        const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
+        const weeks = parseInt(v('mWeeks')) || 4;
+        const startDate = new Date(v('mStartDate') + 'T12:00:00');
+        const svc = services.find(s => s.name === v('mService'));
+        const discount = businessSettings.recurringDiscount || 15;
+        const price = svc ? svc.price * (1 - discount / 100) : 0;
+        let generated = 0;
+
+        for (let w = 0; w < weeks; w++) {
+            for (const day of days) {
+                const d = new Date(startDate);
+                d.setDate(d.getDate() + (w * 7) + ((dayMap[day] - d.getDay() + 7) % 7));
+                if (d < startDate && w === 0) d.setDate(d.getDate() + 7);
+                const dateStr = d.toISOString().split('T')[0];
+                bookings.push({
+                    id: uid(), clientId: v('mClient') || null, clientName: v('mClientName'), petName: v('mPetName'),
+                    service: v('mService'), amount: price, addons: [], extraDogs: 0,
+                    date: dateStr, time: v('mTime'), zone: '', sitter: v('mSitter'),
+                    notes: v('mNotes') + ` [Recurring: ${v('mFreq')} — ${discount}% off]`, status: 'confirmed',
+                    source: 'recurring', recurring: true
+                });
+                generated++;
+            }
+        }
+        save('bookings', bookings);
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Recurring Created', `${generated} bookings generated over ${weeks} weeks`, 'success');
     } else if (type === 'property') {
         properties = load('properties', []);
         properties.push({ id: uid(), name: v('mName'), address: v('mAddress'), capacity: parseInt(v('mCapacity')) || 4, features: v('mFeatures'), notes: v('mNotes'), assignedSitters: [...document.querySelectorAll('.prop-sitter:checked')].map(cb => cb.value) });
