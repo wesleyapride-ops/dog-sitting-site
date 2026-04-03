@@ -294,7 +294,27 @@
                         <input type="text" placeholder="Dog's Name & Breed">
                         <input type="date" placeholder="Preferred Date">
                     </div>
-                    <textarea placeholder="Tell us about your pup — age, personality, special needs, anything we should know..." rows="3"></textarea>
+                    <div class="form-row">
+                        <select id="bookingNumDogs">
+                            <option value="1">1 Dog</option>
+                            <option value="2">2 Dogs</option>
+                            <option value="3">3 Dogs</option>
+                            <option value="4">4 Dogs</option>
+                            <option value="5">5+ Dogs</option>
+                        </select>
+                        <select id="bookingTransport">
+                            <option value="" disabled selected>Need Transport?</option>
+                            <option value="none">No — I'll drop off/pick up</option>
+                            <option value="pickup">Pickup from my house</option>
+                            <option value="dropoff">Dropoff to my house</option>
+                            <option value="roundtrip">Round trip (pickup + dropoff)</option>
+                        </select>
+                    </div>
+                    <div class="form-row" id="transportAddressRow" style="display:none">
+                        <input type="text" id="bookingPickupAddr" placeholder="Pickup Address">
+                        <input type="text" id="bookingDropoffAddr" placeholder="Dropoff Address (vet, groomer, etc.)">
+                    </div>
+                    <textarea placeholder="Tell us about your pup(s) — names, ages, personalities, special needs, anything we should know..." rows="3"></textarea>
                     <button type="submit" class="btn btn-primary btn-lg btn-full">Book Now</button>
                     <div style="text-align:center;margin-top:12px;font-size:.85rem">
                         <span style="color:rgba(255,255,255,.5)">First time?</span>
@@ -347,6 +367,16 @@
         </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>
+        try {
+            const cfg = JSON.parse(localStorage.getItem('gpc_email_config'));
+            if (cfg?.publicKey) emailjs.init(cfg.publicKey);
+        } catch {}
+    </script>
+    <script src="supabase-config.js"></script>
+    <script src="db.js"></script>
     <script src="notifications.js" defer></script>
     <script src="app.js" defer></script>
 </body>

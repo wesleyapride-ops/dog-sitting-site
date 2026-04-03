@@ -8,7 +8,12 @@ const GPC_KEY = 'gpc_';
 const gpcLoad = (key, fallback) => {
     try { const d = JSON.parse(localStorage.getItem(GPC_KEY + key)); return d !== null ? d : fallback; } catch { return fallback; }
 };
-const gpcSave = (key, data) => localStorage.setItem(GPC_KEY + key, JSON.stringify(data));
+const gpcSave = (key, data) => {
+    localStorage.setItem(GPC_KEY + key, JSON.stringify(data));
+    if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
+        GPC_SUPABASE.save(key, data).catch(() => {});
+    }
+};
 const gpcUid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 // ---- Nav ----
@@ -146,7 +151,8 @@ const renderDynamicPricing = () => {
         const opts = activeServices.length ? activeServices : [
             { name: 'Dog Walking', price: 25 }, { name: 'Drop-In Visit', price: 20 },
             { name: 'Daycare', price: 40 }, { name: 'Overnight Sitting', price: 55 },
-            { name: 'Puppy Care', price: 30 }, { name: 'Pet Taxi', price: 15 }
+            { name: 'Puppy Care', price: 30 }, { name: 'Pet Taxi — One Way', price: 15 },
+            { name: 'Pet Taxi — Round Trip', price: 25 }, { name: 'Daycare Shuttle', price: 20 }
         ];
         select.innerHTML = '<option value="" disabled selected>Select Service</option>' +
             opts.map(s => `<option value="${s.name}">${s.name} ($${Math.floor(s.price)})</option>`).join('') +
@@ -171,6 +177,11 @@ bookingForm?.addEventListener('submit', (e) => {
 
     // Save as booking to dashboard
     const bookings = gpcLoad('bookings', []);
+    const numDogs = parseInt(document.getElementById('bookingNumDogs')?.value) || 1;
+    const transportType = document.getElementById('bookingTransport')?.value || 'none';
+    const pickupAddr = document.getElementById('bookingPickupAddr')?.value?.trim() || '';
+    const dropoffAddr = document.getElementById('bookingDropoffAddr')?.value?.trim() || '';
+
     const newBooking = {
         id: gpcUid(),
         clientName: data.your_name_ || data.field || '',
@@ -179,10 +190,16 @@ bookingForm?.addEventListener('submit', (e) => {
         amount: svc?.price || 0,
         date: data.date || new Date().toISOString().split('T')[0],
         time: '10:00',
+        dropoffTime: '',
+        pickupTime: '',
         zone: '',
         sitter: '',
         addons: [],
-        extraDogs: 0,
+        extraDogs: Math.max(0, numDogs - 1),
+        numDogs,
+        transportType,
+        pickupAddr,
+        dropoffAddr,
         notes: data.tell_us_about_your_pup____age__personality__special_needs__anything_we_should_know___ || '',
         status: 'pending',
         source: 'website'
@@ -309,6 +326,16 @@ const applyCMS = () => {
     if (cms.accentColor) document.documentElement.style.setProperty('--accent', cms.accentColor);
     if (cms.bgColor) document.documentElement.style.setProperty('--bg', cms.bgColor);
 };
+
+// ---- Transport Address Toggle ----
+const transportSelect = document.getElementById('bookingTransport');
+const transportRow = document.getElementById('transportAddressRow');
+transportSelect?.addEventListener('change', () => {
+    const val = transportSelect.value;
+    if (transportRow) {
+        transportRow.style.display = (val === 'pickup' || val === 'dropoff' || val === 'roundtrip') ? 'grid' : 'none';
+    }
+});
 
 // ---- Init ----
 applyCMS();

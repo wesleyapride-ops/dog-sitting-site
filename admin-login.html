@@ -50,7 +50,17 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
     <script>
+        // Sync admin credentials from cloud before allowing login
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
+                await GPC_SUPABASE.load('admin_creds', {});
+                await GPC_SUPABASE.load('staff_accounts', []);
+            }
+        });
+
         const adminLogin = (e) => {
             e.preventDefault();
             const email = document.getElementById('adminEmail').value.trim().toLowerCase();

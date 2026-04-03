@@ -99,6 +99,26 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>
+        try {
+            const cfg = JSON.parse(localStorage.getItem('gpc_email_config'));
+            if (cfg?.publicKey) emailjs.init(cfg.publicKey);
+        } catch {}
+    </script>
+    <script src="supabase-config.js"></script>
+    <script src="db.js"></script>
+    <script src="notifications.js"></script>
     <script src="auth.js"></script>
+    <script>
+        // Sync users from cloud before login attempt
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (GPC_DB.isCloudConnected()) {
+                const users = await GPC_SUPABASE.load('users', []);
+                // localStorage now has the latest users from cloud
+            }
+        });
+    </script>
 </body>
 </html>

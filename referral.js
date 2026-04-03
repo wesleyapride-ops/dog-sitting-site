@@ -5,7 +5,12 @@
 const GPC_LOYALTY = (() => {
     const DB = 'gpc_';
     const load = (k, fb) => { try { return JSON.parse(localStorage.getItem(DB + k)) || fb; } catch { return fb; } };
-    const save = (k, d) => localStorage.setItem(DB + k, JSON.stringify(d));
+    const save = (k, d) => {
+        localStorage.setItem(DB + k, JSON.stringify(d));
+        if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
+            GPC_SUPABASE.save(k, d).catch(() => {});
+        }
+    };
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const todayStr = () => new Date().toISOString().split('T')[0];
 

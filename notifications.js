@@ -6,7 +6,12 @@
 const GPC_NOTIFY = (() => {
     const GPC = 'gpc_';
     const load = (key, fb) => { try { return JSON.parse(localStorage.getItem(GPC + key)) || fb; } catch { return fb; } };
-    const save = (key, d) => localStorage.setItem(GPC + key, JSON.stringify(d));
+    const save = (key, d) => {
+        localStorage.setItem(GPC + key, JSON.stringify(d));
+        if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
+            GPC_SUPABASE.save(key, d).catch(() => {});
+        }
+    };
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const todayStr = () => new Date().toISOString().split('T')[0];
     const timeStr = () => new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -167,44 +172,150 @@ const GPC_NOTIFY = (() => {
     };
 
     // ============================================
-    // EMAIL SYSTEM (EmailJS or stub)
+    // EMAIL SYSTEM — EmailJS Integration
     // ============================================
-    const EMAIL_CONFIG = load('email_config', {
+    const getEmailConfig = () => load('email_config', {
         enabled: false,
-        service: 'emailjs', // or 'sendgrid'
         serviceId: '',
-        templateIds: { booking_confirmation: '', booking_confirmed: '', visit_complete: '', payment_receipt: '' },
         publicKey: '',
-        adminEmail: 'Genuspupclub@gmail.com'
+        adminEmail: 'Genuspupclub@gmail.com',
+        sendToAdmin: true,
+        sendToClient: true
     });
 
+    // Built-in email templates (no need to create in EmailJS — uses default template)
+    const EMAIL_TEMPLATES = {
+        booking_confirmation: (data) => ({
+            subject: `Booking Received — ${data.petName || 'Your Pup'}`,
+            body: `Hi ${data.clientName || 'there'}!\n\nWe've received your booking request:\n\nService: ${data.service || '—'}\nPet: ${data.petName || '—'}\nDate: ${data.date || 'TBD'}\nTime: ${data.time || 'TBD'}\n\nWe'll confirm within 2 hours and reach out to schedule a meet & greet if this is your first visit.\n\nThanks for choosing GenusPupClub!\n— The GenusPupClub Team\n(804) 258-3830 | Genuspupclub@gmail.com`
+        }),
+        booking_confirmed: (data) => ({
+            subject: `Confirmed! ${data.petName || 'Your Pup'}'s ${data.service || 'Visit'} on ${data.date || ''}`,
+            body: `Hi ${data.clientName || 'there'}!\n\nGreat news — your booking is confirmed!\n\nService: ${data.service || '—'}\nPet: ${data.petName || '—'}\nDate: ${data.date || ''}\nTime: ${data.time || ''}\n\nReminders:\n• Have your pup ready with leash, food, and medications\n• We'll send photo updates during the visit\n• Cancel 24+ hrs in advance for a full refund\n\nSee you soon!\n— GenusPupClub`
+        }),
+        visit_complete: (data) => ({
+            subject: `Visit Complete — ${data.petName || 'Your Pup'} Had a Great Time!`,
+            body: `Hi ${data.clientName || 'there'}!\n\n${data.petName || 'Your pup'}'s ${data.service || 'visit'} is all wrapped up!\n\nCheck your portal for photos, a report card, and your invoice.\n\nAmount: ${data.amount ? '$' + Number(data.amount).toFixed(2) : 'See invoice'}\n\nThank you for trusting us with ${data.petName || 'your pup'}. We loved every minute!\n\n— GenusPupClub`
+        }),
+        payment_receipt: (data) => ({
+            subject: `Payment Received — $${Number(data.amount || 0).toFixed(2)}`,
+            body: `Hi ${data.clientName || 'there'}!\n\nWe've received your payment:\n\nAmount: $${Number(data.amount || 0).toFixed(2)}${data.tip > 0 ? '\nTip: $' + Number(data.tip).toFixed(2) + ' (Thank you!)' : ''}\nMethod: ${data.method || '—'}\nDate: ${data.date || new Date().toISOString().split('T')[0]}\n\nThank you for your payment!\n\n— GenusPupClub`
+        }),
+        message: (data) => ({
+            subject: `Message from GenusPupClub${data.pet ? ' — re: ' + data.pet : ''}`,
+            body: `Hi ${data.to || 'there'}!\n\n${data.text || data.message || ''}\n\n— GenusPupClub\n(804) 258-3830 | Genuspupclub@gmail.com`
+        }),
+        welcome: (data) => ({
+            subject: `Welcome to GenusPupClub, ${data.name || ''}!`,
+            body: `Hi ${data.name || 'there'}!\n\nWelcome to GenusPupClub — Richmond's #1 dog sitting service!\n\nYour account is all set up. Here's what you can do:\n• Book visits, walks, daycare, and more\n• Track your pup with real-time photo updates\n• Manage your pets and view report cards\n• Pay securely via Venmo, Zelle, CashApp, or Apple Pay\n\nLog in anytime at your portal.\n\nQuestions? Reply to this email or call us at (804) 258-3830.\n\n— The GenusPupClub Team`
+        }),
+        password_reset: (data) => ({
+            subject: `Your GenusPupClub Password Has Been Reset`,
+            body: `Hi ${data.name || 'there'}!\n\nYour password has been reset by our team.\n\nNew Password: ${data.newPassword || '(contact us)'}\n\nPlease log in and change it to something you'll remember.\n\nIf you didn't request this, contact us immediately at (804) 258-3830.\n\n— GenusPupClub`
+        })
+    };
+
     const sendEmail = (template, data) => {
-        if (!EMAIL_CONFIG.enabled) {
+        const config = getEmailConfig();
+
+        if (!config.enabled) {
             console.log(`[EMAIL STUB] Template: ${template}`, data);
             return;
         }
 
-        // EmailJS integration (free tier: 200 emails/month)
-        if (EMAIL_CONFIG.service === 'emailjs' && typeof emailjs !== 'undefined') {
-            const params = {
-                to_name: data.clientName || data.to || '',
-                to_email: data.clientEmail || data.email || '',
-                from_name: 'GenusPupClub',
-                service_type: data.service || '',
-                pet_name: data.petName || data.pet || '',
-                date: data.date || '',
-                time: data.time || '',
-                amount: data.amount ? '$' + Number(data.amount).toFixed(2) : '',
-                tip: data.tip ? '$' + Number(data.tip).toFixed(2) : '',
-                method: data.method || '',
-                message: data.text || data.notes || ''
-            };
+        if (typeof emailjs === 'undefined') {
+            console.warn('[EMAIL] EmailJS SDK not loaded. Add the script tag.');
+            return;
+        }
 
-            emailjs.send(EMAIL_CONFIG.serviceId, EMAIL_CONFIG.templateIds[template] || '', params, EMAIL_CONFIG.publicKey)
-                .then(() => console.log(`[EMAIL] Sent: ${template}`))
-                .catch(err => console.error(`[EMAIL] Failed: ${template}`, err));
+        const tmpl = EMAIL_TEMPLATES[template];
+        if (!tmpl) {
+            console.warn(`[EMAIL] Unknown template: ${template}`);
+            return;
+        }
+
+        const content = tmpl(data);
+        const clientEmail = data.clientEmail || data.email || '';
+
+        // Resolve client email from stored data if not in payload
+        let toEmail = clientEmail;
+        if (!toEmail && data.clientId) {
+            const allClients = load('clients', []);
+            const client = allClients.find(c => c.id === data.clientId);
+            if (client) toEmail = client.email || '';
+        }
+        if (!toEmail && data.clientName) {
+            const allClients = load('clients', []);
+            const client = allClients.find(c => c.name === data.clientName);
+            if (client) toEmail = client.email || '';
+        }
+
+        // Send to client
+        if (config.sendToClient && toEmail) {
+            const params = {
+                to_name: data.clientName || data.to || data.name || '',
+                to_email: toEmail,
+                from_name: 'GenusPupClub',
+                subject: content.subject,
+                message: content.body
+            };
+            emailjs.send(config.serviceId, 'default_service', params, config.publicKey)
+                .then(() => {
+                    console.log(`[EMAIL] Sent to client: ${template} → ${toEmail}`);
+                    // Log sent email
+                    const log = load('email_log', []);
+                    log.push({ id: uid(), template, to: toEmail, subject: content.subject, date: todayStr(), time: timeStr(), status: 'sent' });
+                    if (log.length > 500) log.splice(0, log.length - 500);
+                    save('email_log', log);
+                })
+                .catch(err => {
+                    console.error(`[EMAIL] Failed: ${template} → ${toEmail}`, err);
+                    const log = load('email_log', []);
+                    log.push({ id: uid(), template, to: toEmail, subject: content.subject, date: todayStr(), time: timeStr(), status: 'failed', error: err?.text || String(err) });
+                    save('email_log', log);
+                });
+        }
+
+        // Send copy to admin
+        if (config.sendToAdmin && config.adminEmail) {
+            const adminParams = {
+                to_name: 'GenusPupClub Admin',
+                to_email: config.adminEmail,
+                from_name: 'GenusPupClub System',
+                subject: `[Admin Copy] ${content.subject}`,
+                message: `--- Admin copy of email sent to ${toEmail || 'client'} ---\n\n${content.body}`
+            };
+            emailjs.send(config.serviceId, 'default_service', adminParams, config.publicKey)
+                .then(() => console.log(`[EMAIL] Admin copy sent: ${template}`))
+                .catch(err => console.error(`[EMAIL] Admin copy failed`, err));
         }
     };
+
+    // Direct email send (for custom messages from dashboard)
+    const sendDirectEmail = (toEmail, toName, subject, body) => {
+        const config = getEmailConfig();
+        if (!config.enabled || typeof emailjs === 'undefined') {
+            console.log(`[EMAIL STUB] Direct: ${subject} → ${toEmail}`);
+            showToast('Email Not Configured', 'Enable EmailJS in Settings to send real emails', 'warning');
+            return Promise.resolve(false);
+        }
+        return emailjs.send(config.serviceId, 'default_service', {
+            to_name: toName, to_email: toEmail,
+            from_name: 'GenusPupClub', subject, message: body
+        }, config.publicKey).then(() => {
+            const log = load('email_log', []);
+            log.push({ id: uid(), template: 'direct', to: toEmail, subject, date: todayStr(), time: timeStr(), status: 'sent' });
+            save('email_log', log);
+            showToast('Email Sent', `Sent to ${toEmail}`, 'success');
+            return true;
+        }).catch(err => {
+            showToast('Email Failed', err?.text || 'Check EmailJS config', 'error');
+            return false;
+        });
+    };
+
+    const getEmailLog = () => load('email_log', []);
+    const getEmailConfig_public = () => getEmailConfig();
 
     // ============================================
     // NOTIFICATION BELL RENDERER
@@ -313,6 +424,7 @@ const GPC_NOTIFY = (() => {
         getPaymentHandle, getAllHandles,
         onNewBooking, onBookingConfirmed, onBookingCompleted, onBookingCancelled,
         onPaymentReceived, onPaymentPending, onNewMessage,
-        sendEmail, PAYMENT_HANDLES
+        sendEmail, sendDirectEmail, getEmailLog, getEmailConfig: getEmailConfig_public,
+        EMAIL_TEMPLATES, PAYMENT_HANDLES
     };
 })();

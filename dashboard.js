@@ -5,7 +5,13 @@
 
 const DB_KEY = 'gpc_';
 const load = (key, fallback) => { try { const d = JSON.parse(localStorage.getItem(DB_KEY + key)); return d !== null ? d : fallback; } catch { return fallback; } };
-const save = (key, data) => localStorage.setItem(DB_KEY + key, JSON.stringify(data));
+const save = (key, data) => {
+    localStorage.setItem(DB_KEY + key, JSON.stringify(data));
+    // Cloud sync — fire-and-forget (non-blocking)
+    if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
+        GPC_SUPABASE.save(key, data).catch(() => {});
+    }
+};
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const fmt = (n) => '$' + Number(n || 0).toFixed(2);
 const todayStr = () => new Date().toISOString().split('T')[0];
@@ -23,8 +29,11 @@ const DEFAULT_SERVICES = [
     { id: 'weekend', name: 'Weekend Package', price: 100, duration: 0, category: 'Sitting', description: 'Friday evening through Sunday evening', active: true },
     { id: 'puppy', name: 'Puppy Care', price: 30, duration: 60, category: 'Specialty', description: 'Under 1 year: extra potty breaks, training reinforcement', active: true },
     { id: 'senior', name: 'Senior Dog Care', price: 25, duration: 30, category: 'Specialty', description: 'Gentle care for older dogs, medication admin', active: true },
-    { id: 'taxi', name: 'Pet Taxi', price: 15, duration: 0, category: 'Transport', description: 'One-way vet/groomer transport (per trip)', active: true },
-    { id: 'taxiwait', name: 'Pet Taxi + Wait', price: 35, duration: 0, category: 'Transport', description: 'Transport + wait at appointment + return', active: true },
+    { id: 'taxi', name: 'Pet Taxi — One Way', price: 15, duration: 0, category: 'Transport', description: 'One-way transport to vet/groomer/daycare (per trip)', active: true },
+    { id: 'taxiround', name: 'Pet Taxi — Round Trip', price: 25, duration: 0, category: 'Transport', description: 'Pickup from home + drop at destination + return home', active: true },
+    { id: 'taxiwait', name: 'Pet Taxi + Wait', price: 35, duration: 0, category: 'Transport', description: 'Transport + wait at appointment + return home', active: true },
+    { id: 'taxidaycare', name: 'Daycare Shuttle', price: 20, duration: 0, category: 'Transport', description: 'Daily pickup & dropoff for daycare (round trip)', active: true },
+    { id: 'taxiweekly', name: 'Weekly Shuttle Pass', price: 75, duration: 0, category: 'Transport', description: '5-day daycare shuttle pass (Mon-Fri pickup & dropoff)', active: true },
     { id: 'bath', name: 'Bath & Brush', price: 35, duration: 45, category: 'Grooming', description: 'Full bath, shampoo, blow dry, brush out', active: true },
     { id: 'fullgroom', name: 'Full Grooming', price: 60, duration: 90, category: 'Grooming', description: 'Bath, brush, nail trim, ear clean, sanitary trim', active: true },
     { id: 'nailonly', name: 'Nail Trim', price: 15, duration: 15, category: 'Grooming', description: 'Quick nail clip or Dremel grind', active: true },
@@ -163,7 +172,7 @@ const renderOverview = () => {
                 ${todayBookings.length ? todayBookings.map(b => `
                     <div class="schedule-item">
                         <div class="schedule-time">${b.time || '—'}</div>
-                        <div class="schedule-info"><h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4><p>${escHTML(b.service)} ${b.addons?.length ? `+ ${b.addons.length} add-on${b.addons.length > 1 ? 's' : ''}` : ''} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p></div>
+                        <div class="schedule-info"><h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4><p>${escHTML(b.service)} ${b.dropoffTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Drop: ${b.dropoffTime}</span>` : ''} ${b.pickupTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Pick: ${b.pickupTime}</span>` : ''} ${b.addons?.length ? `+ ${b.addons.length} add-on${b.addons.length > 1 ? 's' : ''}` : ''} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p></div>
                     </div>
                 `).join('') : '<div class="empty"><div class="empty-icon">📅</div><p>No bookings today</p></div>'}
             </div>
@@ -218,10 +227,10 @@ const renderBookings = () => {
 
 const renderBookingTable = (items) => `
     <div class="table-wrap"><table>
-        <thead><tr><th>Date</th><th>Time</th><th>Client</th><th>Pet</th><th>Service</th><th>Add-ons</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Time</th><th>Drop-Off</th><th>Pick-Up</th><th>Client</th><th>Pet</th><th>Service</th><th>Add-ons</th><th>Total</th><th>Status</th><th></th></tr></thead>
         <tbody>${items.length ? items.map(b => `<tr>
-            <td>${b.date}</td><td>${b.time || '—'}</td><td>${escHTML(b.clientName)}</td><td>${escHTML(b.petName)}</td>
-            <td>${escHTML(b.service)}</td>
+            <td>${b.date}</td><td>${b.time || '—'}</td><td>${b.dropoffTime || '—'}</td><td>${b.pickupTime || '—'}</td><td>${escHTML(b.clientName)}</td><td>${escHTML(b.petName)}</td>
+            <td>${escHTML(b.service)}${b.pickupAddr ? `<br><span style="font-size:.72rem;color:var(--text-muted)">From: ${escHTML(b.pickupAddr)}</span>` : ''}</td>
             <td>${b.addons?.length ? b.addons.map(a => `<span class="badge badge-completed">${escHTML(a)}</span>`).join(' ') : '—'}</td>
             <td><strong>${fmt(calcBookingTotal(b))}</strong></td>
             <td><span class="badge badge-${b.status}">${b.status}</span></td>
@@ -231,7 +240,7 @@ const renderBookingTable = (items) => `
                 <button class="btn btn-ghost btn-sm" onclick="editBooking('${b.id}')">✎</button>
                 <button class="btn btn-ghost btn-sm" onclick="deleteItem('bookings','${b.id}')">✕</button>
             </td>
-        </tr>`).join('') : '<tr><td colspan="9" class="empty">No bookings</td></tr>'}</tbody>
+        </tr>`).join('') : '<tr><td colspan="11" class="empty">No bookings</td></tr>'}</tbody>
     </table></div>
 `;
 
@@ -266,8 +275,8 @@ const renderClients = () => {
                     const spent = cBookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + calcBookingTotal(b), 0);
                     return `<tr>
                         <td><strong>${escHTML(c.name)}</strong></td><td>${escHTML(c.email)}</td><td>${escHTML(c.phone)}</td><td>${escHTML(c.address)}</td>
-                        <td>${cPets.map(p => escHTML(p.name)).join(', ') || '—'}</td><td>${cBookings.length}</td><td><strong>${fmt(spent)}</strong></td>
-                        <td><button class="btn btn-ghost btn-sm" onclick="editClient('${c.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('clients','${c.id}')">✕</button></td>
+                        <td>${cPets.length ? cPets.map(p => `<span class="badge badge-confirmed">${escHTML(p.name)}</span>`).join(' ') : '—'} <span style="font-size:.72rem;color:var(--text-muted)">(${cPets.length})</span></td><td>${cBookings.length}</td><td><strong>${fmt(spent)}</strong></td>
+                        <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" title="Add pet for this client" onclick="addPetForClient('${c.id}','${escHTML(c.name)}')">+🐕</button> <button class="btn btn-ghost btn-sm" onclick="editClient('${c.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('clients','${c.id}')">✕</button></td>
                     </tr>`;
                 }).join('') : '<tr><td colspan="8" class="empty">No clients yet</td></tr>'}</tbody>
             </table></div>
@@ -287,7 +296,7 @@ const renderPets = () => {
                 <div class="pet-avatar">🐕</div>
                 <div class="pet-info" style="flex:1">
                     <h4>${escHTML(p.name)} <span style="float:right"><button class="btn btn-ghost btn-sm" onclick="editPet('${p.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('pets','${p.id}')">✕</button></span></h4>
-                    <p>${escHTML(p.breed || '?')} · ${escHTML(p.age || '?')} · ${escHTML(p.weight || '?')} · ${escHTML(p.gender || '?')}</p>
+                    <p>${escHTML(p.breed || '?')} · ${escHTML(p.age || '?')} · ${escHTML(p.weight || '?')} · ${p.gender === 'Female' ? '♀' : '♂'} ${escHTML(p.gender || '?')} · ${p.fixed === 'Yes' ? '✓ Fixed' : '✗ Intact'}</p>
                     <p style="font-size:.8rem">Owner: <strong>${escHTML(owner?.name || '—')}</strong></p>
                     ${p.vet ? `<p style="font-size:.78rem;color:var(--text-muted)">Vet: ${escHTML(p.vet)}</p>` : ''}
                     ${p.allergies ? `<p style="font-size:.78rem;color:var(--danger)">Allergies: ${escHTML(p.allergies)}</p>` : ''}
@@ -327,7 +336,7 @@ const renderSchedule = () => {
                 </div>
                 ${d.bookings.length ? d.bookings.map(b => `
                     <div class="schedule-item"><div class="schedule-time">${b.time || '—'}</div>
-                    <div class="schedule-info"><h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4><p>${escHTML(b.service)} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p></div></div>
+                    <div class="schedule-info"><h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4><p>${escHTML(b.service)} ${b.dropoffTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Drop: ${b.dropoffTime}</span>` : ''} ${b.pickupTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Pick: ${b.pickupTime}</span>` : ''} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p></div></div>
                 `).join('') : '<div style="font-size:.85rem;color:var(--text-muted);padding:4px 0">No bookings</div>'}
             </div>
         `).join('')}</div>
@@ -906,8 +915,8 @@ const renderCheckIn = () => {
                 <div style="padding:16px 0;border-bottom:1px solid var(--border)">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start">
                         <div>
-                            <h4 style="margin-bottom:4px">${escHTML(c.petName)} <span style="font-size:.82rem;color:var(--text-muted)">(${escHTML(c.ownerName)})</span></h4>
-                            <div style="font-size:.82rem;color:var(--text-light)">Checked in: ${c.checkInTime} on ${c.checkInDate}</div>
+                            <h4 style="margin-bottom:4px">${escHTML(c.petName)} <span style="font-size:.82rem;color:var(--text-muted)">(${escHTML(c.ownerName)})</span> ${c.walkIn ? '<span class="badge badge-pending">Walk-In</span>' : '<span class="badge badge-confirmed">Booked</span>'}</h4>
+                            <div style="font-size:.82rem;color:var(--text-light)">Drop-off: ${c.dropoffTime || c.checkInTime} on ${c.checkInDate}${c.expectedPickup ? ` · Expected pick-up: ${c.expectedPickup}` : ''}</div>
                             <div style="font-size:.82rem;color:var(--text-light)">Service: ${escHTML(c.service)}</div>
                         </div>
                         <button class="btn btn-success btn-sm" onclick="checkOutDog('${c.id}')">Check Out</button>
@@ -948,6 +957,11 @@ const checkOutDog = (id) => {
     c.checkOutDate = todayStr();
     c.checkOutTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     save('checkins', checkins);
+    // Mark linked booking as completed
+    if (c.bookingId) {
+        const bk = bookings.find(x => x.id === c.bookingId);
+        if (bk) { bk.status = 'completed'; save('bookings', bookings); }
+    }
     renderTab();
 };
 
@@ -1415,16 +1429,105 @@ const renderSettings = () => {
             </table></div>
         </div>
 
+        <!-- Cloud Database (Supabase) -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Cloud Database (Supabase)</div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Syncs all data across devices in real time. Without this, data only lives on this browser.</p>
+            ${(() => {
+                const sbCfg = typeof GPC_SUPABASE !== 'undefined' ? GPC_SUPABASE.getConfig() : {};
+                const isConn = typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected();
+                return `
+                <div style="margin-bottom:12px;padding:12px;border-radius:8px;background:${isConn ? 'rgba(0,184,148,.06);border:1px solid rgba(0,184,148,.2)' : 'rgba(225,112,85,.06);border:1px solid rgba(225,112,85,.2)'}">
+                    <strong style="color:${isConn ? 'var(--accent)' : 'var(--danger)'}">${isConn ? '✓ Connected to Supabase — data syncs across all devices' : '✕ Not connected — data only on this device (localStorage)'}</strong>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Supabase Project URL</label><input class="form-input" id="sSbUrl" value="${escHTML(sbCfg.url || '')}" placeholder="https://abc123.supabase.co"></div>
+                    <div class="form-group"><label class="form-label">Anon (Public) Key</label><input class="form-input" id="sSbKey" value="${escHTML(sbCfg.anonKey || '')}" placeholder="eyJhbG..."></div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                    <button class="btn btn-primary btn-sm" onclick="saveSupabaseConfig()">Save & Connect</button>
+                    <button class="btn btn-sm btn-ghost" onclick="testSupabase()">Test Connection</button>
+                    <button class="btn btn-sm btn-ghost" onclick="pushToCloud()">Push Local → Cloud</button>
+                    <button class="btn btn-sm btn-ghost" onclick="pullFromCloud()">Pull Cloud → Local</button>
+                    <button class="btn btn-sm btn-ghost" onclick="smartSyncCloud()">Smart Merge (Recommended)</button>
+                </div>
+                <div style="margin-top:12px;padding:10px;background:rgba(139,92,246,.04);border-radius:8px;font-size:.82rem;color:var(--text-muted)">
+                    <strong>Setup:</strong> 1) Go to <a href="https://supabase.com" target="_blank" style="color:var(--primary)">supabase.com</a> → Create free project. 2) Go to SQL Editor → paste contents of <code>supabase-schema.sql</code> → Run. 3) Go to Settings → API → copy Project URL and anon public key here. 4) Click "Push Local → Cloud" to upload your existing data.
+                </div>`;
+            })()}
+        </div>
+
+        <!-- Email Configuration -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Email System (EmailJS)</div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Sends real emails for bookings, confirmations, receipts, and messages. Free: 200 emails/month.</p>
+            ${(() => {
+                const emailCfg = load('email_config', { enabled: false, serviceId: '', publicKey: '', adminEmail: 'Genuspupclub@gmail.com', sendToAdmin: true, sendToClient: true });
+                return `
+                <div style="margin-bottom:12px;padding:12px;border-radius:8px;background:${emailCfg.enabled ? 'rgba(0,184,148,.06);border:1px solid rgba(0,184,148,.2)' : 'rgba(225,112,85,.06);border:1px solid rgba(225,112,85,.2)'}">
+                    <strong style="color:${emailCfg.enabled ? 'var(--accent)' : 'var(--danger)'}">${emailCfg.enabled ? '✓ Email is ACTIVE' : '✕ Email is OFF — emails only logged to console'}</strong>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Enabled</label><select class="form-select" id="sEmailEnabled"><option value="true" ${emailCfg.enabled ? 'selected' : ''}>ON — Send real emails</option><option value="false" ${!emailCfg.enabled ? 'selected' : ''}>OFF — Console log only</option></select></div>
+                    <div class="form-group"><label class="form-label">Admin Email (gets copies)</label><input class="form-input" id="sEmailAdmin" value="${escHTML(emailCfg.adminEmail || '')}"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">EmailJS Service ID</label><input class="form-input" id="sEmailServiceId" value="${escHTML(emailCfg.serviceId || '')}" placeholder="e.g. service_abc123"></div>
+                    <div class="form-group"><label class="form-label">EmailJS Public Key</label><input class="form-input" id="sEmailPublicKey" value="${escHTML(emailCfg.publicKey || '')}" placeholder="e.g. user_abc123xyz"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Send to Client</label><select class="form-select" id="sEmailClient"><option value="true" ${emailCfg.sendToClient !== false ? 'selected' : ''}>Yes</option><option value="false" ${emailCfg.sendToClient === false ? 'selected' : ''}>No</option></select></div>
+                    <div class="form-group"><label class="form-label">Send Admin Copy</label><select class="form-select" id="sEmailAdminCopy"><option value="true" ${emailCfg.sendToAdmin !== false ? 'selected' : ''}>Yes</option><option value="false" ${emailCfg.sendToAdmin === false ? 'selected' : ''}>No</option></select></div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                    <button class="btn btn-primary btn-sm" onclick="saveEmailConfig()">Save Email Config</button>
+                    <button class="btn btn-sm btn-ghost" onclick="testEmail()">Send Test Email</button>
+                </div>
+                <div style="margin-top:12px;padding:10px;background:rgba(139,92,246,.04);border-radius:8px;font-size:.82rem;color:var(--text-muted)">
+                    <strong>Setup:</strong> 1) Go to <a href="https://www.emailjs.com" target="_blank" style="color:var(--primary)">emailjs.com</a> → Sign up free. 2) Add an Email Service (connect your Gmail). 3) Create a template with variables: {{to_name}}, {{to_email}}, {{subject}}, {{message}}. Use "default_service" as template ID. 4) Copy your Service ID and Public Key here.
+                </div>`;
+            })()}
+            ${(() => {
+                const emailLog = load('email_log', []).slice(-20).reverse();
+                return emailLog.length ? `
+                <div style="margin-top:16px"><div style="font-size:.88rem;font-weight:600;margin-bottom:8px">Recent Emails (${emailLog.length})</div>
+                <div class="table-wrap"><table>
+                    <thead><tr><th>Date</th><th>Time</th><th>To</th><th>Subject</th><th>Status</th></tr></thead>
+                    <tbody>${emailLog.map(e => `<tr>
+                        <td style="font-size:.82rem">${e.date}</td><td style="font-size:.82rem">${e.time}</td>
+                        <td style="font-size:.82rem">${escHTML(e.to)}</td>
+                        <td style="font-size:.82rem">${escHTML(e.subject || '').substring(0,40)}</td>
+                        <td><span class="badge badge-${e.status === 'sent' ? 'confirmed' : 'cancelled'}">${e.status}</span></td>
+                    </tr>`).join('')}</tbody>
+                </table></div></div>` : '';
+            })()}
+        </div>
+
         <!-- Manage Client Accounts -->
         <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Client Accounts (${load('users',[]).length})</div>
+            <div class="card-header"><span class="card-title">Client Accounts (${load('users',[]).length})</span><button class="btn btn-primary btn-sm" onclick="showModal('client_account')">+ Create Account</button></div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">View, edit, and reset client login credentials. Passwords visible to admin for support purposes.</p>
             <div class="table-wrap"><table>
-                <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th></th></tr></thead>
-                <tbody>${load('users',[]).map(u => `<tr>
-                    <td><strong>${escHTML(u.name)}</strong></td><td>${escHTML(u.email)}</td><td>${escHTML(u.phone || '—')}</td>
+                <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Password</th><th>Joined</th><th>Pets</th><th></th></tr></thead>
+                <tbody>${load('users',[]).map(u => {
+                    const userPets = pets.filter(p => p.clientId === u.id);
+                    return `<tr>
+                    <td><strong>${escHTML(u.name)}</strong></td>
+                    <td>${escHTML(u.email)}</td>
+                    <td>${escHTML(u.phone || '—')}</td>
+                    <td>
+                        <span id="pass-${u.id}" style="font-family:monospace;font-size:.82rem;background:var(--bg-alt);padding:2px 8px;border-radius:4px">${u.plainPassword ? '••••••' : '<em style="color:var(--text-muted)">hashed</em>'}</span>
+                        ${u.plainPassword ? `<button class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:2px 6px" onclick="const el=document.getElementById('pass-${u.id}');el.textContent=el.textContent==='••••••'?'${escHTML(u.plainPassword)}':'••••••'">Show</button>` : ''}
+                    </td>
                     <td style="font-size:.78rem;color:var(--text-muted)">${u.createdAt ? u.createdAt.substring(0,10) : '—'}</td>
-                    <td><button class="btn btn-ghost btn-sm" onclick="resetClientPassword('${u.id}','${escHTML(u.name)}')">Reset Pass</button> <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteClientAccount('${u.id}','${escHTML(u.name)}')">Delete</button></td>
-                </tr>`).join('') || '<tr><td colspan="5" class="empty">No client accounts</td></tr>'}</tbody>
+                    <td>${userPets.length ? userPets.map(p => `<span class="badge badge-confirmed">${escHTML(p.name)}</span>`).join(' ') : '—'}</td>
+                    <td style="white-space:nowrap">
+                        <button class="btn btn-ghost btn-sm" onclick="editClientAccount('${u.id}')">✎</button>
+                        <button class="btn btn-ghost btn-sm" onclick="resetClientPassword('${u.id}','${escHTML(u.name)}')">🔑</button>
+                        <button class="btn btn-ghost btn-sm" onclick="emailClientCreds('${u.id}')">📧</button>
+                        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteClientAccount('${u.id}','${escHTML(u.name)}')">✕</button>
+                    </td>
+                </tr>`; }).join('') || '<tr><td colspan="7" class="empty">No client accounts</td></tr>'}</tbody>
             </table></div>
         </div>
 
@@ -1614,18 +1717,200 @@ const deleteStaffAccount = (id) => {
     save('staff_accounts', staff); renderTab();
 };
 
+// Simple hash matching auth.js
+const simpleHash = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) { hash = ((hash << 5) - hash) + str.charCodeAt(i); hash |= 0; }
+    return 'h_' + Math.abs(hash).toString(36);
+};
+
+// ============================================
+// SUPABASE ACTIONS
+// ============================================
+const saveSupabaseConfig = () => {
+    const url = document.getElementById('sSbUrl')?.value?.trim() || '';
+    const anonKey = document.getElementById('sSbKey')?.value?.trim() || '';
+    if (!url || !anonKey) { alert('Both URL and Anon Key are required'); return; }
+    if (typeof GPC_SUPABASE !== 'undefined') {
+        GPC_SUPABASE.saveConfig({ url, anonKey });
+        // Re-init
+        const ok = GPC_SUPABASE.init();
+        if (ok) {
+            GPC_SUPABASE.startRealtime((key) => { if (typeof renderTab === 'function') renderTab(); });
+            if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Connected', 'Supabase connected! Data will sync across devices.', 'success');
+        } else {
+            if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Failed', 'Could not connect. Check URL and key.', 'error');
+        }
+        renderTab();
+    }
+};
+
+const testSupabase = async () => {
+    if (typeof GPC_SUPABASE === 'undefined' || !GPC_SUPABASE.isConnected()) {
+        alert('Not connected. Save your config first.'); return;
+    }
+    const result = await GPC_SUPABASE.testConnection();
+    if (result.success) {
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Success', 'Supabase connection working!', 'success');
+    } else {
+        alert('Connection test failed: ' + result.error);
+    }
+};
+
+const pushToCloud = async () => {
+    if (!confirm('Push ALL local data to the cloud? This will overwrite cloud data with what is on THIS device.')) return;
+    if (typeof GPC_SUPABASE === 'undefined' || !GPC_SUPABASE.isConnected()) {
+        alert('Not connected to Supabase.'); return;
+    }
+    const result = await GPC_SUPABASE.pushAll();
+    if (result.success) {
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Pushed', `${result.pushed} data keys sent to cloud`, 'success');
+    } else {
+        alert('Push failed: ' + (result.error || 'Unknown error'));
+    }
+};
+
+const pullFromCloud = async () => {
+    if (!confirm('Pull ALL cloud data to this device? This will overwrite local data with what is in the cloud.')) return;
+    if (typeof GPC_SUPABASE === 'undefined' || !GPC_SUPABASE.isConnected()) {
+        alert('Not connected to Supabase.'); return;
+    }
+    const result = await GPC_SUPABASE.pullAll();
+    if (result.success) {
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Pulled', `${result.pulled} data keys received from cloud`, 'success');
+        renderTab();
+    } else {
+        alert('Pull failed: ' + (result.error || 'Unknown error'));
+    }
+};
+
+const smartSyncCloud = async () => {
+    if (typeof GPC_SUPABASE === 'undefined' || !GPC_SUPABASE.isConnected()) {
+        alert('Not connected to Supabase.'); return;
+    }
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Syncing...', 'Merging data from all devices', 'info');
+    const result = await GPC_SUPABASE.smartSync();
+    if (result.success) {
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Synced', `Merged: ${result.merged}, Pushed: ${result.pushed}, Pulled: ${result.pulled}`, 'success');
+        renderTab();
+    } else {
+        alert('Sync failed: ' + (result.error || 'Unknown error'));
+    }
+};
+
+// ============================================
+// EMAIL ACTIONS
+// ============================================
+const saveEmailConfig = () => {
+    const cfg = {
+        enabled: document.getElementById('sEmailEnabled')?.value === 'true',
+        serviceId: document.getElementById('sEmailServiceId')?.value?.trim() || '',
+        publicKey: document.getElementById('sEmailPublicKey')?.value?.trim() || '',
+        adminEmail: document.getElementById('sEmailAdmin')?.value?.trim() || '',
+        sendToClient: document.getElementById('sEmailClient')?.value === 'true',
+        sendToAdmin: document.getElementById('sEmailAdminCopy')?.value === 'true'
+    };
+    save('email_config', cfg);
+    // Re-init EmailJS with new key
+    if (cfg.publicKey && typeof emailjs !== 'undefined') {
+        emailjs.init(cfg.publicKey);
+    }
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Email configuration updated', 'success');
+    renderTab();
+};
+
+const testEmail = () => {
+    const cfg = load('email_config', {});
+    const adminEmail = document.getElementById('sEmailAdmin')?.value?.trim() || cfg.adminEmail || '';
+    if (!adminEmail) { alert('Enter an admin email first'); return; }
+    if (!cfg.enabled) { alert('Email is OFF. Turn it ON and save first.'); return; }
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.sendDirectEmail(adminEmail, 'GenusPupClub Admin', 'Test Email from GenusPupClub', 'This is a test email from your GenusPupClub dashboard.\n\nIf you received this, your email system is working correctly!\n\nSent: ' + new Date().toLocaleString());
+    }
+};
+
 const resetClientPassword = (userId, name) => {
     const newPass = prompt(`New password for ${name}:`);
     if (!newPass || newPass.length < 6) { alert('Password must be 6+ characters'); return; }
     const users = load('users', []);
     const user = users.find(u => u.id === userId);
     if (user) {
-        // Simple hash matching auth.js
-        let hash = 0;
-        for (let i = 0; i < newPass.length; i++) { hash = ((hash << 5) - hash) + newPass.charCodeAt(i); hash |= 0; }
-        user.passwordHash = 'h_' + Math.abs(hash).toString(36);
+        user.passwordHash = simpleHash(newPass);
+        user.plainPassword = newPass;
+        user.passwordChangedAt = new Date().toISOString();
         save('users', users);
         if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Password Reset', `${name}'s password has been changed`, 'success');
+        // Send password reset email if email system is active
+        if (typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendEmail('password_reset', { name: user.name, email: user.email, clientEmail: user.email, newPassword: newPass });
+        }
+        renderTab();
+    }
+};
+
+const editClientAccount = (userId) => {
+    const users = load('users', []);
+    const u = users.find(x => x.id === userId);
+    if (!u) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Account: ${escHTML(u.name)}</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="euName" value="${escHTML(u.name)}"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="euEmail" type="email" value="${escHTML(u.email)}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="euPhone" value="${escHTML(u.phone || '')}"></div><div class="form-group"><label class="form-label">New Password (leave blank to keep)</label><input class="form-input" id="euPass" type="text" placeholder="Enter new password or leave blank" value="${escHTML(u.plainPassword || '')}"></div></div>
+        <div style="margin-top:8px;padding:10px;background:rgba(255,107,53,.04);border-radius:8px;font-size:.82rem;color:var(--text-muted)">
+            <strong>Account ID:</strong> ${u.id}<br>
+            <strong>Created:</strong> ${u.createdAt || '—'}<br>
+            <strong>Password Hash:</strong> <code>${u.passwordHash || '—'}</code><br>
+            <strong>Last Password Change:</strong> ${u.passwordChangedAt ? u.passwordChangedAt.substring(0,10) : 'Never'}
+        </div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditClientAccount('${u.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+
+const saveEditClientAccount = (userId) => {
+    const users = load('users', []);
+    const u = users.find(x => x.id === userId);
+    if (!u) return;
+    const newName = document.getElementById('euName')?.value?.trim();
+    const newEmail = document.getElementById('euEmail')?.value?.trim();
+    const newPhone = document.getElementById('euPhone')?.value?.trim();
+    const newPass = document.getElementById('euPass')?.value;
+
+    if (newName) u.name = newName;
+    if (newEmail) u.email = newEmail.toLowerCase();
+    if (newPhone !== undefined) u.phone = newPhone;
+    if (newPass && newPass.length >= 6) {
+        u.passwordHash = simpleHash(newPass);
+        u.plainPassword = newPass;
+        u.passwordChangedAt = new Date().toISOString();
+    }
+    save('users', users);
+
+    // Also sync with clients table
+    const allClients = load('clients', []);
+    const client = allClients.find(c => c.id === userId);
+    if (client) {
+        if (newName) client.name = newName;
+        if (newEmail) client.email = newEmail.toLowerCase();
+        if (newPhone !== undefined) client.phone = newPhone;
+        save('clients', allClients);
+    }
+
+    closeModal();
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Updated', `${newName}'s account has been updated`, 'success');
+    renderTab();
+};
+
+const emailClientCreds = (userId) => {
+    const users = load('users', []);
+    const u = users.find(x => x.id === userId);
+    if (!u) return;
+    if (!u.plainPassword) { alert('Password not available (was set before plaintext storage). Reset it first.'); return; }
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.sendDirectEmail(u.email, u.name,
+            'Your GenusPupClub Login Credentials',
+            `Hi ${u.name}!\n\nHere are your GenusPupClub login details:\n\nEmail: ${u.email}\nPassword: ${u.plainPassword}\n\nLog in at your client portal anytime.\n\nIf you have questions, call us at (804) 258-3830.\n\n— GenusPupClub`
+        );
     }
 };
 
@@ -1658,9 +1943,12 @@ const importData = (input) => {
         try {
             const data = JSON.parse(e.target.result);
             Object.entries(data).forEach(([k, v]) => {
-                localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+                // Strip gpc_ prefix if present, then use save() wrapper for Supabase sync
+                const key = k.startsWith('gpc_') ? k.replace('gpc_', '') : k;
+                const val = typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v;
+                save(key, val);
             });
-            if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Imported', `${Object.keys(data).length} data keys imported`, 'success');
+            if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Imported', `${Object.keys(data).length} data keys imported & synced to cloud`, 'success');
             renderTab();
         } catch (err) { alert('Invalid JSON file'); }
     };
@@ -1782,7 +2070,10 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService" onchange="updateBookingPrice()">${svcOptions}</select></div>
             <div class="form-group"><label class="form-label">Add-ons</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="mAddons">${addonChecks}</div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="mDate" type="date" value="${todayStr()}"></div><div class="form-group"><label class="form-label">Time</label><input class="form-input" id="mTime" type="time" value="10:00"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Drop-Off Time</label><input class="form-input" id="mDropoff" type="time" placeholder="If applicable"></div><div class="form-group"><label class="form-label">Pick-Up Time</label><input class="form-input" id="mPickup" type="time" placeholder="If applicable"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Zone</label><select class="form-select" id="mZone"><option value="">No zone</option>${zoneOptions}</select></div><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="mSitter"><option value="">Auto-assign</option>${sitterOptions}</select></div></div>
+            <div style="margin:8px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Transport (if applicable)</div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Pickup Address</label><input class="form-input" id="mPickupAddr" placeholder="Client's home or custom address"></div><div class="form-group"><label class="form-label">Dropoff Address</label><input class="form-input" id="mDropoffAddr" placeholder="Our facility, vet, groomer, etc."></div></div>
             <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="mNotes" rows="2"></textarea></div>
             <div style="background:rgba(255,107,53,0.05);padding:12px;border-radius:8px;text-align:right"><span style="font-size:.85rem;color:var(--text-muted)">Estimated Total:</span> <strong style="font-size:1.3rem;color:var(--primary)" id="mPricePreview">${fmt(services[0]?.price || 0)}</strong></div>
         ` },
@@ -1851,6 +2142,12 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Action Taken</label><input class="form-input" id="mAction" placeholder="e.g. Warned owner, extra sitter required, banned"></div>
             <div class="form-group"><label class="form-label">Staff Notes</label><textarea class="form-textarea" id="mStaffNotes" rows="2" placeholder="Internal notes for the team"></textarea></div>
         ` },
+        client_account: { title: 'Create Client Account', body: `
+            <div class="form-row"><div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="mCAName"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="mCAEmail" type="email"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="mCAPhone" type="tel"></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="mCAPass" value="${'Pup' + Math.random().toString(36).substring(2, 8)}" style="font-family:monospace"></div></div>
+            <div class="form-group"><label class="form-label">Dog's Name (optional)</label><input class="form-input" id="mCADog" placeholder="Will create a pet profile"></div>
+            <div style="margin-top:8px"><label style="display:flex;gap:6px;align-items:center;font-size:.88rem"><input type="checkbox" id="mCASendEmail" checked> Send login credentials via email</label></div>
+        ` },
         staff_account: { title: 'Create Staff Login', body: `
             <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="mStaffName"></div>
             <div class="form-row">
@@ -1903,10 +2200,17 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Payment Method</label><select class="form-select" id="mMethod"><option>Cash</option><option>Venmo</option><option>Zelle</option><option>CashApp</option><option>Check</option><option>Card (manual)</option></select></div>
             <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="mDate" type="date" value="${todayStr()}"></div>
         ` },
-        checkin: { title: 'Check In Dog', body: `
-            <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mPetName"></div><div class="form-group"><label class="form-label">Owner Name</label><input class="form-input" id="mOwnerName"></div></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService">${svcOptions}</select></div><div class="form-group"><label class="form-label">Owner Phone</label><input class="form-input" id="mPhone" type="tel"></div></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Location</label><select class="form-select" id="mProperty">${(load('properties',[])).map(p => `<option>${escHTML(p.name)} — ${escHTML(p.address)}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Assigned Sitter</label><select class="form-select" id="mSitter"><option value="">Auto</option>${sitterOptions}</select></div></div>
+        checkin: { title: 'Check In Dog', body: (() => {
+            const todayBkgs = bookings.filter(b => b.date === todayStr() && b.status !== 'cancelled' && b.status !== 'completed');
+            const bkgOptions = todayBkgs.map(b => `<option value="${b.id}">${escHTML(b.clientName)} — ${escHTML(b.petName)} (${escHTML(b.service)}, ${b.time || '?'})</option>`).join('');
+            return `
+            <div class="form-group"><label class="form-label">Select Booking</label><select class="form-select" id="mBookingId" onchange="autofillCheckin(this.value)"><option value="">-- Walk-In (no booking) --</option>${bkgOptions}</select></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mPetName"></div><div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="mOwnerSelect" onchange="autofillCheckinOwner(this.value)"><option value="">Select or type below</option>${clientOptions}</select></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Owner Name</label><input class="form-input" id="mOwnerName"></div><div class="form-group"><label class="form-label">Owner Phone</label><input class="form-input" id="mPhone" type="tel"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService">${svcOptions}</select></div><div class="form-group"><label class="form-label">Drop-Off Time</label><input class="form-input" id="mDropoffTime" type="time" value="${new Date().toTimeString().slice(0,5)}"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Expected Pick-Up</label><input class="form-input" id="mPickupTime" type="time"></div><div class="form-group"><label class="form-label">Assigned Sitter</label><select class="form-select" id="mSitter"><option value="">Auto</option>${sitterOptions}</select></div></div>
+            <div class="form-group"><label class="form-label">Location</label><select class="form-select" id="mProperty">${(load('properties',[])).map(p => `<option>${escHTML(p.name)} — ${escHTML(p.address)}</option>`).join('')}</select></div>`;
+        })() + `
             <div style="margin:12px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Drop-Off Checklist</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px" id="mChecklist">
                 ${['Leash', 'Collar with ID', 'Food (bag/container)', 'Food bowl', 'Water bowl', 'Treats', 'Medications', 'Favorite toy', 'Bed/blanket', 'Crate', 'Harness', 'Poop bags', 'Jacket/sweater', 'Vaccination records'].map(item => `<label style="display:flex;gap:6px;align-items:center;font-size:.85rem;cursor:pointer"><input type="checkbox" class="checklist-item" value="${item}"> ${item}</label>`).join('')}
@@ -1927,8 +2231,8 @@ const showModal = (type) => {
             </div>
         ` },
         message: { title: 'Send Message', body: `
-            <div class="form-row"><div class="form-group"><label class="form-label">From</label><input class="form-input" id="mFrom" value="GenusPupClub"></div><div class="form-group"><label class="form-label">To (Owner Name)</label><input class="form-input" id="mTo"></div></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Regarding Pet</label><input class="form-input" id="mPet"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="mType"><option value="update">Visit Update</option><option value="booking">Booking</option><option value="reminder">Reminder</option><option value="general">General</option></select></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">From</label><input class="form-input" id="mFrom" value="GenusPupClub"></div><div class="form-group"><label class="form-label">To (Owner)</label><select class="form-select" id="mTo" onchange="autofillMsgPets(this.value)"><option value="">Select owner</option>${clientOptions}</select></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Regarding Pet</label><select class="form-select" id="mPet"><option value="">Select pet</option></select></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="mType"><option value="update">Visit Update</option><option value="booking">Booking</option><option value="reminder">Reminder</option><option value="general">General</option></select></div></div>
             <div class="form-group"><label class="form-label">Message</label><textarea class="form-textarea" id="mText" rows="4" placeholder="Hi! Just wanted to let you know..."></textarea></div>
             <div style="margin-top:8px">
                 <div style="font-size:.82rem;font-weight:600;margin-bottom:6px">Quick Templates:</div>
@@ -1954,9 +2258,84 @@ const autofillClient = (clientId) => {
     const c = clients.find(x => x.id === clientId);
     if (c) {
         document.getElementById('mClientName').value = c.name;
-        const pet = pets.find(p => p.clientId === c.id);
-        if (pet) document.getElementById('mPetName').value = pet.name;
+        const clientPets = pets.filter(p => p.clientId === c.id);
+        const petNameInput = document.getElementById('mPetName');
+        if (clientPets.length === 1) {
+            petNameInput.value = clientPets[0].name;
+        } else if (clientPets.length > 1) {
+            // Replace text input with a multi-select checklist
+            const wrapper = petNameInput.parentElement;
+            wrapper.innerHTML = `<label class="form-label">Select Pets (${clientPets.length})</label>
+                <div id="mPetChecklist" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+                    ${clientPets.map(p => `<label style="display:flex;gap:4px;align-items:center;font-size:.88rem;cursor:pointer;background:var(--bg-alt);padding:4px 10px;border-radius:6px;border:1px solid var(--border)"><input type="checkbox" class="pet-select-cb" value="${escHTML(p.name)}" checked> ${escHTML(p.name)}</label>`).join('')}
+                </div>
+                <input type="hidden" id="mPetName" value="${clientPets.map(p => p.name).join(', ')}">`;
+            wrapper.querySelectorAll('.pet-select-cb').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const selected = [...wrapper.querySelectorAll('.pet-select-cb:checked')].map(c => c.value);
+                    document.getElementById('mPetName').value = selected.join(', ');
+                    // Update extra dogs count
+                    const extraField = document.getElementById('mExtraDogs');
+                    if (extraField) extraField.value = Math.max(0, selected.length - 1);
+                });
+            });
+            // Auto-set extra dogs
+            const extraField = document.getElementById('mExtraDogs');
+            if (extraField) extraField.value = Math.max(0, clientPets.length - 1);
+        }
     }
+};
+
+const autofillCheckin = (bookingId) => {
+    if (!bookingId) return; // walk-in
+    const b = bookings.find(x => x.id === bookingId);
+    if (!b) return;
+    const petField = document.getElementById('mPetName');
+    const ownerField = document.getElementById('mOwnerName');
+    const phoneField = document.getElementById('mPhone');
+    const svcField = document.getElementById('mService');
+    const pickupField = document.getElementById('mPickupTime');
+    if (petField) petField.value = b.petName || '';
+    if (ownerField) ownerField.value = b.clientName || '';
+    if (svcField) svcField.value = b.service || '';
+    if (pickupField && b.pickupTime) pickupField.value = b.pickupTime;
+    // Try to find client phone
+    const client = clients.find(c => c.id === b.clientId || c.name === b.clientName);
+    if (client && phoneField) phoneField.value = client.phone || '';
+    if (client) {
+        const ownerSelect = document.getElementById('mOwnerSelect');
+        if (ownerSelect) ownerSelect.value = client.id;
+    }
+};
+
+const autofillCheckinOwner = (clientId) => {
+    const c = clients.find(x => x.id === clientId);
+    if (!c) return;
+    const ownerField = document.getElementById('mOwnerName');
+    const phoneField = document.getElementById('mPhone');
+    if (ownerField) ownerField.value = c.name;
+    if (phoneField) phoneField.value = c.phone || '';
+    // Populate pet field with first pet
+    const clientPets = pets.filter(p => p.clientId === c.id);
+    const petField = document.getElementById('mPetName');
+    if (petField && clientPets.length === 1) petField.value = clientPets[0].name;
+    else if (petField && clientPets.length > 1) petField.value = clientPets.map(p => p.name).join(', ');
+};
+
+const autofillMsgPets = (clientId) => {
+    const petSelect = document.getElementById('mPet');
+    if (!petSelect) return;
+    const clientPets = pets.filter(p => p.clientId === clientId);
+    petSelect.innerHTML = '<option value="">Select pet</option>' + clientPets.map(p => `<option value="${escHTML(p.name)}">${escHTML(p.name)}</option>`).join('');
+    if (clientPets.length === 1) petSelect.value = clientPets[0].name;
+};
+
+const addPetForClient = (clientId, clientName) => {
+    showModal('pet');
+    setTimeout(() => {
+        const ownerSelect = document.getElementById('mOwner');
+        if (ownerSelect) ownerSelect.value = clientId;
+    }, 50);
 };
 
 const updateBookingPrice = () => {
@@ -1977,7 +2356,7 @@ const saveModal = (type) => {
         const selectedAddons = [...document.querySelectorAll('.addon-check:checked')].map(cb => cb.value);
         const svc = services.find(s => s.name === v('mService'));
         const clientId = v('mClient') || null;
-        bookings.push({ id: uid(), clientId, clientName: v('mClientName'), petName: v('mPetName'), service: v('mService'), amount: svc?.price || 0, addons: selectedAddons, extraDogs: parseInt(v('mExtraDogs')) || 0, date: v('mDate'), time: v('mTime'), zone: v('mZone'), sitter: v('mSitter'), notes: v('mNotes'), status: 'pending' });
+        bookings.push({ id: uid(), clientId, clientName: v('mClientName'), petName: v('mPetName'), service: v('mService'), amount: svc?.price || 0, addons: selectedAddons, extraDogs: parseInt(v('mExtraDogs')) || 0, date: v('mDate'), time: v('mTime'), dropoffTime: v('mDropoff'), pickupTime: v('mPickup'), pickupAddr: v('mPickupAddr'), dropoffAddr: v('mDropoffAddr'), zone: v('mZone'), sitter: v('mSitter'), notes: v('mNotes'), status: 'pending' });
         save('bookings', bookings);
     } else if (type === 'client') {
         clients.push({ id: uid(), name: v('mName'), email: v('mEmail'), phone: v('mPhone'), address: v('mAddress'), source: v('mSource'), notes: v('mNotes') });
@@ -2007,6 +2386,48 @@ const saveModal = (type) => {
         let infamy = load('infamy', []);
         infamy.push({ id: uid(), dogName: v('mDogName'), ownerName: v('mOwnerName'), breed: v('mBreed'), severity: v('mSeverity'), issueType: v('mIssueType'), description: v('mDescription'), actionTaken: v('mAction'), staffNotes: v('mStaffNotes'), dateReported: todayStr(), incidents: [] });
         save('infamy', infamy);
+    } else if (type === 'client_account') {
+        const name = v('mCAName');
+        const email = v('mCAEmail').toLowerCase();
+        const phone = v('mCAPhone');
+        const pass = v('mCAPass');
+        const dog = v('mCADog');
+        const sendCreds = document.getElementById('mCASendEmail')?.checked;
+
+        if (!name || !email || !pass) { alert('Name, email, and password required'); return; }
+        if (pass.length < 6) { alert('Password must be 6+ characters'); return; }
+
+        const users = load('users', []);
+        if (users.find(u => u.email === email)) { alert('Account with this email already exists'); return; }
+
+        const userId = uid();
+        users.push({
+            id: userId, name, email, phone,
+            passwordHash: simpleHash(pass), plainPassword: pass,
+            createdAt: new Date().toISOString(), role: 'client'
+        });
+        save('users', users);
+
+        // Also add as client
+        if (!clients.find(c => c.email === email)) {
+            clients.push({ id: userId, name, email, phone, address: '', source: 'Admin Created', notes: '' });
+            save('clients', clients);
+        }
+
+        // Add pet if provided
+        if (dog) {
+            pets.push({ id: uid(), name: dog, breed: '', age: '', weight: '', gender: '', fixed: '', clientId: userId, tags: '', notes: '' });
+            save('pets', pets);
+        }
+
+        // Send welcome email with credentials
+        if (sendCreds && typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendDirectEmail(email, name,
+                'Welcome to GenusPupClub — Your Login Credentials',
+                `Hi ${name}!\n\nWelcome to GenusPupClub! An account has been created for you.\n\nEmail: ${email}\nPassword: ${pass}\n\nLog in at your client portal to book services, manage your pets, and more.\n\nQuestions? Call us at (804) 258-3830.\n\n— GenusPupClub`
+            );
+        }
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Account Created', `${name} can now log in`, 'success');
     } else if (type === 'staff_account') {
         const perms = [...document.querySelectorAll('.staff-perm:checked')].map(c => c.value);
         const role = v('mStaffRole');
@@ -2065,14 +2486,22 @@ const saveModal = (type) => {
     } else if (type === 'checkin') {
         const checklist = {};
         document.querySelectorAll('.checklist-item').forEach(cb => { checklist[cb.value] = cb.checked; });
+        const linkedBookingId = v('mBookingId') || null;
         checkins.push({
-            id: uid(), petName: v('mPetName'), ownerName: v('mOwnerName'), ownerPhone: v('mPhone'),
+            id: uid(), bookingId: linkedBookingId, walkIn: !linkedBookingId,
+            petName: v('mPetName'), ownerName: v('mOwnerName'), ownerPhone: v('mPhone'),
             service: v('mService'), property: v('mProperty'), sitter: v('mSitter'),
+            dropoffTime: v('mDropoffTime'), expectedPickup: v('mPickupTime'),
             checklist, belongings: v('mBelongings'),
             specialInstructions: v('mInstructions'), ownerNotes: v('mNotes'),
-            checkInDate: todayStr(), checkInTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            checkInDate: todayStr(), checkInTime: v('mDropoffTime') || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             checkedOut: false
         });
+        // Update linked booking status to confirmed
+        if (linkedBookingId) {
+            const bk = bookings.find(x => x.id === linkedBookingId);
+            if (bk && bk.status === 'pending') { bk.status = 'confirmed'; save('bookings', bookings); }
+        }
         save('checkins', checkins);
     } else if (type === 'photo') {
         const fileInput = document.getElementById('mFile');
@@ -2086,9 +2515,11 @@ const saveModal = (type) => {
         photos.push({ id: uid(), petName: v('mPetName'), url, caption: v('mCaption'), activity: v('mActivity'), date: v('mDate') });
         save('photos', photos);
     } else if (type === 'message') {
+        const toClientId = v('mTo');
+        const toClient = clients.find(c => c.id === toClientId);
         messages.push({
-            id: uid(), from: v('mFrom'), to: v('mTo'), pet: v('mPet'),
-            type: v('mType'), text: v('mText'),
+            id: uid(), from: v('mFrom'), to: toClient?.name || toClientId, toClientId,
+            pet: v('mPet'), type: v('mType'), text: v('mText'),
             date: todayStr(), time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
         });
         save('messages', messages);
@@ -2262,14 +2693,23 @@ const editPet = (id) => {
     const sitterOpts = sitters.map(s => `<option value="${escHTML(s.name)}" ${p.preferredSitter === s.name ? 'selected' : ''}>${escHTML(s.name)}</option>`).join('');
     let overlay = document.getElementById('modalOverlay');
     if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    const genderOpts = ['Male', 'Female'].map(g => `<option ${p.gender === g ? 'selected' : ''}>${g}</option>`).join('');
+    const fixedOpts = ['Yes', 'No'].map(f => `<option ${p.fixed === f ? 'selected' : ''}>${f}</option>`).join('');
+    const coatOpts = ['Short', 'Medium', 'Long', 'Wire/Rough', 'Curly', 'Double Coat', 'Hairless'].map(c => `<option ${p.coatType === c ? 'selected' : ''}>${c}</option>`).join('');
+    const groomFreqOpts = ['Monthly', 'Every 2 weeks', 'Weekly', 'Every 6 weeks', 'As needed'].map(f => `<option ${p.groomFrequency === f ? 'selected' : ''}>${f}</option>`).join('');
+    const shampooOpts = ['Standard', 'Hypoallergenic', 'Oatmeal', 'Medicated', 'De-shedding', 'Whitening', 'Owner provides'].map(s => `<option ${p.shampoo === s ? 'selected' : ''}>${s}</option>`).join('');
     overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(p.name)}</div>
         <div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="epBreed" value="${escHTML(p.breed || '')}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="epAge" value="${escHTML(p.age || '')}"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="epWeight" value="${escHTML(p.weight || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Gender</label><select class="form-select" id="epGender">${genderOpts}</select></div><div class="form-group"><label class="form-label">Spayed/Neutered</label><select class="form-select" id="epFixed">${fixedOpts}</select></div></div>
         <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="epOwner"><option value="">None</option>${clientOpts}</select></div>
         <div class="form-group"><label class="form-label">Preferred Sitter</label><select class="form-select" id="epSitter"><option value="">No preference</option>${sitterOpts}</select></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Vet</label><input class="form-input" id="epVet" value="${escHTML(p.vet || '')}"></div><div class="form-group"><label class="form-label">Allergies</label><input class="form-input" id="epAllergies" value="${escHTML(p.allergies || '')}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Medications</label><input class="form-input" id="epMeds" value="${escHTML(p.medications || '')}"></div><div class="form-group"><label class="form-label">Feeding</label><input class="form-input" id="epFeed" value="${escHTML(p.feedingSchedule || '')}"></div></div>
         <div class="form-group"><label class="form-label">Tags</label><input class="form-input" id="epTags" value="${escHTML(p.tags || '')}"></div>
+        <div style="margin:12px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Grooming Preferences</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Coat Type</label><select class="form-select" id="epCoat">${coatOpts}</select></div><div class="form-group"><label class="form-label">Grooming Frequency</label><select class="form-select" id="epGroomFreq">${groomFreqOpts}</select></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Shampoo Preference</label><select class="form-select" id="epShampoo">${shampooOpts}</select></div><div class="form-group"><label class="form-label">Grooming Notes</label><input class="form-input" id="epGroomNotes" value="${escHTML(p.groomNotes || '')}"></div></div>
         <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="epNotes" rows="2">${escHTML(p.notes || '')}</textarea></div>
         <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditPet('${p.id}')">Save</button></div>
     </div>`; overlay.classList.add('open');
@@ -2280,6 +2720,8 @@ const saveEditPet = (id) => {
     p.breed = document.getElementById('epBreed')?.value?.trim() || '';
     p.age = document.getElementById('epAge')?.value?.trim() || '';
     p.weight = document.getElementById('epWeight')?.value?.trim() || '';
+    p.gender = document.getElementById('epGender')?.value || '';
+    p.fixed = document.getElementById('epFixed')?.value || '';
     p.clientId = document.getElementById('epOwner')?.value || '';
     p.preferredSitter = document.getElementById('epSitter')?.value || '';
     p.vet = document.getElementById('epVet')?.value?.trim() || '';
@@ -2287,6 +2729,10 @@ const saveEditPet = (id) => {
     p.medications = document.getElementById('epMeds')?.value?.trim() || '';
     p.feedingSchedule = document.getElementById('epFeed')?.value?.trim() || '';
     p.tags = document.getElementById('epTags')?.value?.trim() || '';
+    p.coatType = document.getElementById('epCoat')?.value || '';
+    p.groomFrequency = document.getElementById('epGroomFreq')?.value || '';
+    p.shampoo = document.getElementById('epShampoo')?.value || '';
+    p.groomNotes = document.getElementById('epGroomNotes')?.value?.trim() || '';
     p.notes = document.getElementById('epNotes')?.value?.trim() || '';
     save('pets', pets); closeModal(); renderTab();
 };
@@ -2302,7 +2748,10 @@ const editBooking = (id) => {
         <div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="ebClient" value="${escHTML(b.clientName || '')}"></div><div class="form-group"><label class="form-label">Pet</label><input class="form-input" id="ebPet" value="${escHTML(b.petName || '')}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="ebService">${svcOpts}</select></div><div class="form-group"><label class="form-label">Amount ($)</label><input class="form-input" id="ebAmount" type="number" step="0.01" value="${b.amount || 0}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="ebDate" type="date" value="${b.date || ''}"></div><div class="form-group"><label class="form-label">Time</label><input class="form-input" id="ebTime" type="time" value="${b.time || ''}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Drop-Off Time</label><input class="form-input" id="ebDropoff" type="time" value="${b.dropoffTime || ''}"></div><div class="form-group"><label class="form-label">Pick-Up Time</label><input class="form-input" id="ebPickup" type="time" value="${b.pickupTime || ''}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="ebSitter"><option value="">Unassigned</option>${sitterOpts}</select></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ebStatus">${statuses.map(s => `<option ${b.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
+        <div style="margin:8px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Transport</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Pickup Address</label><input class="form-input" id="ebPickupAddr" value="${escHTML(b.pickupAddr || '')}"></div><div class="form-group"><label class="form-label">Dropoff Address</label><input class="form-input" id="ebDropoffAddr" value="${escHTML(b.dropoffAddr || '')}"></div></div>
         <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ebNotes" rows="2">${escHTML(b.notes || '')}</textarea></div>
         <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditBooking('${b.id}')">Save</button></div>
     </div>`; overlay.classList.add('open');
@@ -2315,6 +2764,10 @@ const saveEditBooking = (id) => {
     b.amount = parseFloat(document.getElementById('ebAmount')?.value) ?? b.amount;
     b.date = document.getElementById('ebDate')?.value || b.date;
     b.time = document.getElementById('ebTime')?.value || b.time;
+    b.dropoffTime = document.getElementById('ebDropoff')?.value || '';
+    b.pickupTime = document.getElementById('ebPickup')?.value || '';
+    b.pickupAddr = document.getElementById('ebPickupAddr')?.value?.trim() || '';
+    b.dropoffAddr = document.getElementById('ebDropoffAddr')?.value?.trim() || '';
     b.sitter = document.getElementById('ebSitter')?.value || '';
     b.status = document.getElementById('ebStatus')?.value || b.status;
     b.notes = document.getElementById('ebNotes')?.value?.trim() || '';

@@ -5,7 +5,12 @@
 
 const GPC = 'gpc_';
 const load = (key, fb) => { try { return JSON.parse(localStorage.getItem(GPC + key)) || fb; } catch { return fb; } };
-const save = (key, d) => localStorage.setItem(GPC + key, JSON.stringify(d));
+const save = (key, d) => {
+    localStorage.setItem(GPC + key, JSON.stringify(d));
+    if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
+        GPC_SUPABASE.save(key, d).catch(() => {});
+    }
+};
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const fmt = (n) => '$' + Number(n || 0).toFixed(2);
 const todayStr = () => new Date().toISOString().split('T')[0];
@@ -134,7 +139,7 @@ const renderMyPets = () => {
         <div class="stats-grid">${myPets.length ? myPets.map(p => `
             <div class="pet-card"><div class="pet-avatar">🐕</div><div class="pet-info" style="flex:1">
                 <h4>${esc(p.name)}</h4>
-                <p>${esc(p.breed || '?')} · ${esc(p.age || '?')} · ${esc(p.weight || '?')}</p>
+                <p>${esc(p.breed || '?')} · ${esc(p.age || '?')} · ${esc(p.weight || '?')} · ${p.gender === 'Female' ? '♀' : '♂'} ${esc(p.gender || '?')} · ${p.fixed === 'Yes' ? '✓ Fixed' : '✗ Intact'}</p>
                 ${p.allergies ? `<p style="font-size:.78rem;color:var(--danger)">Allergies: ${esc(p.allergies)}</p>` : ''}
                 ${p.medications ? `<p style="font-size:.78rem;color:var(--info)">Meds: ${esc(p.medications)}</p>` : ''}
                 ${p.notes ? `<p style="font-size:.78rem;color:var(--text-muted)">${esc(p.notes)}</p>` : ''}
@@ -149,6 +154,7 @@ const showAddPet = () => {
             <div class="card-title" style="margin-bottom:12px">Add a Pet</div>
             <div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="pName"></div><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="pBreed"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="pAge"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="pWeight"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Gender</label><select class="form-select" id="pGender"><option>Male</option><option>Female</option></select></div><div class="form-group"><label class="form-label">Spayed/Neutered</label><select class="form-select" id="pFixed"><option>Yes</option><option>No</option></select></div></div>
             <div class="form-group"><label class="form-label">Allergies</label><input class="form-input" id="pAllergies"></div>
             <div class="form-group"><label class="form-label">Medications</label><input class="form-input" id="pMeds"></div>
             <div class="form-group"><label class="form-label">Special Notes</label><textarea class="form-textarea" id="pNotes" rows="2"></textarea></div>
@@ -161,7 +167,7 @@ const savePet = () => {
     const v = (id) => document.getElementById(id)?.value?.trim() || '';
     if (!v('pName')) { alert('Pet name required'); return; }
     const pets = load('pets', []);
-    pets.push({ id: uid(), name: v('pName'), breed: v('pBreed'), age: v('pAge'), weight: v('pWeight'), allergies: v('pAllergies'), medications: v('pMeds'), notes: v('pNotes'), clientId: userId });
+    pets.push({ id: uid(), name: v('pName'), breed: v('pBreed'), age: v('pAge'), weight: v('pWeight'), gender: v('pGender'), fixed: v('pFixed'), allergies: v('pAllergies'), medications: v('pMeds'), notes: v('pNotes'), clientId: userId });
     save('pets', pets);
     renderTab();
 };
@@ -327,7 +333,11 @@ const renderNewBooking = () => {
     el.innerHTML = `
         <div class="card">
             <div class="card-title" style="margin-bottom:16px">Book a Service</div>
-            <div class="form-group"><label class="form-label">Pet</label><select class="form-select" id="nbPet"><option value="">Select your pet</option>${myPets.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select></div>
+            <div class="form-group"><label class="form-label">Pet(s)</label>
+                ${myPets.length > 1 ? `<div id="nbPetChecklist" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+                    ${myPets.map(p => `<label style="display:flex;gap:4px;align-items:center;font-size:.88rem;cursor:pointer;background:var(--bg-alt);padding:6px 12px;border-radius:8px;border:1px solid var(--border)"><input type="checkbox" class="nb-pet-cb" value="${esc(p.name)}"> ${esc(p.name)}</label>`).join('')}
+                </div><input type="hidden" id="nbPet" value="">` : `<select class="form-select" id="nbPet"><option value="">Select your pet</option>${myPets.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select>`}
+            </div>
             <div class="form-group"><label class="form-label">Service</label><select class="form-select" id="nbService" onchange="updateNBPrice()">
                 ${services.map(s => `<option value="${esc(s.name)}" data-price="${s.price}">${esc(s.name)} — ${fmt(s.price)}</option>`).join('')}
             </select></div>
@@ -336,6 +346,12 @@ const renderNewBooking = () => {
                 <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="nbDate" value="${todayStr()}"></div>
                 <div class="form-group"><label class="form-label">Preferred Time</label><select class="form-select" id="nbTime"><option>8:00 AM</option><option>9:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>12:00 PM</option><option>1:00 PM</option><option>2:00 PM</option><option>3:00 PM</option><option>4:00 PM</option><option>5:00 PM</option></select></div>
             </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Drop-Off Time</label><input class="form-input" type="time" id="nbDropoff"></div>
+                <div class="form-group"><label class="form-label">Pick-Up Time</label><input class="form-input" type="time" id="nbPickup"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Need Transport?</label><select class="form-select" id="nbTransport" onchange="document.getElementById('nbTransportAddr').style.display=this.value&&this.value!=='none'?'grid':'none'"><option value="none">No — I'll handle drop-off/pick-up</option><option value="pickup">Pickup from my house</option><option value="dropoff">Dropoff to my house</option><option value="roundtrip">Round trip</option></select></div>
+            <div class="form-row" id="nbTransportAddr" style="display:none"><div class="form-group"><label class="form-label">Pickup Address</label><input class="form-input" id="nbPickupAddr"></div><div class="form-group"><label class="form-label">Dropoff Address</label><input class="form-input" id="nbDropoffAddr"></div></div>
             <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="nbNotes" rows="2" placeholder="Any special instructions?"></textarea></div>
             <div style="background:rgba(255,107,53,.05);padding:14px;border-radius:8px;text-align:right;margin-bottom:12px">
                 <span style="font-size:.88rem;color:var(--text-muted)">Estimated Total:</span>
@@ -346,12 +362,26 @@ const renderNewBooking = () => {
     `;
 
     document.querySelectorAll('.nb-addon').forEach(cb => cb.addEventListener('change', updateNBPrice));
+    // Multi-pet checkbox sync
+    document.querySelectorAll('.nb-pet-cb').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const selected = [...document.querySelectorAll('.nb-pet-cb:checked')].map(c => c.value);
+            const hidden = document.getElementById('nbPet');
+            if (hidden) hidden.value = selected.join(', ');
+            updateNBPrice();
+        });
+    });
 };
 
 const updateNBPrice = () => {
     const svc = document.getElementById('nbService');
     let total = parseFloat(svc?.selectedOptions?.[0]?.dataset?.price) || 0;
     document.querySelectorAll('.nb-addon:checked').forEach(cb => total += parseFloat(cb.dataset.price) || 0);
+    // Extra dogs pricing
+    const selectedPets = document.querySelectorAll('.nb-pet-cb:checked');
+    const extraDogs = selectedPets.length > 1 ? selectedPets.length - 1 : 0;
+    const settings = load('settings', {});
+    total += extraDogs * (settings.multiDogDiscount || 10);
     const el2 = document.getElementById('nbTotal');
     if (el2) el2.textContent = fmt(total);
 };
@@ -368,11 +398,18 @@ const submitBooking = () => {
 
     const svc = load('services', []).find(s => s.name === service);
     const selectedAddons = [...document.querySelectorAll('.nb-addon:checked')].map(cb => cb.value);
+    const petNames = pet.split(',').map(p => p.trim()).filter(Boolean);
+    const extraDogs = Math.max(0, petNames.length - 1);
+    const dropoffTime = document.getElementById('nbDropoff')?.value || '';
+    const pickupTime = document.getElementById('nbPickup')?.value || '';
+    const pickupAddr = document.getElementById('nbPickupAddr')?.value?.trim() || '';
+    const dropoffAddr = document.getElementById('nbDropoffAddr')?.value?.trim() || '';
 
     const bookings = load('bookings', []);
     bookings.push({
         id: uid(), clientId: userId, clientName: userName, petName: pet,
-        service, amount: svc?.price || 0, addons: selectedAddons, extraDogs: 0,
+        service, amount: svc?.price || 0, addons: selectedAddons, extraDogs,
+        numDogs: petNames.length, dropoffTime, pickupTime, pickupAddr, dropoffAddr,
         date, time, zone: '', sitter: '', notes, status: 'pending', source: 'portal'
     });
     save('bookings', bookings);

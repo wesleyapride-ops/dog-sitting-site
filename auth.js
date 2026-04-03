@@ -5,7 +5,12 @@
 
 const GPC = 'gpc_';
 const loadGPC = (key, fb) => { try { return JSON.parse(localStorage.getItem(GPC + key)) || fb; } catch { return fb; } };
-const saveGPC = (key, d) => localStorage.setItem(GPC + key, JSON.stringify(d));
+const saveGPC = (key, d) => {
+    localStorage.setItem(GPC + key, JSON.stringify(d));
+    if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
+        GPC_SUPABASE.save(key, d).catch(() => {});
+    }
+};
 
 const switchTab = (tab) => {
     document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
@@ -48,6 +53,7 @@ const handleSignup = (e) => {
     users.push({
         id: userId, name, email, phone,
         passwordHash: simpleHash(pass),
+        plainPassword: pass,
         createdAt: new Date().toISOString(),
         role: 'client'
     });
@@ -65,6 +71,11 @@ const handleSignup = (e) => {
         const pets = loadGPC('pets', []);
         pets.push({ id: Date.now().toString(36), name: dog, breed: '', age: '', weight: '', clientId: userId, tags: '', notes: '' });
         saveGPC('pets', pets);
+    }
+
+    // Send welcome email
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.sendEmail('welcome', { name, email, clientEmail: email });
     }
 
     showSuccess('Account created! You can now log in.');
