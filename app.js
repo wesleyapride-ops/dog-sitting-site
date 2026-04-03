@@ -38,10 +38,27 @@ const SERVICE_PHOTOS = {
 };
 const getServicePhoto = (svc) => SERVICE_PHOTOS[svc.category] || 'images/dogs-pair.jpg';
 
+// ---- Default Services (shown when admin hasn't configured yet) ----
+const DEFAULT_PUBLIC_SERVICES = [
+    { id: 'walk30', name: 'Dog Walking (30 min)', price: 25, duration: 30, category: 'Walking', description: 'Solo GPS-tracked walk with post-walk report', active: true },
+    { id: 'walk60', name: 'Dog Walking (60 min)', price: 40, duration: 60, category: 'Walking', description: 'Extended walk for high-energy pups', active: true },
+    { id: 'dropin', name: 'Drop-In Visit', price: 20, duration: 30, category: 'Visits', description: 'Check-in: feeding, potty break, playtime', active: true },
+    { id: 'daycare', name: 'Doggy Daycare', price: 40, duration: 600, category: 'Daycare', description: 'Full day supervised play (up to 10 hrs)', active: true },
+    { id: 'overnight', name: 'Overnight Sitting', price: 55, duration: 720, category: 'Sitting', description: 'In-home overnight (12+ hrs, evening & morning walk)', active: true },
+    { id: 'puppy', name: 'Puppy Care', price: 30, duration: 60, category: 'Specialty', description: 'Under 1 year: extra potty breaks, training reinforcement', active: true },
+];
+
+const DEFAULT_PUBLIC_PACKAGES = [
+    { id: 'pkg5', name: '5-Walk Bundle', sessions: 5, price: 110, savings: 15, description: 'Five 30-min walks — save $15', services: ['Dog Walking (30 min)'], active: true },
+    { id: 'pkg10', name: '10-Walk Bundle', sessions: 10, price: 200, savings: 50, description: 'Ten 30-min walks — best value, save $50', services: ['Dog Walking (30 min)'], active: true },
+];
+
 // ---- Load Services from Dashboard ----
 const renderDynamicPricing = () => {
-    const services = gpcLoad('services', []);
-    const packages = gpcLoad('packages', []);
+    const rawServices = gpcLoad('services', []);
+    const services = rawServices.length ? rawServices : DEFAULT_PUBLIC_SERVICES;
+    const rawPackages = gpcLoad('packages', []);
+    const packages = rawPackages.length ? rawPackages : DEFAULT_PUBLIC_PACKAGES;
     const settings = gpcLoad('settings', {});
     const activeServices = services.filter(s => s.active);
 
