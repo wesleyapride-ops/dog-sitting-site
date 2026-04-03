@@ -1274,6 +1274,55 @@ const renderSettings = () => {
             <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Policies</button>
         </div>
 
+        <!-- Payment Handles -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Payment Handles</div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">These are shown to clients when they pay. Update anytime.</p>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">CashApp Tag</label><input class="form-input" id="sPayCashApp" value="${escHTML(businessSettings.cashAppHandle || '$m3lop3z')}"></div>
+                <div class="form-group"><label class="form-label">Venmo Username</label><input class="form-input" id="sPayVenmo" value="${escHTML(businessSettings.venmoHandle || '@GenusPupClub')}"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Zelle (email or phone)</label><input class="form-input" id="sPayZelle" value="${escHTML(businessSettings.zelleHandle || 'Genuspupclub@gmail.com')}"></div>
+                <div class="form-group"><label class="form-label">Apple Pay (phone)</label><input class="form-input" id="sPayApple" value="${escHTML(businessSettings.applePayHandle || '(804) 258-3830')}"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="savePaymentHandles()">Save Payment Handles</button>
+        </div>
+
+        <!-- Admin Credentials -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Admin Account</div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Admin Email</label><input class="form-input" id="sAdminEmail" value="${escHTML(load('admin_creds', {email:'genuspupclub@gmail.com'}).email)}"></div>
+                <div class="form-group"><label class="form-label">Admin Password</label><input class="form-input" id="sAdminPass" type="password" value="${escHTML(load('admin_creds', {password:'GenusPup2026!'}).password)}"><button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="const i=document.getElementById('sAdminPass');i.type=i.type==='password'?'text':'password'">Show/Hide</button></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="saveAdminCreds()">Update Admin Credentials</button>
+        </div>
+
+        <!-- Manage Client Accounts -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Client Accounts (${load('users',[]).length})</div>
+            <div class="table-wrap"><table>
+                <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th></th></tr></thead>
+                <tbody>${load('users',[]).map(u => `<tr>
+                    <td><strong>${escHTML(u.name)}</strong></td><td>${escHTML(u.email)}</td><td>${escHTML(u.phone || '—')}</td>
+                    <td style="font-size:.78rem;color:var(--text-muted)">${u.createdAt ? u.createdAt.substring(0,10) : '—'}</td>
+                    <td><button class="btn btn-ghost btn-sm" onclick="resetClientPassword('${u.id}','${escHTML(u.name)}')">Reset Pass</button> <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteClientAccount('${u.id}','${escHTML(u.name)}')">Delete</button></td>
+                </tr>`).join('') || '<tr><td colspan="5" class="empty">No client accounts</td></tr>'}</tbody>
+            </table></div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Data Management</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Export All Data (JSON)</button>
+                <button class="btn btn-sm btn-ghost" onclick="document.getElementById('importFile').click()">Import Data (JSON)</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+                <button class="btn btn-sm btn-ghost" onclick="exportFinances()">Export Finances (CSV)</button>
+            </div>
+        </div>
+
         <!-- Services Builder -->
         <div class="card">
             <div class="card-header"><span class="card-title">Services (${services.length})</span><button class="btn btn-primary btn-sm" onclick="showModal('service')">+ Add Service</button></div>
@@ -1344,7 +1393,89 @@ const saveSettings = () => {
     const v = (id) => document.getElementById(id)?.value || '';
     businessSettings = { ...businessSettings, name: v('sName'), phone: v('sPhone'), email: v('sEmail'), address: v('sAddress'), operatingHours: v('sHours'), operatingDays: v('sDays'), acceptedPayments: v('sPayments'), emergencyVet: v('sVet'), multiDogDiscount: parseInt(v('sMultiDog')) || 0, recurringDiscount: parseInt(v('sRecurring')) || 0, cancellationHours: parseInt(v('sCancel')) || 24, cancellationFee: parseInt(v('sCancelFee')) || 50, taxRate: parseFloat(v('sTax')) || 0, maxBookingsPerDay: parseInt(v('sMaxBookings')) || 8 };
     save('settings', businessSettings);
-    alert('Settings saved!');
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Business settings updated', 'success');
+};
+
+const savePaymentHandles = () => {
+    const v = (id) => document.getElementById(id)?.value || '';
+    businessSettings.cashAppHandle = v('sPayCashApp');
+    businessSettings.venmoHandle = v('sPayVenmo');
+    businessSettings.zelleHandle = v('sPayZelle');
+    businessSettings.applePayHandle = v('sPayApple');
+    save('settings', businessSettings);
+    // Also update the notification system handles
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.PAYMENT_HANDLES.cashapp.handle = v('sPayCashApp');
+        GPC_NOTIFY.PAYMENT_HANDLES.cashapp.instructions = `Send to ${v('sPayCashApp')} on CashApp`;
+        GPC_NOTIFY.PAYMENT_HANDLES.venmo.handle = v('sPayVenmo');
+        GPC_NOTIFY.PAYMENT_HANDLES.venmo.instructions = `Send to ${v('sPayVenmo')} on Venmo`;
+        GPC_NOTIFY.PAYMENT_HANDLES.zelle.handle = v('sPayZelle');
+        GPC_NOTIFY.PAYMENT_HANDLES.zelle.instructions = `Send to ${v('sPayZelle')} via Zelle`;
+        GPC_NOTIFY.PAYMENT_HANDLES.applepay.handle = v('sPayApple');
+        GPC_NOTIFY.PAYMENT_HANDLES.applepay.instructions = `Apple Pay to ${v('sPayApple')}`;
+    }
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Payment handles updated', 'success');
+};
+
+const saveAdminCreds = () => {
+    const email = document.getElementById('sAdminEmail')?.value?.trim();
+    const pass = document.getElementById('sAdminPass')?.value;
+    if (!email || !pass) { alert('Email and password required'); return; }
+    save('admin_creds', { email, password: pass });
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Admin credentials updated. Use new login next time.', 'success');
+};
+
+const resetClientPassword = (userId, name) => {
+    const newPass = prompt(`New password for ${name}:`);
+    if (!newPass || newPass.length < 6) { alert('Password must be 6+ characters'); return; }
+    const users = load('users', []);
+    const user = users.find(u => u.id === userId);
+    if (user) {
+        // Simple hash matching auth.js
+        let hash = 0;
+        for (let i = 0; i < newPass.length; i++) { hash = ((hash << 5) - hash) + newPass.charCodeAt(i); hash |= 0; }
+        user.passwordHash = 'h_' + Math.abs(hash).toString(36);
+        save('users', users);
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Password Reset', `${name}'s password has been changed`, 'success');
+    }
+};
+
+const deleteClientAccount = (userId, name) => {
+    if (!confirm(`Delete ${name}'s account? This removes their login but keeps their booking/pet data.`)) return;
+    let users = load('users', []);
+    users = users.filter(u => u.id !== userId);
+    save('users', users);
+    renderTab();
+};
+
+const exportAllData = () => {
+    const allData = {};
+    Object.keys(localStorage).filter(k => k.startsWith('gpc_')).forEach(k => {
+        try { allData[k] = JSON.parse(localStorage.getItem(k)); } catch { allData[k] = localStorage.getItem(k); }
+    });
+    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `genuspupclub-backup-${todayStr()}.json`;
+    a.click();
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Exported', 'Full data backup downloaded', 'success');
+};
+
+const importData = (input) => {
+    if (!input.files?.[0]) return;
+    if (!confirm('Import data? This will MERGE with existing data (not replace).')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            Object.entries(data).forEach(([k, v]) => {
+                localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+            });
+            if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Imported', `${Object.keys(data).length} data keys imported`, 'success');
+            renderTab();
+        } catch (err) { alert('Invalid JSON file'); }
+    };
+    reader.readAsText(input.files[0]);
 };
 
 const toggleService = (id) => { const s = services.find(x => x.id === id); if (s) { s.active = !s.active; save('services', services); renderTab(); } };
