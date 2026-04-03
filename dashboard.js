@@ -214,12 +214,13 @@ const renderBookings = () => {
     else if (filter === 'upcoming') filtered = filtered.filter(b => b.date >= todayStr());
     else if (filter === 'pending') filtered = filtered.filter(b => b.status === 'pending');
     else if (filter === 'completed') filtered = filtered.filter(b => b.status === 'completed');
+    else if (filter === 'unpaid') filtered = filtered.filter(b => b.status === 'completed' && b.paymentStatus !== 'paid');
     filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     el.innerHTML = `
         <div class="card" style="margin-bottom:16px;padding:12px 20px;display:flex;justify-content:space-between;align-items:center">
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-                ${['all', 'today', 'upcoming', 'pending', 'completed'].map(f => `<button class="btn btn-sm ${f === 'all' ? 'btn-primary' : 'btn-ghost'}" onclick="this.parentElement.querySelectorAll('.btn').forEach(b=>{b.className='btn btn-sm btn-ghost'});this.className='btn btn-sm btn-primary';document.querySelector('.booking-filter-active')?.classList.remove('booking-filter-active');this.classList.add('booking-filter-active');this.dataset.filter='${f}';renderTab()">${f.charAt(0).toUpperCase() + f.slice(1)}</button>`).join('')}
+                ${['all', 'today', 'upcoming', 'pending', 'completed', 'unpaid'].map(f => `<button class="btn btn-sm ${f === 'all' ? 'btn-primary' : 'btn-ghost'}" onclick="this.parentElement.querySelectorAll('.btn').forEach(b=>{b.className='btn btn-sm btn-ghost'});this.className='btn btn-sm btn-primary';document.querySelector('.booking-filter-active')?.classList.remove('booking-filter-active');this.classList.add('booking-filter-active');this.dataset.filter='${f}';renderTab()">${f.charAt(0).toUpperCase() + f.slice(1)}</button>`).join('')}
             </div>
             <button class="btn btn-primary btn-sm" onclick="showModal('booking')">+ New Booking</button>
         </div>
@@ -242,10 +243,11 @@ const renderBookingTable = (items) => `
             <td>${escHTML(b.service)}${b.pickupAddr ? `<br><span style="font-size:.72rem;color:var(--text-muted)">From: ${escHTML(b.pickupAddr)}</span>` : ''}</td>
             <td>${b.addons?.length ? b.addons.map(a => `<span class="badge badge-completed">${escHTML(a)}</span>`).join(' ') : '—'}</td>
             <td><strong>${fmt(calcBookingTotal(b))}</strong></td>
-            <td><span class="badge badge-${b.status}">${b.status}</span></td>
+            <td><span class="badge badge-${b.status}">${b.status}</span>${b.status === 'completed' ? ` <span class="badge badge-${b.paymentStatus === 'paid' ? 'confirmed' : 'pending'}" style="font-size:.68rem">${b.paymentStatus === 'paid' ? 'paid' : 'unpaid'}</span>` : ''}</td>
             <td style="white-space:nowrap">
                 ${b.status === 'pending' ? `<button class="btn btn-ghost btn-sm" onclick="updateBooking('${b.id}','confirmed')">✓</button>` : ''}
                 ${b.status === 'confirmed' ? `<button class="btn btn-ghost btn-sm" onclick="updateBooking('${b.id}','completed')">Done</button>` : ''}
+                ${b.status === 'completed' && b.paymentStatus !== 'paid' ? `<button class="btn btn-ghost btn-sm" style="color:var(--primary);font-weight:600" onclick="showPaymentFlow('${b.id}')">Pay</button>` : ''}
                 <button class="btn btn-ghost btn-sm" onclick="editBooking('${b.id}')">✎</button>
                 <button class="btn btn-ghost btn-sm" onclick="deleteItem('bookings','${b.id}')">✕</button>
             </td>
@@ -3256,11 +3258,11 @@ const updateBooking = (id, status) => {
     // Fire notifications + emails
     if (typeof GPC_NOTIFY !== 'undefined') {
         if (status === 'confirmed') GPC_NOTIFY.onBookingConfirmed(b);
-        if (status === 'completed') GPC_NOTIFY.onBookingCompleted(b);
+        // completed notification is fired inside saveCompletionFlow after invoice is created
         if (status === 'cancelled') GPC_NOTIFY.onBookingCancelled(b);
     }
 
-    // On complete: prompt for invoice + tip + rating
+    // On complete: show completion flow (invoice + report card, no payment yet)
     if (status === 'completed') {
         showCompletionFlow(b);
     } else {
@@ -3272,54 +3274,139 @@ const showCompletionFlow = (booking) => {
     let overlay = document.getElementById('modalOverlay');
     if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
 
-    const tipPercents = [0, 15, 18, 20, 25, 30];
     const amt = parseFloat(booking.amount) || 0;
+    const days = calcDays(booking.date, booking.endDate);
+    const total = calcBookingTotal(booking);
 
     overlay.innerHTML = `<div class="modal" style="max-width:500px">
-        <div class="modal-title" style="color:var(--success)">✓ Visit Complete!</div>
+        <div class="modal-title" style="color:var(--success)">✓ Complete Visit</div>
         <div style="padding:12px;background:rgba(0,184,148,.05);border-radius:8px;margin-bottom:16px">
-            <strong>${escHTML(booking.petName)}</strong> — ${escHTML(booking.service)} on ${booking.date}<br>
-            <span style="font-size:.88rem;color:var(--text-muted)">Client: ${escHTML(booking.clientName)} · Sitter: ${escHTML(booking.sitter || 'Unassigned')}</span>
+            <strong>${escHTML(booking.petName)}</strong> — ${escHTML(booking.service)} on ${booking.date}${days > 1 ? ' to ' + (booking.endDate || booking.date) : ''}<br>
+            <span style="font-size:.88rem;color:var(--text-muted)">Client: ${escHTML(booking.clientName)} · Sitter: ${escHTML(booking.sitter || 'Unassigned')}</span><br>
+            <span style="font-size:.92rem;font-weight:600;color:var(--primary)">Total: ${fmt(total)}</span>
         </div>
 
-        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Payment (${fmt(amt)})</div>
-        <div class="form-group"><label class="form-label">Payment Method</label>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-                ${['Card', 'CashApp', 'Venmo', 'Zelle', 'Cash', 'Prepaid/Package'].map(m => `<button type="button" class="btn btn-sm btn-ghost cf-method" onclick="document.querySelectorAll('.cf-method').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('cfMethod').value='${m}'">${m}</button>`).join('')}
-            </div>
-            <input type="hidden" id="cfMethod" value="Cash">
+        <div style="padding:10px;background:rgba(59,130,246,.05);border-radius:8px;margin-bottom:16px;font-size:.85rem;color:#3B82F6">
+            An invoice for ${fmt(total)} will be emailed to the client. Payment can be recorded later.
         </div>
 
-        <div style="font-size:.92rem;font-weight:600;margin:12px 0 8px">Tip</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-            ${tipPercents.map(p => `<button type="button" class="btn btn-sm btn-ghost cf-tip" onclick="document.querySelectorAll('.cf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('cfTip').value='${(amt * p / 100).toFixed(2)}';document.getElementById('cfTipCustom').value='';updateCFTotal(${amt})">${p === 0 ? 'No tip' : p + '% (' + fmt(amt * p / 100) + ')'}</button>`).join('')}
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <span style="font-size:.85rem">Custom:</span>
-            <input type="number" id="cfTipCustom" step="0.01" min="0" placeholder="$0.00" class="form-input" style="width:100px" oninput="document.getElementById('cfTip').value=this.value;document.querySelectorAll('.cf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});updateCFTotal(${amt})">
-        </div>
-        <input type="hidden" id="cfTip" value="0">
-        <div style="padding:12px;background:rgba(255,107,53,.05);border-radius:8px;text-align:right;margin-bottom:16px">
-            <span style="font-size:.88rem;color:var(--text-muted)">Service: ${fmt(amt)} + Tip: <strong id="cfTipDisplay">$0.00</strong> = </span>
-            <strong style="font-size:1.3rem;color:var(--primary)" id="cfTotalDisplay">${fmt(amt)}</strong>
-        </div>
-
-        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Client Rating</div>
+        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Report Card</div>
         <div style="display:flex;gap:4px;margin-bottom:8px" id="cfStars">
             ${[1,2,3,4,5].map(s => `<button type="button" style="font-size:1.8rem;background:none;border:none;cursor:pointer;color:#ddd;transition:color .15s" onclick="setCFStars(${s})" data-star="${s}">★</button>`).join('')}
         </div>
         <input type="hidden" id="cfRating" value="5">
-        <div class="form-group"><label class="form-label">Review (optional)</label><textarea class="form-textarea" id="cfReview" rows="2" placeholder="How was the visit?"></textarea></div>
+
+        <div class="form-group"><label class="form-label">Behavior & Notes</label><textarea class="form-textarea" id="cfReportNotes" rows="3" placeholder="How did the visit go? Energy level, eating, potty, behavior..."></textarea></div>
+        <div class="form-group"><label class="form-label">Review (optional — visible to client)</label><textarea class="form-textarea" id="cfReview" rows="2" placeholder="A short review for the client's portal"></textarea></div>
+
+        <div class="form-group" style="margin-top:8px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.88rem">
+                <input type="checkbox" id="cfSendReport" checked> Send report card email to client
+            </label>
+        </div>
 
         <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal();renderTab()">Skip</button>
-            <button class="btn btn-primary" onclick="saveCompletionFlow('${booking.id}')">Save & Close</button>
+            <button class="btn btn-ghost" onclick="closeModal();renderTab()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveCompletionFlow('${booking.id}')">Complete & Send Invoice</button>
         </div>
     </div>`;
     overlay.classList.add('open');
-
-    // Default to 5 stars
     setCFStars(5);
+};
+
+// ============================================
+// PAYMENT FLOW (separate from completion)
+// ============================================
+const showPaymentFlow = (bookingId) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+
+    const tipPercents = [0, 15, 18, 20, 25, 30];
+    const total = calcBookingTotal(booking);
+
+    overlay.innerHTML = `<div class="modal" style="max-width:500px">
+        <div class="modal-title" style="color:var(--primary)">Record Payment</div>
+        <div style="padding:12px;background:rgba(0,184,148,.05);border-radius:8px;margin-bottom:16px">
+            <strong>${escHTML(booking.petName)}</strong> — ${escHTML(booking.service)} on ${booking.date}<br>
+            <span style="font-size:.88rem;color:var(--text-muted)">Client: ${escHTML(booking.clientName)}</span><br>
+            <span style="font-size:.92rem;font-weight:600;color:var(--primary)">Invoice Total: ${fmt(total)}</span>
+        </div>
+
+        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Payment Method</div>
+        <div class="form-group">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${['Card', 'CashApp', 'Venmo', 'Zelle', 'Cash', 'Prepaid/Package'].map(m => `<button type="button" class="btn btn-sm btn-ghost pf-method" onclick="document.querySelectorAll('.pf-method').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('pfMethod').value='${m}'">${m}</button>`).join('')}
+            </div>
+            <input type="hidden" id="pfMethod" value="Cash">
+        </div>
+
+        <div style="font-size:.92rem;font-weight:600;margin:12px 0 8px">Tip</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            ${tipPercents.map(p => `<button type="button" class="btn btn-sm btn-ghost pf-tip" onclick="document.querySelectorAll('.pf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('pfTip').value='${(total * p / 100).toFixed(2)}';document.getElementById('pfTipCustom').value='';updatePFTotal(${total})">${p === 0 ? 'No tip' : p + '% (' + fmt(total * p / 100) + ')'}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <span style="font-size:.85rem">Custom:</span>
+            <input type="number" id="pfTipCustom" step="0.01" min="0" placeholder="$0.00" class="form-input" style="width:100px" oninput="document.getElementById('pfTip').value=this.value;document.querySelectorAll('.pf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});updatePFTotal(${total})">
+        </div>
+        <input type="hidden" id="pfTip" value="0">
+        <div style="padding:12px;background:rgba(255,107,53,.05);border-radius:8px;text-align:right;margin-bottom:16px">
+            <span style="font-size:.88rem;color:var(--text-muted)">Service: ${fmt(total)} + Tip: <strong id="pfTipDisplay">$0.00</strong> = </span>
+            <strong style="font-size:1.3rem;color:var(--primary)" id="pfTotalDisplay">${fmt(total)}</strong>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal();renderTab()">Cancel</button>
+            <button class="btn btn-primary" onclick="savePaymentFlow('${booking.id}')">Mark Paid</button>
+        </div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+window.updatePFTotal = (amt) => {
+    const tip = parseFloat(document.getElementById('pfTip')?.value) || 0;
+    document.getElementById('pfTipDisplay').textContent = fmt(tip);
+    document.getElementById('pfTotalDisplay').textContent = fmt(amt + tip);
+};
+
+const savePaymentFlow = (bookingId) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) { closeModal(); renderTab(); return; }
+    const method = document.getElementById('pfMethod')?.value || 'Cash';
+    const tip = parseFloat(document.getElementById('pfTip')?.value) || 0;
+    const total = calcBookingTotal(booking);
+
+    // Create payment record
+    const payments = load('payments', []);
+    payments.push({ id: uid(), clientId: booking.clientId, clientName: booking.clientName, bookingId, amount: total, tip, method, status: 'paid', service: booking.service, date: todayStr() });
+    save('payments', payments);
+
+    // Update booking payment status
+    booking.paymentStatus = 'paid';
+    booking.paymentMethod = method;
+    booking.paymentTip = tip;
+    booking.paymentDate = todayStr();
+    save('bookings', bookings);
+
+    // Update matching invoice status
+    const invoices = load('invoices', []);
+    const inv = invoices.find(i => i.bookingId === bookingId);
+    if (inv) {
+        inv.status = 'paid';
+        inv.method = method;
+        inv.tip = tip;
+        inv.total = total + tip;
+        inv.paidDate = todayStr();
+        save('invoices', invoices);
+    }
+
+    // Send payment notification
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.onPaymentReceived({ ...booking, amount: total, tip, method, clientName: booking.clientName });
+    }
+
+    closeModal(); renderTab();
 };
 
 window.setCFStars = (n) => {
@@ -3329,28 +3416,27 @@ window.setCFStars = (n) => {
     });
 };
 
-window.updateCFTotal = (amt) => {
-    const tip = parseFloat(document.getElementById('cfTip')?.value) || 0;
-    document.getElementById('cfTipDisplay').textContent = fmt(tip);
-    document.getElementById('cfTotalDisplay').textContent = fmt(amt + tip);
-};
-
 const saveCompletionFlow = (bookingId) => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) { closeModal(); renderTab(); return; }
-    const method = document.getElementById('cfMethod')?.value || 'Cash';
-    const tip = parseFloat(document.getElementById('cfTip')?.value) || 0;
     const rating = parseInt(document.getElementById('cfRating')?.value) || 5;
+    const reportNotes = document.getElementById('cfReportNotes')?.value?.trim() || '';
     const reviewText = document.getElementById('cfReview')?.value?.trim() || '';
+    const sendReport = document.getElementById('cfSendReport')?.checked;
     const amt = parseFloat(booking.amount) || 0;
-    const payments = load('payments', []);
-    payments.push({ id: uid(), clientId: booking.clientId, clientName: booking.clientName, bookingId, amount: amt, tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending', service: booking.service, date: todayStr() });
-    save('payments', payments);
+
+    // Mark booking as completed but UNPAID
+    booking.paymentStatus = 'unpaid';
+    save('bookings', bookings);
+
+    // Save review if provided
     if (reviewText || rating) {
         const allReviews = load('reviews', []);
         allReviews.push({ id: uid(), name: booking.clientName, pet: booking.petName, stars: rating, text: reviewText || `Great ${booking.service} experience!`, service: booking.service, sitter: booking.sitter, date: todayStr() });
         save('reviews', allReviews);
     }
+
+    // Calculate invoice total
     const days = calcDays(booking.date, booking.endDate);
     const perDogFee = parseFloat(businessSettings.extraDogFee) || 0;
     const extraDogFee = (booking.extraDogs || 0) * perDogFee * days;
@@ -3365,16 +3451,28 @@ const saveCompletionFlow = (bookingId) => {
         addonTotal > 0 ? `Add-ons: ${fmt(addonTotal)}` : null,
         zoneSurcharge > 0 ? `Zone surcharge: ${fmt(zoneSurcharge)}` : null,
         pickupFee > 0 ? `Pickup fee: ${fmt(pickupFee)}` : null,
-        dropoffFee > 0 ? `Dropoff fee: ${fmt(dropoffFee)}` : null,
-        tip > 0 ? `Tip: ${fmt(tip)}` : null
+        dropoffFee > 0 ? `Dropoff fee: ${fmt(dropoffFee)}` : null
     ].filter(Boolean).join('\n');
+
+    // Create invoice with UNPAID status
     const invoiceId = 'INV-' + Date.now().toString(36).toUpperCase();
     const invoices = load('invoices', []);
-    invoices.push({ id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName, clientEmail: booking.clientEmail || '', petName: booking.petName, service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate, days, baseRate: amt, extraDogs: booking.extraDogs || 0, extraDogFee, addons: booking.addons, addonTotal, zoneSurcharge, tip, subtotal: total, total: total + tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending' });
+    invoices.push({ id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName, clientEmail: booking.clientEmail || '', petName: booking.petName, service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate, days, baseRate: amt, extraDogs: booking.extraDogs || 0, extraDogFee, addons: booking.addons, addonTotal, zoneSurcharge, tip: 0, subtotal: total, total, method: '', status: 'unpaid' });
     save('invoices', invoices);
+
     if (typeof GPC_NOTIFY !== 'undefined') {
-        GPC_NOTIFY.onPaymentReceived({ ...booking, amount: total, tip, method, clientName: booking.clientName });
-        GPC_NOTIFY.sendEmail('invoice', { clientName: booking.clientName, clientEmail: booking.clientEmail, clientId: booking.clientId, invoiceId, date: todayStr(), service: booking.service, petName: booking.petName, days, startDate: booking.date, endDate: booking.endDate || booking.date, lineItems, total: total + tip });
+        // Send invoice email
+        GPC_NOTIFY.sendEmail('invoice', { clientName: booking.clientName, clientEmail: booking.clientEmail, clientId: booking.clientId, invoiceId, date: todayStr(), service: booking.service, petName: booking.petName, days, startDate: booking.date, endDate: booking.endDate || booking.date, lineItems, total });
+
+        // Send report card email if checked
+        if (sendReport) {
+            const reportDetails = reportNotes || 'Your pup had a wonderful visit!';
+            GPC_NOTIFY.sendEmail('report_card', { clientName: booking.clientName, clientEmail: booking.clientEmail, clientId: booking.clientId, petName: booking.petName, date: booking.date, service: booking.service, reportDetails, overallRating: '★'.repeat(rating) + '☆'.repeat(5 - rating), notes: reviewText });
+        }
+
+        // Visit complete notification (no payment notification)
+        GPC_NOTIFY.onBookingCompleted(booking);
+        GPC_NOTIFY.showToast('Visit Completed', `Invoice sent to ${booking.clientName} — payment pending`, 'success');
         if (reviewText) GPC_NOTIFY.showToast('New Review', `${rating}★ from ${booking.clientName}`, 'success');
     }
     closeModal(); renderTab();
