@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenusPupClub — Service Agreement & Waiver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: var(--bg); padding: 24px; }
+        .waiver-container { max-width: 700px; margin: 0 auto; }
+        .waiver-header { text-align: center; margin-bottom: 32px; }
+        .waiver-header .logo-icon { font-size: 2rem; }
+        .waiver-header h1 { font-family: 'Fredoka', sans-serif; font-size: 1.6rem; margin-top: 8px; }
+        .waiver-card { background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 20px; }
+        .waiver-card h2 { font-family: 'Fredoka', sans-serif; font-size: 1.15rem; margin-bottom: 12px; color: #2D3436; }
+        .waiver-text { font-size: .88rem; color: #636E72; line-height: 1.7; }
+        .waiver-text p { margin-bottom: 10px; }
+        .waiver-text ul { margin: 8px 0 8px 20px; }
+        .waiver-text li { margin-bottom: 4px; }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: .82rem; font-weight: 600; margin-bottom: 4px; color: #636E72; }
+        .form-input, .form-select { width: 100%; padding: 10px 14px; border: 2px solid #e9ecef; border-radius: 8px; font-size: .9rem; font-family: 'Inter', sans-serif; }
+        .form-input:focus { outline: none; border-color: #FF6B35; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .checkbox-group { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
+        .checkbox-group input { margin-top: 3px; }
+        .checkbox-group label { font-size: .88rem; color: #636E72; cursor: pointer; }
+        .sig-pad { border: 2px dashed #e9ecef; border-radius: 8px; height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; cursor: crosshair; position: relative; }
+        .sig-pad canvas { border-radius: 6px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 32px; border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer; border: none; font-family: 'Inter', sans-serif; transition: all .2s; }
+        .btn-primary { background: #FF6B35; color: #fff; width: 100%; }
+        .btn-primary:hover { background: #E55A2B; }
+        .btn-sm { padding: 6px 14px; font-size: .82rem; }
+        .btn-ghost { background: transparent; color: #636E72; }
+        .success-msg { background: #F0FFF5; border: 2px solid #00B894; border-radius: 12px; padding: 24px; text-align: center; display: none; }
+        .success-msg h2 { color: #00B894; font-family: 'Fredoka', sans-serif; }
+        @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="waiver-container">
+        <div class="waiver-header">
+            <span class="logo-icon">🐶</span>
+            <h1>Genus<strong style="color:#FF6B35">PupClub</strong></h1>
+            <p style="color:#636E72;font-size:.92rem">Service Agreement & Liability Waiver</p>
+        </div>
+
+        <div id="waiverForm">
+            <!-- Owner Info -->
+            <div class="waiver-card">
+                <h2>Owner Information</h2>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Full Legal Name</label><input class="form-input" id="wName" required></div>
+                    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="wEmail" type="email" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="wPhone" type="tel" required></div>
+                    <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="wAddress" required></div>
+                </div>
+                <div class="form-group"><label class="form-label">Emergency Contact (Name & Phone)</label><input class="form-input" id="wEmergency" required placeholder="Name — (804) 555-0000"></div>
+            </div>
+
+            <!-- Pet Info -->
+            <div class="waiver-card">
+                <h2>Pet Information</h2>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Dog's Name</label><input class="form-input" id="wDogName" required></div>
+                    <div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="wBreed" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Age</label><input class="form-input" id="wAge"></div>
+                    <div class="form-group"><label class="form-label">Weight (lbs)</label><input class="form-input" id="wWeight" type="number"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Spayed/Neutered?</label><select class="form-select" id="wFixed"><option>Yes</option><option>No</option></select></div>
+                    <div class="form-group"><label class="form-label">Vaccination Status</label><select class="form-select" id="wVax"><option>Up to date</option><option>Partially vaccinated</option><option>Not vaccinated</option><option>Exempt (vet letter)</option></select></div>
+                </div>
+                <div class="form-group"><label class="form-label">Vet Name & Phone</label><input class="form-input" id="wVet" placeholder="Vet clinic — (804) 555-0000"></div>
+                <div class="form-group"><label class="form-label">Allergies / Medical Conditions</label><input class="form-input" id="wAllergies" placeholder="None, or list them"></div>
+                <div class="form-group"><label class="form-label">Medications</label><input class="form-input" id="wMeds" placeholder="None, or list with dosage & schedule"></div>
+                <div class="form-group"><label class="form-label">Behavioral Notes</label><textarea class="form-input" id="wBehavior" rows="3" placeholder="Is your dog friendly with other dogs? People? Children? Any fears, aggression, or anxiety triggers?"></textarea></div>
+            </div>
+
+            <!-- Terms -->
+            <div class="waiver-card">
+                <h2>Service Agreement</h2>
+                <div class="waiver-text">
+                    <p>By signing below, I ("Owner") agree to the following terms with GenusPupClub ("Provider"):</p>
+                    <p><strong>1. CARE AUTHORIZATION.</strong> I authorize GenusPupClub and its employees to provide pet care services including but not limited to: walking, feeding, administering medications as directed, transporting to veterinary care in case of emergency, and making reasonable decisions regarding my pet's welfare.</p>
+                    <p><strong>2. HEALTH & VACCINATION.</strong> I confirm my pet is in good health, current on vaccinations (rabies, DHPP, bordetella), and free of contagious conditions. I will inform GenusPupClub of any changes in health status.</p>
+                    <p><strong>3. EMERGENCY VETERINARY CARE.</strong> In the event of illness or injury, I authorize GenusPupClub to seek veterinary care at my expense. I agree to reimburse all veterinary costs incurred on behalf of my pet. GenusPupClub will make reasonable efforts to contact me before seeking treatment.</p>
+                    <p><strong>4. LIABILITY WAIVER.</strong> I understand that pet care involves inherent risks. I release GenusPupClub, its owners, employees, and agents from liability for any injury, illness, damage, or loss arising from the care of my pet, except in cases of gross negligence.</p>
+                    <p><strong>5. PROPERTY ACCESS.</strong> If services are performed at my home, I grant GenusPupClub employees access to my property as needed to perform pet care services. I confirm there are no hazards that could endanger employees.</p>
+                    <p><strong>6. CANCELLATION POLICY.</strong> Cancellations must be made 24+ hours in advance for a full refund. Late cancellations (under 24 hours) incur a 50% charge. No-shows are charged in full.</p>
+                    <p><strong>7. PHOTOS & MEDIA.</strong> I grant GenusPupClub permission to take photos/videos of my pet during care and use them for business purposes (social media, website, marketing), unless I opt out below.</p>
+                    <p><strong>8. PAYMENT.</strong> I agree to pay for all services rendered at the agreed-upon rates. Payment is due upon completion of service or according to the agreed billing schedule.</p>
+                </div>
+            </div>
+
+            <!-- Acknowledgments -->
+            <div class="waiver-card">
+                <h2>Acknowledgments</h2>
+                <div class="checkbox-group"><input type="checkbox" id="wAgree1" required><label for="wAgree1">I have read and agree to the Service Agreement above.</label></div>
+                <div class="checkbox-group"><input type="checkbox" id="wAgree2" required><label for="wAgree2">My pet's vaccinations are current and I will provide proof upon request.</label></div>
+                <div class="checkbox-group"><input type="checkbox" id="wAgree3" required><label for="wAgree3">I authorize emergency veterinary care at my expense if needed.</label></div>
+                <div class="checkbox-group"><input type="checkbox" id="wAgree4" required><label for="wAgree4">I understand the cancellation policy (24hr notice required).</label></div>
+                <div class="checkbox-group"><input type="checkbox" id="wPhoto"><label for="wPhoto">I consent to photos/videos of my pet being used for marketing. (Optional — uncheck to opt out)</label></div>
+            </div>
+
+            <!-- Signature -->
+            <div class="waiver-card">
+                <h2>Signature</h2>
+                <div class="form-group"><label class="form-label">Type Your Full Legal Name as Signature</label><input class="form-input" id="wSignature" required placeholder="Type your full name" style="font-style:italic;font-size:1.1rem"></div>
+                <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="wDate" type="date"></div>
+                <button class="btn btn-primary" onclick="submitWaiver()" style="margin-top:16px">Sign & Submit Agreement</button>
+            </div>
+        </div>
+
+        <div class="success-msg" id="waiverSuccess">
+            <h2>Agreement Signed!</h2>
+            <p style="margin-top:8px;color:#636E72">Thank you. Your service agreement has been recorded. You're all set to book with GenusPupClub.</p>
+            <div style="margin-top:16px"><a href="index.html" class="btn btn-primary" style="display:inline-flex">Back to Website</a></div>
+        </div>
+    </div>
+
+    <script>
+        const DB = 'gpc_';
+        const load = (k, fb) => { try { return JSON.parse(localStorage.getItem(DB + k)) || fb; } catch { return fb; } };
+        const save = (k, d) => localStorage.setItem(DB + k, JSON.stringify(d));
+        const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+        document.getElementById('wDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('wPhoto').checked = true;
+
+        const submitWaiver = () => {
+            const v = (id) => document.getElementById(id)?.value?.trim() || '';
+            const checked = (id) => document.getElementById(id)?.checked;
+
+            if (!v('wName') || !v('wEmail') || !v('wPhone') || !v('wDogName') || !v('wSignature')) {
+                alert('Please fill in all required fields.'); return;
+            }
+            if (!checked('wAgree1') || !checked('wAgree2') || !checked('wAgree3') || !checked('wAgree4')) {
+                alert('Please check all required acknowledgments.'); return;
+            }
+            if (v('wSignature').toLowerCase() !== v('wName').toLowerCase()) {
+                alert('Signature must match your full legal name.'); return;
+            }
+
+            const waivers = load('waivers', []);
+            waivers.push({
+                id: uid(),
+                ownerName: v('wName'), email: v('wEmail'), phone: v('wPhone'), address: v('wAddress'),
+                emergencyContact: v('wEmergency'),
+                dogName: v('wDogName'), breed: v('wBreed'), age: v('wAge'), weight: v('wWeight'),
+                fixed: v('wFixed'), vaccination: v('wVax'), vet: v('wVet'),
+                allergies: v('wAllergies'), medications: v('wMeds'), behavior: v('wBehavior'),
+                photoConsent: checked('wPhoto'),
+                signature: v('wSignature'), signedDate: v('wDate'),
+                signedAt: new Date().toISOString()
+            });
+            save('waivers', waivers);
+
+            // Also add as client if not exists
+            const clients = load('clients', []);
+            if (!clients.find(c => c.email === v('wEmail').toLowerCase())) {
+                clients.push({ id: uid(), name: v('wName'), email: v('wEmail'), phone: v('wPhone'), address: v('wAddress'), source: 'Waiver', notes: 'Emergency: ' + v('wEmergency') });
+                save('clients', clients);
+            }
+
+            // Add pet
+            const pets = load('pets', []);
+            const clientId = clients.find(c => c.email === v('wEmail').toLowerCase())?.id || '';
+            pets.push({ id: uid(), name: v('wDogName'), breed: v('wBreed'), age: v('wAge'), weight: v('wWeight'), gender: '', fixed: v('wFixed'), clientId, vet: v('wVet'), allergies: v('wAllergies'), medications: v('wMeds'), tags: '', notes: v('wBehavior'), vaccination: v('wVax') });
+            save('pets', pets);
+
+            document.getElementById('waiverForm').style.display = 'none';
+            document.getElementById('waiverSuccess').style.display = 'block';
+        };
+    </script>
+</body>
+</html>

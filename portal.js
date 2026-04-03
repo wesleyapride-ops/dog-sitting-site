@@ -58,7 +58,7 @@ document.getElementById('menuToggle')?.addEventListener('click', () => document.
 
 const renderTab = () => {
     refreshData();
-    const views = { dashboard: renderDashboard, mybookings: renderMyBookings, mypets: renderMyPets, payments: renderPayments, mymessages: renderMyMessages, newbooking: renderNewBooking, profile: renderProfile };
+    const views = { dashboard: renderDashboard, mybookings: renderMyBookings, mypets: renderMyPets, payments: renderPayments, loyalty: renderMyLoyalty, mymessages: renderMyMessages, newbooking: renderNewBooking, profile: renderProfile };
     (views[activeTab] || renderDashboard)();
 };
 
@@ -421,6 +421,17 @@ const saveProfile = () => {
         session.name = user.name;
         sessionStorage.setItem('gpc_client_auth', JSON.stringify(session));
         alert('Profile saved!');
+    }
+};
+
+// ============================================
+// LOYALTY (Client View)
+// ============================================
+const renderMyLoyalty = () => {
+    if (typeof GPC_LOYALTY !== 'undefined') {
+        el.innerHTML = GPC_LOYALTY.renderClientPanel(userId, userName);
+    } else {
+        el.innerHTML = '<div class="card"><div class="empty"><p>Rewards coming soon!</p></div></div>';
     }
 };
 

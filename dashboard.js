@@ -135,7 +135,7 @@ const renderTab = () => {
     sitters = load('sitters', sitters); reviews = load('reviews', reviews);
     messages = load('messages', []); businessSettings = load('settings', businessSettings);
 
-    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, website: renderWebsiteEditor, settings: renderSettings };
+    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, loyalty: renderLoyalty, waivers: renderWaivers, website: renderWebsiteEditor, settings: renderSettings };
     (views[activeTab] || renderOverview)();
 };
 
@@ -1000,6 +1000,55 @@ const renderMessages = () => {
                     <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="deleteItem('messages','${m.id}')">✕</button>
                 </div>
             `).join('') : '<div class="empty"><div class="empty-icon">💬</div><p>No messages yet. Send updates to owners during visits.</p></div>'}
+        </div>
+    `;
+};
+
+// ============================================
+// LOYALTY & REFERRALS (Admin)
+// ============================================
+const renderLoyalty = () => {
+    if (typeof GPC_LOYALTY !== 'undefined') {
+        el.innerHTML = GPC_LOYALTY.renderAdminPanel();
+    } else {
+        el.innerHTML = '<div class="card"><div class="empty"><p>Loyalty module not loaded</p></div></div>';
+    }
+};
+
+// ============================================
+// WAIVERS (Admin View)
+// ============================================
+const renderWaivers = () => {
+    const waivers = load('waivers', []);
+    el.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-card green"><div class="stat-label">Signed Waivers</div><div class="stat-value">${waivers.length}</div></div>
+        </div>
+        <div class="card" style="margin-bottom:12px">
+            <div class="card-header">
+                <span class="card-title">Waiver Link</span>
+            </div>
+            <div style="padding:12px;background:rgba(255,107,53,.05);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+                <code style="font-size:.88rem">genuspupclub.com/waiver.html</code>
+                <button class="btn btn-sm btn-primary" onclick="navigator.clipboard?.writeText(window.location.origin+'/waiver.html');alert('Link copied!')">Copy Link</button>
+            </div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-top:8px">Send this link to new clients before their first visit. They fill in pet info, acknowledge terms, and sign digitally.</p>
+        </div>
+        <div class="card">
+            <div class="card-header"><span class="card-title">Signed Waivers (${waivers.length})</span></div>
+            ${waivers.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Date</th><th>Owner</th><th>Dog</th><th>Breed</th><th>Vax</th><th>Photo OK</th><th>Email</th><th>Phone</th></tr></thead>
+                <tbody>${waivers.slice().reverse().map(w => `<tr>
+                    <td>${w.signedDate}</td>
+                    <td><strong>${escHTML(w.ownerName)}</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Signed: ${escHTML(w.signature)}</span></td>
+                    <td><strong>${escHTML(w.dogName)}</strong></td>
+                    <td>${escHTML(w.breed)}</td>
+                    <td><span class="badge badge-${w.vaccination === 'Up to date' ? 'confirmed' : 'pending'}">${escHTML(w.vaccination)}</span></td>
+                    <td>${w.photoConsent ? '<span class="badge badge-confirmed">Yes</span>' : '<span class="badge badge-cancelled">No</span>'}</td>
+                    <td style="font-size:.82rem">${escHTML(w.email)}</td>
+                    <td style="font-size:.82rem">${escHTML(w.phone)}</td>
+                </tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty"><p>No waivers signed yet. Send the waiver link to clients.</p></div>'}
         </div>
     `;
 };
