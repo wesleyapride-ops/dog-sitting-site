@@ -270,7 +270,48 @@ const renderFooterServices = () => {
     }
 };
 
+// ---- CMS: Apply site content from dashboard editor ----
+const applyCMS = () => {
+    const cms = gpcLoad('site_content', null);
+    if (!cms) return; // No CMS data yet, use HTML defaults
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.textContent = val; };
+    const setHTML = (id, val) => { const el = document.getElementById(id); if (el && val) el.innerHTML = val; };
+
+    // Hero
+    set('cmsBadge', cms.heroBadge);
+    if (cms.heroTitle) {
+        const h1 = document.getElementById('cmsHeroH1');
+        if (h1) h1.innerHTML = `${cms.heroTitle}<br><span class="highlight" id="cmsHeroHL">${cms.heroTitleHighlight || ''}</span>`;
+    }
+    set('cmsHeroSub', cms.heroSubtitle);
+    const heroImg = document.getElementById('cmsHeroImg');
+    if (heroImg && cms.heroImage) heroImg.src = cms.heroImage;
+
+    // Trust stats
+    set('cmsStat1', cms.trustStat1); set('cmsLabel1', cms.trustLabel1);
+    set('cmsStat2', cms.trustStat2); set('cmsLabel2', cms.trustLabel2);
+    set('cmsStat3', cms.trustStat3); set('cmsLabel3', cms.trustLabel3);
+
+    // Services
+    set('cmsSvcTitle', cms.servicesTitle);
+    set('cmsSvcSub', cms.servicesSubtitle);
+
+    // About
+    if (cms.aboutTitle) {
+        const aboutH2 = document.getElementById('cmsAboutTitle');
+        if (aboutH2) aboutH2.innerHTML = `${cms.aboutTitle}<br>We're <span class="highlight" id="cmsAboutHL">${cms.aboutHighlight || ''}</span>`;
+    }
+
+    // Colors
+    if (cms.primaryColor) document.documentElement.style.setProperty('--primary', cms.primaryColor);
+    if (cms.secondaryColor) document.documentElement.style.setProperty('--secondary', cms.secondaryColor);
+    if (cms.accentColor) document.documentElement.style.setProperty('--accent', cms.accentColor);
+    if (cms.bgColor) document.documentElement.style.setProperty('--bg', cms.bgColor);
+};
+
 // ---- Init ----
+applyCMS();
 renderDynamicPricing();
 renderFooterServices();
 

@@ -135,7 +135,7 @@ const renderTab = () => {
     sitters = load('sitters', sitters); reviews = load('reviews', reviews);
     messages = load('messages', []); businessSettings = load('settings', businessSettings);
 
-    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, settings: renderSettings };
+    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, website: renderWebsiteEditor, settings: renderSettings };
     (views[activeTab] || renderOverview)();
 };
 
@@ -1002,6 +1002,171 @@ const renderMessages = () => {
             `).join('') : '<div class="empty"><div class="empty-icon">💬</div><p>No messages yet. Send updates to owners during visits.</p></div>'}
         </div>
     `;
+};
+
+// ============================================
+// WEBSITE EDITOR (CMS)
+// ============================================
+let siteContent = load('site_content', {
+    heroTitle: 'Your Pup Deserves',
+    heroTitleHighlight: 'Five-Star Care',
+    heroSubtitle: "Professional dog sitting, walking, and daycare — because your fur baby deserves someone who treats them like family.",
+    heroBadge: "Richmond, VA's #1 Dog Sitter",
+    heroImage: 'images/dogs-car.jpg',
+    trustStat1: '500+', trustLabel1: 'Happy Pups',
+    trustStat2: '4.9', trustLabel2: 'Star Rating',
+    trustStat3: '3+', trustLabel3: 'Years Serving RVA',
+    servicesTitle: 'Tail-Wagging Services',
+    servicesSubtitle: "From quick check-ins to overnight stays, we've got your pup covered.",
+    aboutTitle: "We're Not Just Sitters.",
+    aboutHighlight: 'Family.',
+    aboutText1: "GenusPupClub was born from a simple belief: every dog deserves the same love and attention they get from their owner — even when their owner isn't there.",
+    aboutText2: "We're fully insured, pet first-aid certified, and obsessively dedicated to your dog's happiness. Every sitter goes through background checks and a hands-on training program before they ever meet your pup.",
+    aboutImage: 'images/dogs-hiking.jpg',
+    aboutQuote: "Your dog's tail should never stop wagging.",
+    pricingTitle: 'Fair Rates, No Surprises',
+    pricingSubtitle: 'All services include photo updates, GPS tracking, and our happiness guarantee.',
+    ctaTitle: 'Ready to Give Your Pup',
+    ctaHighlight: 'the Best Care in RVA?',
+    ctaSubtitle: "Book your first visit today. No commitment — just see why 500+ dogs love GenusPupClub.",
+    primaryColor: '#FF6B35',
+    secondaryColor: '#2D3436',
+    accentColor: '#00B894',
+    bgColor: '#FFFAF5',
+    footerText: "Richmond, VA's premium dog sitting service. Insured, certified, and obsessively dedicated to your pup's happiness."
+});
+if (!localStorage.getItem(DB_KEY + 'site_content')) save('site_content', siteContent);
+
+const renderWebsiteEditor = () => {
+    siteContent = load('site_content', siteContent);
+    const sc = siteContent;
+
+    el.innerHTML = `
+        <div class="card" style="margin-bottom:16px;padding:16px;background:rgba(255,107,53,.03);border-left:4px solid var(--primary)">
+            <strong>Website Editor</strong> — Change any text, image, or color below and click Save. Changes appear on the homepage instantly.
+            <div style="margin-top:8px"><a href="index.html" target="_blank" class="btn btn-sm btn-ghost">Preview Site →</a></div>
+        </div>
+
+        <!-- HERO SECTION -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Hero Section</div>
+            <div class="form-group"><label class="form-label">Badge Text</label><input class="form-input" id="cmsBadge" value="${escHTML(sc.heroBadge)}"></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Hero Title (line 1)</label><input class="form-input" id="cmsHeroTitle" value="${escHTML(sc.heroTitle)}"></div>
+                <div class="form-group"><label class="form-label">Hero Title (highlight)</label><input class="form-input" id="cmsHeroHighlight" value="${escHTML(sc.heroTitleHighlight)}" style="color:var(--primary);font-weight:700"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Subtitle</label><textarea class="form-textarea" id="cmsHeroSub" rows="2">${escHTML(sc.heroSubtitle)}</textarea></div>
+            <div class="form-group"><label class="form-label">Hero Image URL</label><input class="form-input" id="cmsHeroImg" value="${escHTML(sc.heroImage)}"><div style="margin-top:4px;font-size:.75rem;color:var(--text-muted)">Use: images/dogs-car.jpg, images/dogs-hiking.jpg, images/dogs-pair.jpg, images/dogs-cozy.jpg, images/dog-poodle.jpg — or paste any URL</div></div>
+            ${sc.heroImage ? `<img src="${escHTML(sc.heroImage)}" style="width:120px;height:120px;object-fit:cover;border-radius:50%;margin-top:8px" onerror="this.style.display='none'">` : ''}
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
+                <div class="form-group"><label class="form-label">Stat 1 Number</label><input class="form-input" id="cmsStat1" value="${escHTML(sc.trustStat1)}"></div>
+                <div class="form-group"><label class="form-label">Stat 2 Number</label><input class="form-input" id="cmsStat2" value="${escHTML(sc.trustStat2)}"></div>
+                <div class="form-group"><label class="form-label">Stat 3 Number</label><input class="form-input" id="cmsStat3" value="${escHTML(sc.trustStat3)}"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                <div class="form-group"><label class="form-label">Stat 1 Label</label><input class="form-input" id="cmsLabel1" value="${escHTML(sc.trustLabel1)}"></div>
+                <div class="form-group"><label class="form-label">Stat 2 Label</label><input class="form-input" id="cmsLabel2" value="${escHTML(sc.trustLabel2)}"></div>
+                <div class="form-group"><label class="form-label">Stat 3 Label</label><input class="form-input" id="cmsLabel3" value="${escHTML(sc.trustLabel3)}"></div>
+            </div>
+        </div>
+
+        <!-- SERVICES SECTION -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Services Section</div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Section Title</label><input class="form-input" id="cmsSvcTitle" value="${escHTML(sc.servicesTitle)}"></div>
+                <div class="form-group"><label class="form-label">Section Subtitle</label><input class="form-input" id="cmsSvcSub" value="${escHTML(sc.servicesSubtitle)}"></div>
+            </div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-top:4px">Service cards are auto-generated from your Services list in Settings. Turn them on/off there.</p>
+        </div>
+
+        <!-- ABOUT SECTION -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">About Section</div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="cmsAboutTitle" value="${escHTML(sc.aboutTitle)}"></div>
+                <div class="form-group"><label class="form-label">Highlight Word</label><input class="form-input" id="cmsAboutHL" value="${escHTML(sc.aboutHighlight)}" style="color:var(--primary);font-weight:700"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Paragraph 1</label><textarea class="form-textarea" id="cmsAbout1" rows="2">${escHTML(sc.aboutText1)}</textarea></div>
+            <div class="form-group"><label class="form-label">Paragraph 2</label><textarea class="form-textarea" id="cmsAbout2" rows="2">${escHTML(sc.aboutText2)}</textarea></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">About Image</label><input class="form-input" id="cmsAboutImg" value="${escHTML(sc.aboutImage)}"></div>
+                <div class="form-group"><label class="form-label">Quote</label><input class="form-input" id="cmsAboutQuote" value="${escHTML(sc.aboutQuote)}"></div>
+            </div>
+        </div>
+
+        <!-- PRICING SECTION -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Pricing Section</div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="cmsPriceTitle" value="${escHTML(sc.pricingTitle)}"></div>
+                <div class="form-group"><label class="form-label">Subtitle</label><input class="form-input" id="cmsPriceSub" value="${escHTML(sc.pricingSubtitle)}"></div>
+            </div>
+        </div>
+
+        <!-- CTA / BOOKING SECTION -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Booking Section (CTA)</div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="cmsCtaTitle" value="${escHTML(sc.ctaTitle)}"></div>
+                <div class="form-group"><label class="form-label">Highlight</label><input class="form-input" id="cmsCtaHL" value="${escHTML(sc.ctaHighlight)}"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Subtitle</label><input class="form-input" id="cmsCtaSub" value="${escHTML(sc.ctaSubtitle)}"></div>
+        </div>
+
+        <!-- COLORS -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Brand Colors</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+                <div class="form-group"><label class="form-label">Primary</label><input type="color" id="cmsColor1" value="${sc.primaryColor}" style="width:100%;height:40px;border:none;cursor:pointer;border-radius:8px"></div>
+                <div class="form-group"><label class="form-label">Secondary</label><input type="color" id="cmsColor2" value="${sc.secondaryColor}" style="width:100%;height:40px;border:none;cursor:pointer;border-radius:8px"></div>
+                <div class="form-group"><label class="form-label">Accent</label><input type="color" id="cmsColor3" value="${sc.accentColor}" style="width:100%;height:40px;border:none;cursor:pointer;border-radius:8px"></div>
+                <div class="form-group"><label class="form-label">Background</label><input type="color" id="cmsColor4" value="${sc.bgColor}" style="width:100%;height:40px;border:none;cursor:pointer;border-radius:8px"></div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Footer</div>
+            <div class="form-group"><label class="form-label">Footer Description</label><textarea class="form-textarea" id="cmsFooter" rows="2">${escHTML(sc.footerText)}</textarea></div>
+        </div>
+
+        <div style="position:sticky;bottom:16px;background:var(--card-bg);padding:16px;border-radius:12px;box-shadow:0 -4px 20px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:.88rem;color:var(--text-muted)">Changes save to localStorage and appear on the homepage instantly.</span>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-ghost" onclick="resetSiteContent()">Reset to Defaults</button>
+                <button class="btn btn-primary" onclick="saveSiteContent()">Save All Changes</button>
+            </div>
+        </div>
+    `;
+};
+
+const saveSiteContent = () => {
+    const v = (id) => document.getElementById(id)?.value || '';
+    siteContent = {
+        heroBadge: v('cmsBadge'), heroTitle: v('cmsHeroTitle'), heroTitleHighlight: v('cmsHeroHighlight'),
+        heroSubtitle: v('cmsHeroSub'), heroImage: v('cmsHeroImg'),
+        trustStat1: v('cmsStat1'), trustLabel1: v('cmsLabel1'),
+        trustStat2: v('cmsStat2'), trustLabel2: v('cmsLabel2'),
+        trustStat3: v('cmsStat3'), trustLabel3: v('cmsLabel3'),
+        servicesTitle: v('cmsSvcTitle'), servicesSubtitle: v('cmsSvcSub'),
+        aboutTitle: v('cmsAboutTitle'), aboutHighlight: v('cmsAboutHL'),
+        aboutText1: v('cmsAbout1'), aboutText2: v('cmsAbout2'),
+        aboutImage: v('cmsAboutImg'), aboutQuote: v('cmsAboutQuote'),
+        pricingTitle: v('cmsPriceTitle'), pricingSubtitle: v('cmsPriceSub'),
+        ctaTitle: v('cmsCtaTitle'), ctaHighlight: v('cmsCtaHL'), ctaSubtitle: v('cmsCtaSub'),
+        primaryColor: v('cmsColor1'), secondaryColor: v('cmsColor2'),
+        accentColor: v('cmsColor3'), bgColor: v('cmsColor4'),
+        footerText: v('cmsFooter')
+    };
+    save('site_content', siteContent);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Website Updated', 'Changes saved! Visit the homepage to see them.', 'success');
+};
+
+const resetSiteContent = () => {
+    if (!confirm('Reset all website content to defaults?')) return;
+    localStorage.removeItem(DB_KEY + 'site_content');
+    renderTab();
 };
 
 // ============================================
