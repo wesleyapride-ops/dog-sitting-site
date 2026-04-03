@@ -274,7 +274,7 @@ const renderClients = () => {
                     const cBookings = bookings.filter(b => b.clientId === c.id);
                     const spent = cBookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + calcBookingTotal(b), 0);
                     return `<tr>
-                        <td><strong>${escHTML(c.name)}</strong></td><td>${escHTML(c.email)}</td><td>${escHTML(c.phone)}</td><td>${escHTML(c.address)}</td>
+                        <td style="display:flex;align-items:center;gap:8px">${c.photo ? `<img src="${c.photo}" style="width:32px;height:32px;object-fit:cover;border-radius:50%;flex-shrink:0">` : `<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0">${(c.name || '?').charAt(0)}</div>`}<strong>${escHTML(c.name)}</strong></td><td>${escHTML(c.email)}</td><td>${escHTML(c.phone)}</td><td>${escHTML(c.address)}</td>
                         <td>${cPets.length ? cPets.map(p => `<span class="badge badge-confirmed">${escHTML(p.name)}</span>`).join(' ') : '—'} <span style="font-size:.72rem;color:var(--text-muted)">(${cPets.length})</span></td><td>${cBookings.length}</td><td><strong>${fmt(spent)}</strong></td>
                         <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" title="Add pet for this client" onclick="addPetForClient('${c.id}','${escHTML(c.name)}')">+🐕</button> <button class="btn btn-ghost btn-sm" onclick="editClient('${c.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('clients','${c.id}')">✕</button></td>
                     </tr>`;
@@ -293,7 +293,7 @@ const renderPets = () => {
         <div class="stats-grid">${pets.length ? pets.map(p => {
             const owner = clients.find(c => c.id === p.clientId);
             return `<div class="pet-card">
-                <div class="pet-avatar">🐕</div>
+                <div class="pet-avatar">${p.photo ? `<img src="${p.photo}" style="width:48px;height:48px;object-fit:cover;border-radius:50%">` : '🐕'}</div>
                 <div class="pet-info" style="flex:1">
                     <h4>${escHTML(p.name)} <span style="float:right"><button class="btn btn-ghost btn-sm" onclick="editPet('${p.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('pets','${p.id}')">✕</button></span></h4>
                     <p>${escHTML(p.breed || '?')} · ${escHTML(p.age || '?')} · ${escHTML(p.weight || '?')} · ${p.gender === 'Female' ? '♀' : '♂'} ${escHTML(p.gender || '?')} · ${p.fixed === 'Yes' ? '✓ Fixed' : '✗ Intact'}</p>
@@ -2266,6 +2266,7 @@ const showModal = (type) => {
             <div style="background:rgba(255,107,53,0.05);padding:12px;border-radius:8px;text-align:right"><span style="font-size:.85rem;color:var(--text-muted)">Estimated Total:</span> <strong style="font-size:1.3rem;color:var(--primary)" id="mPricePreview">${fmt(services[0]?.price || 0)}</strong></div>
         ` },
         client: { title: 'Add Client', body: `
+            <div class="form-group"><label class="form-label">Photo</label><input type="file" id="mClientPhoto" accept="image/*" class="form-input" style="padding:8px" onchange="previewProfilePic(this,'mClientPhotoPreview')"><div id="mClientPhotoPreview" style="margin-top:6px"></div><input type="hidden" id="mClientPhotoData"></div>
             <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="mName"></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="mEmail" type="email"></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="mPhone" type="tel"></div></div>
             <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="mAddress"></div>
@@ -2273,7 +2274,8 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="mNotes" rows="2"></textarea></div>
         ` },
         pet: { title: 'Add Pet', body: `
-            <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mName"></div><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="mBreed"></div></div>
+            <div class="form-group"><label class="form-label">Photo</label><input type="file" id="mPhoto" accept="image/*" class="form-input" style="padding:8px" onchange="previewProfilePic(this,'mPhotoPreview')"><div id="mPhotoPreview" style="margin-top:6px"></div><input type="hidden" id="mPhotoData"></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mName"></div><div class="form-group"><label class="form-label">Breed</label>${typeof breedSelectHTML === 'function' ? breedSelectHTML('mBreed') : '<input class="form-input" id="mBreed">'}</div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="mAge" placeholder="e.g. 3 years"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="mWeight" placeholder="e.g. 45 lbs"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Gender</label><select class="form-select" id="mGender"><option>Male</option><option>Female</option></select></div><div class="form-group"><label class="form-label">Spayed/Neutered</label><select class="form-select" id="mFixed"><option>Yes</option><option>No</option></select></div></div>
             <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="mOwner"><option value="">Select</option>${clientOptions}</select></div>
@@ -2547,10 +2549,26 @@ const saveModal = (type) => {
         bookings.push({ id: uid(), clientId, clientName: v('mClientName'), petName: v('mPetName'), service: v('mService'), amount: svc?.price || 0, addons: selectedAddons, extraDogs: parseInt(v('mExtraDogs')) || 0, date: v('mDate'), time: v('mTime'), dropoffTime: v('mDropoff'), pickupTime: v('mPickup'), pickupAddr: v('mPickupAddr'), dropoffAddr: v('mDropoffAddr'), zone: v('mZone'), sitter: v('mSitter'), notes: v('mNotes'), status: 'pending' });
         save('bookings', bookings);
     } else if (type === 'client') {
-        clients.push({ id: uid(), name: v('mName'), email: v('mEmail'), phone: v('mPhone'), address: v('mAddress'), source: v('mSource'), notes: v('mNotes') });
+        const clientEmail = v('mEmail');
+        const clientName = v('mName');
+        const clientPhone = v('mPhone');
+        clients.push({ id: uid(), name: clientName, email: clientEmail, phone: clientPhone, photo: v('mClientPhotoData'), address: v('mAddress'), source: v('mSource'), notes: v('mNotes') });
         save('clients', clients);
+        // Auto-send signup invite if email provided
+        if (clientEmail && typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendDirectEmail(clientEmail, clientName,
+                'Welcome to GenusPupClub — Create Your Account',
+                `Hi ${clientName}!\n\nYou've been added to GenusPupClub — Richmond's #1 dog care service.\n\nCreate your free account to:\n• Book walks, daycare, sitting, and grooming\n• Get real-time photo updates of your pup\n• View report cards and invoices\n• Manage your pet profiles\n\nSign up here: ${window.location.origin}/login.html\n\nOr call us at (804) 258-3830 to book your first visit.\n\nWe can't wait to meet your pup!\n— GenusPupClub`
+            );
+            GPC_NOTIFY.showToast('Invite Sent', `Signup invite emailed to ${clientEmail}`, 'success');
+        }
+        // SMS link if phone provided
+        if (clientPhone && !clientEmail) {
+            const smsBody = encodeURIComponent(`Hi ${clientName}! You've been added to GenusPupClub. Create your account at ${window.location.origin}/login.html to book services and manage your pup's profile. — GenusPupClub`);
+            window.open(`sms:${clientPhone}?body=${smsBody}`, '_blank');
+        }
     } else if (type === 'pet') {
-        pets.push({ id: uid(), name: v('mName'), breed: v('mBreed'), age: v('mAge'), weight: v('mWeight'), gender: v('mGender'), fixed: v('mFixed'), clientId: v('mOwner'), vet: v('mVet'), allergies: v('mAllergies'), medications: v('mMeds'), feedingSchedule: v('mFeeding'), tags: v('mTags'), notes: v('mNotes'), preferredSitter: v('mPreferredSitter'), coatType: v('mCoat'), groomFrequency: v('mGroomFreq'), shampoo: v('mShampoo'), groomNotes: v('mGroomNotes') });
+        pets.push({ id: uid(), name: v('mName'), breed: v('mBreed'), age: v('mAge'), weight: v('mWeight'), gender: v('mGender'), fixed: v('mFixed'), clientId: v('mOwner'), photo: v('mPhotoData'), vet: v('mVet'), allergies: v('mAllergies'), medications: v('mMeds'), feedingSchedule: v('mFeeding'), tags: v('mTags'), notes: v('mNotes'), preferredSitter: v('mPreferredSitter'), coatType: v('mCoat'), groomFrequency: v('mGroomFreq'), shampoo: v('mShampoo'), groomNotes: v('mGroomNotes') });
         save('pets', pets);
     } else if (type === 'review') {
         reviews.push({ id: uid(), name: v('mName'), pet: v('mPet'), stars: parseInt(v('mStars')) || 5, text: v('mText'), service: v('mService'), date: todayStr() });
@@ -2730,6 +2748,36 @@ const previewUpload = (input) => {
     reader.readAsDataURL(input.files[0]);
 };
 
+// Profile picture preview & data URL capture
+const previewProfilePic = (input, previewId) => {
+    const preview = document.getElementById(previewId);
+    if (!input.files?.[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        // Resize to 200x200 to keep storage manageable
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const size = 200;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const scale = Math.max(size / img.width, size / img.height);
+            const x = (size - img.width * scale) / 2;
+            const y = (size - img.height * scale) / 2;
+            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            if (preview) preview.innerHTML = `<img src="${dataUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:50%">`;
+            // Store in hidden field
+            const hiddenId = previewId.replace('Preview', 'Data');
+            const hidden = document.getElementById(hiddenId);
+            if (hidden) hidden.value = dataUrl;
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+};
+
 const updateBooking = (id, status) => {
     const b = bookings.find(x => x.id === id);
     if (!b) return;
@@ -2858,6 +2906,7 @@ const editClient = (id) => {
     let overlay = document.getElementById('modalOverlay');
     if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
     overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(c.name)}</div>
+        <div class="form-group"><label class="form-label">Photo</label>${c.photo ? `<img src="${c.photo}" style="width:60px;height:60px;object-fit:cover;border-radius:50%;margin-bottom:6px;display:block">` : ''}<input type="file" id="ecPhoto" accept="image/*" class="form-input" style="padding:8px" onchange="previewProfilePic(this,'ecPhotoPreview')"><div id="ecPhotoPreview" style="margin-top:6px"></div><input type="hidden" id="ecPhotoData" value="${c.photo || ''}"></div>
         <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="ecName" value="${escHTML(c.name)}"></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ecEmail" value="${escHTML(c.email || '')}"></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="ecPhone" value="${escHTML(c.phone || '')}"></div></div>
         <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="ecAddr" value="${escHTML(c.address || '')}"></div>
@@ -2872,6 +2921,8 @@ const saveEditClient = (id) => {
     c.phone = document.getElementById('ecPhone')?.value?.trim() || '';
     c.address = document.getElementById('ecAddr')?.value?.trim() || '';
     c.notes = document.getElementById('ecNotes')?.value?.trim() || '';
+    const newPhoto = document.getElementById('ecPhotoData')?.value;
+    if (newPhoto) c.photo = newPhoto;
     save('clients', clients); closeModal(); renderTab();
 };
 
@@ -2886,8 +2937,10 @@ const editPet = (id) => {
     const coatOpts = ['Short', 'Medium', 'Long', 'Wire/Rough', 'Curly', 'Double Coat', 'Hairless'].map(c => `<option ${p.coatType === c ? 'selected' : ''}>${c}</option>`).join('');
     const groomFreqOpts = ['Monthly', 'Every 2 weeks', 'Weekly', 'Every 6 weeks', 'As needed'].map(f => `<option ${p.groomFrequency === f ? 'selected' : ''}>${f}</option>`).join('');
     const shampooOpts = ['Standard', 'Hypoallergenic', 'Oatmeal', 'Medicated', 'De-shedding', 'Whitening', 'Owner provides'].map(s => `<option ${p.shampoo === s ? 'selected' : ''}>${s}</option>`).join('');
+    const breedOpts = typeof DOG_BREEDS !== 'undefined' ? DOG_BREEDS.map(b => `<option value="${b}" ${p.breed === b ? 'selected' : ''}>${b}</option>`).join('') : '';
     overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(p.name)}</div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="epBreed" value="${escHTML(p.breed || '')}"></div></div>
+        <div class="form-group"><label class="form-label">Photo</label>${p.photo ? `<img src="${p.photo}" style="width:60px;height:60px;object-fit:cover;border-radius:50%;margin-bottom:6px;display:block">` : ''}<input type="file" id="epPhoto" accept="image/*" class="form-input" style="padding:8px" onchange="previewProfilePic(this,'epPhotoPreview')"><div id="epPhotoPreview" style="margin-top:6px"></div><input type="hidden" id="epPhotoData" value="${p.photo || ''}"></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div><div class="form-group"><label class="form-label">Breed</label><select class="form-select" id="epBreed"><option value="">Select breed</option>${breedOpts}</select></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="epAge" value="${escHTML(p.age || '')}"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="epWeight" value="${escHTML(p.weight || '')}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Gender</label><select class="form-select" id="epGender">${genderOpts}</select></div><div class="form-group"><label class="form-label">Spayed/Neutered</label><select class="form-select" id="epFixed">${fixedOpts}</select></div></div>
         <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="epOwner"><option value="">None</option>${clientOpts}</select></div>
@@ -2905,7 +2958,9 @@ const editPet = (id) => {
 const saveEditPet = (id) => {
     const p = pets.find(x => x.id === id); if (!p) return;
     p.name = document.getElementById('epName')?.value?.trim() || p.name;
-    p.breed = document.getElementById('epBreed')?.value?.trim() || '';
+    p.breed = document.getElementById('epBreed')?.value || '';
+    const newPhoto = document.getElementById('epPhotoData')?.value;
+    if (newPhoto) p.photo = newPhoto;
     p.age = document.getElementById('epAge')?.value?.trim() || '';
     p.weight = document.getElementById('epWeight')?.value?.trim() || '';
     p.gender = document.getElementById('epGender')?.value || '';

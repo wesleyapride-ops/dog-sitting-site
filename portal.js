@@ -137,7 +137,7 @@ const renderMyPets = () => {
     el.innerHTML = `
         <div class="card" style="margin-bottom:16px"><div class="card-header"><span class="card-title">My Pets (${myPets.length})</span><button class="btn btn-primary btn-sm" onclick="showAddPet()">+ Add Pet</button></div></div>
         <div class="stats-grid">${myPets.length ? myPets.map(p => `
-            <div class="pet-card"><div class="pet-avatar">🐕</div><div class="pet-info" style="flex:1">
+            <div class="pet-card"><div class="pet-avatar">${p.photo ? `<img src="${p.photo}" style="width:48px;height:48px;object-fit:cover;border-radius:50%">` : '🐕'}</div><div class="pet-info" style="flex:1">
                 <h4>${esc(p.name)}</h4>
                 <p>${esc(p.breed || '?')} · ${esc(p.age || '?')} · ${esc(p.weight || '?')} · ${p.gender === 'Female' ? '♀' : '♂'} ${esc(p.gender || '?')} · ${p.fixed === 'Yes' ? '✓ Fixed' : '✗ Intact'}</p>
                 ${p.allergies ? `<p style="font-size:.78rem;color:var(--danger)">Allergies: ${esc(p.allergies)}</p>` : ''}
@@ -152,7 +152,8 @@ const showAddPet = () => {
     el.innerHTML += `
         <div class="card" style="margin-top:16px" id="addPetForm">
             <div class="card-title" style="margin-bottom:12px">Add a Pet</div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="pName"></div><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="pBreed"></div></div>
+            <div class="form-group"><label class="form-label">Photo</label><input type="file" id="pPhoto" accept="image/*" class="form-input" style="padding:8px" onchange="previewPortalPic(this)"><div id="pPhotoPreview" style="margin-top:6px"></div><input type="hidden" id="pPhotoData"></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="pName"></div><div class="form-group"><label class="form-label">Breed</label>${typeof DOG_BREEDS !== 'undefined' ? '<select class="form-select" id="pBreed"><option value="">Select breed</option>' + DOG_BREEDS.map(b => '<option>' + b + '</option>').join('') + '</select>' : '<input class="form-input" id="pBreed">'}</div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="pAge"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="pWeight"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Gender</label><select class="form-select" id="pGender"><option>Male</option><option>Female</option></select></div><div class="form-group"><label class="form-label">Spayed/Neutered</label><select class="form-select" id="pFixed"><option>Yes</option><option>No</option></select></div></div>
             <div class="form-group"><label class="form-label">Allergies</label><input class="form-input" id="pAllergies"></div>
@@ -163,11 +164,32 @@ const showAddPet = () => {
     `;
 };
 
+const previewPortalPic = (input) => {
+    const preview = document.getElementById('pPhotoPreview');
+    if (!input.files?.[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200; canvas.height = 200;
+            const ctx = canvas.getContext('2d');
+            const scale = Math.max(200 / img.width, 200 / img.height);
+            ctx.drawImage(img, (200 - img.width * scale) / 2, (200 - img.height * scale) / 2, img.width * scale, img.height * scale);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            if (preview) preview.innerHTML = `<img src="${dataUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:50%">`;
+            document.getElementById('pPhotoData').value = dataUrl;
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+};
+
 const savePet = () => {
     const v = (id) => document.getElementById(id)?.value?.trim() || '';
     if (!v('pName')) { alert('Pet name required'); return; }
     const pets = load('pets', []);
-    pets.push({ id: uid(), name: v('pName'), breed: v('pBreed'), age: v('pAge'), weight: v('pWeight'), gender: v('pGender'), fixed: v('pFixed'), allergies: v('pAllergies'), medications: v('pMeds'), notes: v('pNotes'), clientId: userId });
+    pets.push({ id: uid(), name: v('pName'), breed: v('pBreed'), age: v('pAge'), weight: v('pWeight'), gender: v('pGender'), fixed: v('pFixed'), photo: v('pPhotoData'), allergies: v('pAllergies'), medications: v('pMeds'), notes: v('pNotes'), clientId: userId });
     save('pets', pets);
     renderTab();
 };

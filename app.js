@@ -211,7 +211,7 @@ bookingForm?.addEventListener('submit', (e) => {
     bookings.push(newBooking);
     gpcSave('bookings', bookings);
 
-    // Also save as client if new
+    // Also save as client if new + send signup invite
     const clients = gpcLoad('clients', []);
     const existingClient = clients.find(c => c.email === email || c.name === name);
     if (!existingClient && name) {
@@ -225,6 +225,10 @@ bookingForm?.addEventListener('submit', (e) => {
             notes: ''
         });
         gpcSave('clients', clients);
+        // Auto-send signup invite
+        if (email && typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendEmail('welcome', { name, email, clientEmail: email });
+        }
     }
 
     // Fire notifications
