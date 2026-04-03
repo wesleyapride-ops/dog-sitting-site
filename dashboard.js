@@ -228,6 +228,7 @@ const renderBookingTable = (items) => `
             <td style="white-space:nowrap">
                 ${b.status === 'pending' ? `<button class="btn btn-ghost btn-sm" onclick="updateBooking('${b.id}','confirmed')">✓</button>` : ''}
                 ${b.status === 'confirmed' ? `<button class="btn btn-ghost btn-sm" onclick="updateBooking('${b.id}','completed')">Done</button>` : ''}
+                <button class="btn btn-ghost btn-sm" onclick="editBooking('${b.id}')">✎</button>
                 <button class="btn btn-ghost btn-sm" onclick="deleteItem('bookings','${b.id}')">✕</button>
             </td>
         </tr>`).join('') : '<tr><td colspan="9" class="empty">No bookings</td></tr>'}</tbody>
@@ -285,7 +286,7 @@ const renderPets = () => {
             return `<div class="pet-card">
                 <div class="pet-avatar">🐕</div>
                 <div class="pet-info" style="flex:1">
-                    <h4>${escHTML(p.name)} <button class="btn btn-ghost btn-sm" style="float:right" onclick="deleteItem('pets','${p.id}')">✕</button></h4>
+                    <h4>${escHTML(p.name)} <span style="float:right"><button class="btn btn-ghost btn-sm" onclick="editPet('${p.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('pets','${p.id}')">✕</button></span></h4>
                     <p>${escHTML(p.breed || '?')} · ${escHTML(p.age || '?')} · ${escHTML(p.weight || '?')} · ${escHTML(p.gender || '?')}</p>
                     <p style="font-size:.8rem">Owner: <strong>${escHTML(owner?.name || '—')}</strong></p>
                     ${p.vet ? `<p style="font-size:.78rem;color:var(--text-muted)">Vet: ${escHTML(p.vet)}</p>` : ''}
@@ -601,7 +602,7 @@ const renderReviews = () => {
         </div>
         <div class="card">
             <div class="card-header"><span class="card-title">All Reviews</span><button class="btn btn-primary btn-sm" onclick="showModal('review')">+ Add Review</button></div>
-            ${reviews.map(r => `<div class="review-item"><div style="display:flex;justify-content:space-between"><div class="review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</div><span style="font-size:.78rem;color:var(--text-muted)">${r.date || ''} · ${escHTML(r.service || '')}</span></div><div class="review-text">"${escHTML(r.text)}"</div><div class="review-author">${escHTML(r.name)} — ${escHTML(r.pet)} <button class="btn btn-ghost btn-sm" onclick="deleteItem('reviews','${r.id}')">✕</button></div></div>`).join('') || '<div class="empty">No reviews</div>'}
+            ${reviews.map(r => `<div class="review-item"><div style="display:flex;justify-content:space-between"><div class="review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</div><span style="font-size:.78rem;color:var(--text-muted)">${r.date || ''} · ${escHTML(r.service || '')}</span></div><div class="review-text">"${escHTML(r.text)}"</div><div class="review-author">${escHTML(r.name)} — ${escHTML(r.pet)} <button class="btn btn-ghost btn-sm" onclick="editReview('${r.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('reviews','${r.id}')">✕</button></div></div>`).join('') || '<div class="empty">No reviews</div>'}
         </div>
     `;
 };
@@ -1348,7 +1349,7 @@ const renderSettings = () => {
                     <td><strong>${escHTML(a.name)}</strong></td>
                     <td>${a.price > 0 ? fmt(a.price) : '<span style="color:var(--accent)">Free</span>'}</td>
                     <td style="font-size:.85rem;color:var(--text-muted)">${escHTML(a.description)}</td>
-                    <td><button class="btn btn-ghost btn-sm" onclick="deleteAddon('${a.id}')">✕</button></td>
+                    <td><button class="btn btn-ghost btn-sm" onclick="editAddon('${a.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteAddon('${a.id}')">✕</button></td>
                 </tr>`).join('')}</tbody>
             </table></div>
         </div>
@@ -1363,7 +1364,7 @@ const renderSettings = () => {
                 return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
                     <div><strong>${escHTML(p.name)}</strong><br><span style="font-size:.82rem;color:var(--text-muted)">${escHTML(p.description)}</span></div>
                     <div style="text-align:right"><div style="font-size:1.1rem;font-weight:700;color:var(--primary)">${fmt(discounted)}</div><div style="font-size:.78rem;color:var(--text-muted);text-decoration:line-through">${fmt(basePrice)}</div><div style="font-size:.72rem;color:var(--accent)">${p.discount}% off · ${p.visits} visits</div></div>
-                    <button class="btn btn-ghost btn-sm" onclick="deletePackage('${p.id}')">✕</button>
+                    <button class="btn btn-ghost btn-sm" onclick="editPackage('${p.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deletePackage('${p.id}')">✕</button>
                 </div>`;
             }).join('') || '<div class="empty">No packages</div>'}
         </div>
@@ -1374,7 +1375,7 @@ const renderSettings = () => {
             ${zones.map(z => `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
                 <div><strong>${escHTML(z.name)}</strong><br><span style="font-size:.82rem;color:var(--text-muted)">${escHTML(z.areas)}</span></div>
                 <div style="text-align:right"><span style="font-weight:700;color:${z.surcharge > 0 ? 'var(--primary)' : 'var(--accent)'}">${z.surcharge > 0 ? '+' + fmt(z.surcharge) : 'No surcharge'}</span></div>
-                <button class="btn btn-ghost btn-sm" onclick="deleteZone('${z.id}')">✕</button>
+                <button class="btn btn-ghost btn-sm" onclick="editZone('${z.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteZone('${z.id}')">✕</button>
             </div>`).join('')}
         </div>
 
@@ -1509,8 +1510,68 @@ const saveEditService = (id) => {
 };
 const deleteService = (id) => { if (!confirm('Delete service?')) return; services = services.filter(x => x.id !== id); save('services', services); renderTab(); };
 const deleteAddon = (id) => { if (!confirm('Delete add-on?')) return; addons = addons.filter(x => x.id !== id); save('addons', addons); renderTab(); };
+const editAddon = (id) => {
+    const a = addons.find(x => x.id === id); if (!a) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Add-on: ${escHTML(a.name)}</div>
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="eaName" value="${escHTML(a.name)}"></div>
+        <div class="form-group"><label class="form-label">Price ($)</label><input class="form-input" id="eaPrice" type="number" step="0.01" value="${a.price}"></div>
+        <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="eaDesc" value="${escHTML(a.description || '')}"></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditAddon('${a.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+const saveEditAddon = (id) => {
+    const a = addons.find(x => x.id === id); if (!a) return;
+    a.name = document.getElementById('eaName')?.value?.trim() || a.name;
+    a.price = parseFloat(document.getElementById('eaPrice')?.value) ?? a.price;
+    a.description = document.getElementById('eaDesc')?.value?.trim() || '';
+    save('addons', addons); closeModal(); renderTab();
+};
+
 const deletePackage = (id) => { if (!confirm('Delete package?')) return; packages = packages.filter(x => x.id !== id); save('packages', packages); renderTab(); };
+const editPackage = (id) => {
+    const p = packages.find(x => x.id === id); if (!p) return;
+    const svcOptions = services.filter(s => s.active).map(s => `<option value="${escHTML(s.name)}" ${(p.services || []).includes(s.name) ? 'selected' : ''}>${escHTML(s.name)}</option>`).join('');
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Package: ${escHTML(p.name)}</div>
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="epkName" value="${escHTML(p.name)}"></div>
+        <div class="form-row"><div class="form-group"><label class="form-label"># Visits</label><input class="form-input" id="epkVisits" type="number" value="${p.visits}"></div><div class="form-group"><label class="form-label">Discount (%)</label><input class="form-input" id="epkDiscount" type="number" value="${p.discount}"></div></div>
+        <div class="form-group"><label class="form-label">Base Service</label><select class="form-select" id="epkService">${svcOptions}</select></div>
+        <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="epkDesc" value="${escHTML(p.description || '')}"></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditPackage('${p.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+const saveEditPackage = (id) => {
+    const p = packages.find(x => x.id === id); if (!p) return;
+    p.name = document.getElementById('epkName')?.value?.trim() || p.name;
+    p.visits = parseInt(document.getElementById('epkVisits')?.value) || p.visits;
+    p.discount = parseInt(document.getElementById('epkDiscount')?.value) ?? p.discount;
+    p.services = [document.getElementById('epkService')?.value || p.services?.[0]];
+    p.description = document.getElementById('epkDesc')?.value?.trim() || '';
+    save('packages', packages); closeModal(); renderTab();
+};
+
 const deleteZone = (id) => { if (!confirm('Delete zone?')) return; zones = zones.filter(x => x.id !== id); save('zones', zones); renderTab(); };
+const editZone = (id) => {
+    const z = zones.find(x => x.id === id); if (!z) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Zone: ${escHTML(z.name)}</div>
+        <div class="form-group"><label class="form-label">Zone Name</label><input class="form-input" id="ezName" value="${escHTML(z.name)}"></div>
+        <div class="form-group"><label class="form-label">Areas</label><input class="form-input" id="ezAreas" value="${escHTML(z.areas || '')}"></div>
+        <div class="form-group"><label class="form-label">Surcharge ($)</label><input class="form-input" id="ezSurcharge" type="number" step="0.01" value="${z.surcharge}"></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditZone('${z.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+const saveEditZone = (id) => {
+    const z = zones.find(x => x.id === id); if (!z) return;
+    z.name = document.getElementById('ezName')?.value?.trim() || z.name;
+    z.areas = document.getElementById('ezAreas')?.value?.trim() || '';
+    z.surcharge = parseFloat(document.getElementById('ezSurcharge')?.value) ?? z.surcharge;
+    save('zones', zones); closeModal(); renderTab();
+};
 
 // ============================================
 // MODAL SYSTEM
@@ -1943,7 +2004,112 @@ const saveCompletionFlow = (bookingId) => {
     renderTab();
 };
 const deleteItem = (col, id) => { if (!confirm('Delete?')) return; const map = { bookings, clients, pets, reviews, sitters, messages }; map[col] = map[col].filter(x => x.id !== id); if (col === 'bookings') bookings = map[col]; else if (col === 'clients') clients = map[col]; else if (col === 'pets') pets = map[col]; else if (col === 'reviews') reviews = map[col]; else if (col === 'sitters') sitters = map[col]; save(col, map[col]); renderTab(); };
-const editClient = (id) => { /* TODO: edit modal */ };
+const editClient = (id) => {
+    const c = clients.find(x => x.id === id); if (!c) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(c.name)}</div>
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="ecName" value="${escHTML(c.name)}"></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ecEmail" value="${escHTML(c.email || '')}"></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="ecPhone" value="${escHTML(c.phone || '')}"></div></div>
+        <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="ecAddr" value="${escHTML(c.address || '')}"></div>
+        <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ecNotes" rows="2">${escHTML(c.notes || '')}</textarea></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditClient('${c.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+const saveEditClient = (id) => {
+    const c = clients.find(x => x.id === id); if (!c) return;
+    c.name = document.getElementById('ecName')?.value?.trim() || c.name;
+    c.email = document.getElementById('ecEmail')?.value?.trim() || '';
+    c.phone = document.getElementById('ecPhone')?.value?.trim() || '';
+    c.address = document.getElementById('ecAddr')?.value?.trim() || '';
+    c.notes = document.getElementById('ecNotes')?.value?.trim() || '';
+    save('clients', clients); closeModal(); renderTab();
+};
+
+const editPet = (id) => {
+    const p = pets.find(x => x.id === id); if (!p) return;
+    const clientOpts = clients.map(c => `<option value="${c.id}" ${p.clientId === c.id ? 'selected' : ''}>${escHTML(c.name)}</option>`).join('');
+    const sitterOpts = sitters.map(s => `<option value="${escHTML(s.name)}" ${p.preferredSitter === s.name ? 'selected' : ''}>${escHTML(s.name)}</option>`).join('');
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(p.name)}</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="epBreed" value="${escHTML(p.breed || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="epAge" value="${escHTML(p.age || '')}"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="epWeight" value="${escHTML(p.weight || '')}"></div></div>
+        <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="epOwner"><option value="">None</option>${clientOpts}</select></div>
+        <div class="form-group"><label class="form-label">Preferred Sitter</label><select class="form-select" id="epSitter"><option value="">No preference</option>${sitterOpts}</select></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Vet</label><input class="form-input" id="epVet" value="${escHTML(p.vet || '')}"></div><div class="form-group"><label class="form-label">Allergies</label><input class="form-input" id="epAllergies" value="${escHTML(p.allergies || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Medications</label><input class="form-input" id="epMeds" value="${escHTML(p.medications || '')}"></div><div class="form-group"><label class="form-label">Feeding</label><input class="form-input" id="epFeed" value="${escHTML(p.feedingSchedule || '')}"></div></div>
+        <div class="form-group"><label class="form-label">Tags</label><input class="form-input" id="epTags" value="${escHTML(p.tags || '')}"></div>
+        <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="epNotes" rows="2">${escHTML(p.notes || '')}</textarea></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditPet('${p.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+const saveEditPet = (id) => {
+    const p = pets.find(x => x.id === id); if (!p) return;
+    p.name = document.getElementById('epName')?.value?.trim() || p.name;
+    p.breed = document.getElementById('epBreed')?.value?.trim() || '';
+    p.age = document.getElementById('epAge')?.value?.trim() || '';
+    p.weight = document.getElementById('epWeight')?.value?.trim() || '';
+    p.clientId = document.getElementById('epOwner')?.value || '';
+    p.preferredSitter = document.getElementById('epSitter')?.value || '';
+    p.vet = document.getElementById('epVet')?.value?.trim() || '';
+    p.allergies = document.getElementById('epAllergies')?.value?.trim() || '';
+    p.medications = document.getElementById('epMeds')?.value?.trim() || '';
+    p.feedingSchedule = document.getElementById('epFeed')?.value?.trim() || '';
+    p.tags = document.getElementById('epTags')?.value?.trim() || '';
+    p.notes = document.getElementById('epNotes')?.value?.trim() || '';
+    save('pets', pets); closeModal(); renderTab();
+};
+
+const editBooking = (id) => {
+    const b = bookings.find(x => x.id === id); if (!b) return;
+    const svcOpts = services.map(s => `<option value="${escHTML(s.name)}" ${b.service === s.name ? 'selected' : ''}>${escHTML(s.name)} (${fmt(s.price)})</option>`).join('');
+    const sitterOpts = sitters.map(s => `<option value="${escHTML(s.name)}" ${b.sitter === s.name ? 'selected' : ''}>${escHTML(s.name)}</option>`).join('');
+    const statuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Booking</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="ebClient" value="${escHTML(b.clientName || '')}"></div><div class="form-group"><label class="form-label">Pet</label><input class="form-input" id="ebPet" value="${escHTML(b.petName || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="ebService">${svcOpts}</select></div><div class="form-group"><label class="form-label">Amount ($)</label><input class="form-input" id="ebAmount" type="number" step="0.01" value="${b.amount || 0}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="ebDate" type="date" value="${b.date || ''}"></div><div class="form-group"><label class="form-label">Time</label><input class="form-input" id="ebTime" type="time" value="${b.time || ''}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="ebSitter"><option value="">Unassigned</option>${sitterOpts}</select></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ebStatus">${statuses.map(s => `<option ${b.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
+        <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ebNotes" rows="2">${escHTML(b.notes || '')}</textarea></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditBooking('${b.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+const saveEditBooking = (id) => {
+    const b = bookings.find(x => x.id === id); if (!b) return;
+    b.clientName = document.getElementById('ebClient')?.value?.trim() || b.clientName;
+    b.petName = document.getElementById('ebPet')?.value?.trim() || b.petName;
+    b.service = document.getElementById('ebService')?.value || b.service;
+    b.amount = parseFloat(document.getElementById('ebAmount')?.value) ?? b.amount;
+    b.date = document.getElementById('ebDate')?.value || b.date;
+    b.time = document.getElementById('ebTime')?.value || b.time;
+    b.sitter = document.getElementById('ebSitter')?.value || '';
+    b.status = document.getElementById('ebStatus')?.value || b.status;
+    b.notes = document.getElementById('ebNotes')?.value?.trim() || '';
+    save('bookings', bookings); closeModal(); renderTab();
+};
+
+const editReview = (id) => {
+    const r = reviews.find(x => x.id === id); if (!r) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Review</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="erName" value="${escHTML(r.name || '')}"></div><div class="form-group"><label class="form-label">Pet</label><input class="form-input" id="erPet" value="${escHTML(r.pet || '')}"></div></div>
+        <div class="form-group"><label class="form-label">Stars</label><select class="form-select" id="erStars">${[5,4,3,2,1].map(s => `<option ${r.stars === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Review</label><textarea class="form-textarea" id="erText" rows="3">${escHTML(r.text || '')}</textarea></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditReview('${r.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+const saveEditReview = (id) => {
+    const r = reviews.find(x => x.id === id); if (!r) return;
+    r.name = document.getElementById('erName')?.value?.trim() || r.name;
+    r.pet = document.getElementById('erPet')?.value?.trim() || '';
+    r.stars = parseInt(document.getElementById('erStars')?.value) || r.stars;
+    r.text = document.getElementById('erText')?.value?.trim() || '';
+    save('reviews', reviews); closeModal(); renderTab();
+};
 
 // Init
 renderTab();
