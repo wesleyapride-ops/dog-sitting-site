@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenusPupClub - Premium Dog Sitting & Care</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav class="nav" id="nav">
+        <div class="nav-inner">
+            <a href="#" class="logo">
+                <span class="logo-icon">🐶</span>
+                <span class="logo-text">Genus<strong>PupClub</strong></span>
+            </a>
+            <div class="nav-links" id="navLinks">
+                <a href="#services">Services</a>
+                <a href="#about">About</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#reviews">Reviews</a>
+                <a href="#faq">FAQ</a>
+                <a href="#book" class="btn btn-nav">Book Now</a>
+                <a href="login.html" class="btn btn-nav" style="background:transparent;border-color:var(--text-muted);color:var(--text)">My Account</a>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <header class="hero" id="hero">
+        <div class="hero-content">
+            <div class="hero-badge">Richmond, VA's #1 Dog Sitter</div>
+            <h1>Your Pup Deserves<br><span class="highlight">Five-Star Care</span></h1>
+            <p class="hero-sub">Professional dog sitting, walking, and daycare — because your fur baby deserves someone who treats them like family.</p>
+            <div class="hero-actions">
+                <a href="#book" class="btn btn-primary btn-lg">Book a Visit</a>
+                <a href="#services" class="btn btn-outline btn-lg">Our Services</a>
+            </div>
+            <div class="hero-trust">
+                <div class="trust-item">
+                    <strong>500+</strong>
+                    <span>Happy Pups</span>
+                </div>
+                <div class="trust-item">
+                    <strong>4.9</strong>
+                    <span>Star Rating</span>
+                </div>
+                <div class="trust-item">
+                    <strong>3+</strong>
+                    <span>Years Serving RVA</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-blob"></div>
+            <img src="images/dogs-car.jpg" alt="Happy dogs ready for adventure" class="hero-dog-img" loading="lazy">
+        </div>
+    </header>
+
+    <!-- SERVICES -->
+    <section class="section" id="services">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">What We Do</span>
+                <h2>Tail-Wagging Services</h2>
+                <p>From quick check-ins to overnight stays, we've got your pup covered.</p>
+            </div>
+            <!-- Dynamic — controlled from Dashboard > Settings > Services -->
+            <div class="services-grid" id="servicesGrid"></div>
+        </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section class="section section-alt" id="about">
+        <div class="container">
+            <div class="about-grid">
+                <div class="about-content">
+                    <span class="section-tag">Why GenusPupClub</span>
+                    <h2>We're Not Just Sitters.<br>We're <span class="highlight">Family.</span></h2>
+                    <p>GenusPupClub was born from a simple belief: every dog deserves the same love and attention they get from their owner — even when their owner isn't there.</p>
+                    <p>We're fully insured, pet first-aid certified, and obsessively dedicated to your dog's happiness. Every sitter goes through background checks and a hands-on training program before they ever meet your pup.</p>
+                    <div class="about-features">
+                        <div class="about-feature">
+                            <div class="feature-check">✓</div>
+                            <div>
+                                <strong>Insured & Bonded</strong>
+                                <p>Full liability coverage for your peace of mind</p>
+                            </div>
+                        </div>
+                        <div class="about-feature">
+                            <div class="feature-check">✓</div>
+                            <div>
+                                <strong>Pet First-Aid Certified</strong>
+                                <p>Trained to handle emergencies calmly</p>
+                            </div>
+                        </div>
+                        <div class="about-feature">
+                            <div class="feature-check">✓</div>
+                            <div>
+                                <strong>Background Checked</strong>
+                                <p>Every sitter vetted and verified</p>
+                            </div>
+                        </div>
+                        <div class="about-feature">
+                            <div class="feature-check">✓</div>
+                            <div>
+                                <strong>Real-Time Updates</strong>
+                                <p>Photos, videos, and GPS tracking every visit</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="about-visual">
+                    <div class="about-card">
+                        <img src="images/dogs-hiking.jpg" alt="Dogs on an adventure" style="width:100%;border-radius:16px;margin-bottom:16px;object-fit:cover;max-height:300px" loading="lazy">
+                        <p>"Your dog's tail should never stop wagging."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING -->
+    <section class="section" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Simple Pricing</span>
+                <h2>Fair Rates, No Surprises</h2>
+                <p>All services include photo updates, GPS tracking, and our happiness guarantee.</p>
+            </div>
+            <!-- Dynamic pricing — reads from dashboard localStorage -->
+            <div class="pricing-grid" id="pricingGrid"></div>
+            <div id="pricingNote"></div>
+
+            <!-- Packages -->
+            <div id="packagesSection"></div>
+        </div>
+    </section>
+
+    <!-- REVIEWS -->
+    <section class="section section-alt" id="reviews">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Happy Tails</span>
+                <h2>What Dog Parents Say</h2>
+            </div>
+            <div class="reviews-grid">
+                <div class="review-card">
+                    <div class="review-stars">★★★★★</div>
+                    <p>"My anxious rescue dog actually gets EXCITED when he sees the GenusPupClub sitter pull up. That says everything."</p>
+                    <div class="reviewer">
+                        <strong>Sarah M.</strong>
+                        <span>Luna's mom - Fan District</span>
+                    </div>
+                </div>
+                <div class="review-card">
+                    <div class="review-stars">★★★★★</div>
+                    <p>"The photo updates during walks are my favorite part of the workday. I can see exactly where they went and how happy Max looks."</p>
+                    <div class="reviewer">
+                        <strong>James T.</strong>
+                        <span>Max's dad - Church Hill</span>
+                    </div>
+                </div>
+                <div class="review-card">
+                    <div class="review-stars">★★★★★</div>
+                    <p>"We travel for work constantly. Knowing our three dogs are in amazing hands with GenusPupClub is priceless. They treat them like their own."</p>
+                    <div class="reviewer">
+                        <strong>The Rodriguez Family</strong>
+                        <span>Coco, Bruno & Pepper - Short Pump</span>
+                    </div>
+                </div>
+                <div class="review-card">
+                    <div class="review-stars">★★★★★</div>
+                    <p>"My senior dog needs medication twice a day and gentle short walks. They follow the routine perfectly every single time. Absolute professionals."</p>
+                    <div class="reviewer">
+                        <strong>Patricia L.</strong>
+                        <span>Buddy's mom - Carytown</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="section" id="how">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Easy as 1-2-3</span>
+                <h2>How It Works</h2>
+            </div>
+            <div class="steps-grid">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <h3>Book Online</h3>
+                    <p>Pick your service, date, and time. Tell us about your pup — breed, age, quirks, favorite toys, the works.</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <h3>Meet & Greet</h3>
+                    <p>Free intro visit so your dog can sniff us out (literally). We learn their routine, personality, and preferences.</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <h3>Tail-Wagging Care</h3>
+                    <p>We show up, your dog has the time of their life, and you get real-time updates. It's that simple.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section section-alt" id="faq">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Questions?</span>
+                <h2>Frequently Asked</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+                        What if my dog has special needs or medication?
+                        <span class="faq-arrow">▼</span>
+                    </button>
+                    <div class="faq-a">
+                        <p>We handle it. All sitters are trained in medication administration (pills, liquids, injections). During the meet & greet, we go over every detail of your dog's care routine. We set alarms and follow your vet's instructions exactly.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+                        Are you insured?
+                        <span class="faq-arrow">▼</span>
+                    </button>
+                    <div class="faq-a">
+                        <p>Yes. GenusPupClub carries full commercial liability insurance and is bonded. Every sitter is covered. Your home and your pet are protected.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+                        What's your cancellation policy?
+                        <span class="faq-arrow">▼</span>
+                    </button>
+                    <div class="faq-a">
+                        <p>Cancel 24+ hours before your booking for a full refund. Cancellations within 24 hours are charged 50%. No-shows are charged in full. We know life happens — just let us know as early as possible.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+                        Do you take cats / other pets too?
+                        <span class="faq-arrow">▼</span>
+                    </button>
+                    <div class="faq-a">
+                        <p>Our specialty is dogs, but we can handle cat feeding, fish tanks, and small animal care as an add-on during dog sitting visits. Just ask during booking.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+                        What areas do you serve?
+                        <span class="faq-arrow">▼</span>
+                    </button>
+                    <div class="faq-a">
+                        <p>We serve all of Richmond, VA and surrounding areas: Fan District, Carytown, Church Hill, Scott's Addition, Short Pump, Glen Allen, Midlothian, and Henrico County. If you're within 20 miles of downtown RVA, we've got you covered.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+                        How do I pay?
+                        <span class="faq-arrow">▼</span>
+                    </button>
+                    <div class="faq-a">
+                        <p>We accept all major credit/debit cards, Venmo, Zelle, CashApp, and Apple Pay. Payment is processed after each visit. Recurring clients can set up autopay for convenience.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BOOKING CTA -->
+    <section class="section cta-section" id="book">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Give Your Pup<br>the <span class="highlight">Best Care</span> in RVA?</h2>
+                <p>Book your free meet & greet today. No commitment — just come see why 500+ dogs love GenusPupClub.</p>
+                <form class="booking-form" id="bookingForm">
+                    <div class="form-row">
+                        <input type="text" placeholder="Your Name" required>
+                        <input type="email" placeholder="Email" required>
+                    </div>
+                    <div class="form-row">
+                        <input type="tel" placeholder="Phone Number" required>
+                        <select required id="bookingServiceSelect">
+                            <option value="" disabled selected>Select Service</option>
+                            <!-- Populated dynamically from dashboard data -->
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <input type="text" placeholder="Dog's Name & Breed">
+                        <input type="date" placeholder="Preferred Date">
+                    </div>
+                    <textarea placeholder="Tell us about your pup — age, personality, special needs, anything we should know..." rows="3"></textarea>
+                    <button type="submit" class="btn btn-primary btn-lg btn-full">Book Free Meet & Greet</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span class="logo-icon">🐶</span>
+                        <span class="logo-text">Genus<strong>PupClub</strong></span>
+                    </div>
+                    <p>Richmond, VA's premium dog sitting service. Insured, certified, and obsessively dedicated to your pup's happiness.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Services</h4>
+                    <a href="#services">Dog Walking</a>
+                    <a href="#services">In-Home Sitting</a>
+                    <a href="#services">Daycare</a>
+                    <a href="#services">Drop-In Visits</a>
+                    <a href="#services">Puppy Care</a>
+                    <a href="#services">Pet Taxi</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Company</h4>
+                    <a href="#about">About Us</a>
+                    <a href="#pricing">Pricing</a>
+                    <a href="#reviews">Reviews</a>
+                    <a href="#faq">FAQ</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Contact</h4>
+                    <a href="mailto:Genuspupclub@gmail.com">Genuspupclub@gmail.com</a>
+                    <a href="tel:+18042583830">(804) 258-3830</a>
+                    <p style="margin-top:8px;font-size:.85rem;opacity:.6">Richmond, VA<br>Serving all of RVA</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 GenusPupClub. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="notifications.js" defer></script>
+    <script src="app.js" defer></script>
+</body>
+</html>

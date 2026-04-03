@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenusPupClub — Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+        .auth-container { width: 100%; max-width: 420px; padding: 24px; }
+        .auth-card { background: var(--white); border-radius: 20px; padding: 40px 32px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+        .auth-logo { text-align: center; margin-bottom: 24px; }
+        .auth-logo .logo-icon { font-size: 2.5rem; }
+        .auth-logo .logo-text { font-family: var(--font-display); font-size: 1.6rem; }
+        .auth-tabs { display: flex; gap: 0; margin-bottom: 24px; border-radius: 10px; overflow: hidden; border: 2px solid var(--border, #e9ecef); }
+        .auth-tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; font-weight: 600; font-size: .9rem; background: transparent; border: none; font-family: var(--font-body); color: var(--text-light, #636e72); transition: all .2s; }
+        .auth-tab.active { background: var(--primary); color: #fff; }
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: .82rem; font-weight: 600; margin-bottom: 4px; color: var(--text-light, #636e72); }
+        .form-input { width: 100%; padding: 12px 14px; border: 2px solid #e9ecef; border-radius: 10px; font-size: .95rem; font-family: var(--font-body); transition: border .2s; outline: none; }
+        .form-input:focus { border-color: var(--primary); }
+        .auth-btn { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all .2s; margin-top: 8px; }
+        .auth-btn:hover { background: var(--primary-dark, #E55A2B); }
+        .auth-divider { text-align: center; margin: 16px 0; color: var(--text-muted, #b2bec3); font-size: .85rem; }
+        .auth-link { text-align: center; margin-top: 16px; font-size: .88rem; }
+        .auth-link a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .auth-error { background: #FFF0F0; color: #E55A2B; padding: 10px 14px; border-radius: 8px; font-size: .85rem; margin-bottom: 12px; display: none; }
+        .auth-success { background: #F0FFF5; color: #00B894; padding: 10px 14px; border-radius: 8px; font-size: .85rem; margin-bottom: 12px; display: none; }
+        .admin-link { text-align: center; margin-top: 20px; }
+        .admin-link a { color: var(--text-muted, #b2bec3); font-size: .78rem; text-decoration: none; }
+        .admin-link a:hover { color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <span class="logo-icon">🐶</span><br>
+                <span class="logo-text">Genus<strong style="color:var(--primary)">PupClub</strong></span>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchTab('login')">Log In</button>
+                <button class="auth-tab" onclick="switchTab('signup')">Sign Up</button>
+            </div>
+
+            <div class="auth-error" id="authError"></div>
+            <div class="auth-success" id="authSuccess"></div>
+
+            <!-- LOGIN -->
+            <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input class="form-input" type="email" id="loginEmail" required placeholder="you@email.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input class="form-input" type="password" id="loginPass" required placeholder="Your password">
+                </div>
+                <button type="submit" class="auth-btn">Log In</button>
+            </form>
+
+            <!-- SIGNUP -->
+            <form class="auth-form" id="signupForm" onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input class="form-input" type="text" id="signupName" required placeholder="Your name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input class="form-input" type="email" id="signupEmail" required placeholder="you@email.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input class="form-input" type="tel" id="signupPhone" placeholder="(804) 555-1234">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input class="form-input" type="password" id="signupPass" required placeholder="Min 6 characters" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Dog's Name (optional)</label>
+                    <input class="form-input" type="text" id="signupDog" placeholder="Your pup's name">
+                </div>
+                <button type="submit" class="auth-btn">Create Account</button>
+            </form>
+
+            <div class="auth-link">
+                <a href="index.html">← Back to Website</a>
+            </div>
+        </div>
+
+        <div class="admin-link">
+            <a href="admin-login.html">Admin Login</a>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+</html>

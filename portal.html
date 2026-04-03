@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenusPupClub — My Account</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+    <style>
+        .sidebar { background: #2D3436; }
+        .portal-welcome { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+        .portal-welcome h3 { font-size: .95rem; color: #fff; }
+        .portal-welcome p { font-size: .78rem; color: rgba(255,255,255,.4); }
+        .payment-methods { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .pay-btn { padding: 8px 16px; border-radius: 8px; border: 2px solid var(--border); background: #fff; cursor: pointer; font-size: .85rem; font-weight: 600; font-family: 'Inter', sans-serif; transition: all .2s; }
+        .pay-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .pay-btn.selected { border-color: var(--primary); background: rgba(255,107,53,.05); color: var(--primary); }
+        .invoice-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 12px; border-left: 4px solid var(--primary); }
+        .invoice-paid { border-left-color: #00B894; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sb-logo">🐶</span>
+            <span class="sb-title">Genus<strong>PupClub</strong></span>
+        </div>
+        <div class="portal-welcome" id="portalWelcome"></div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-tab="dashboard">📊 Dashboard</a>
+            <a href="#" class="nav-item" data-tab="mybookings">📅 My Bookings</a>
+            <a href="#" class="nav-item" data-tab="mypets">🐕 My Pets</a>
+            <a href="#" class="nav-item" data-tab="payments">💳 Payments</a>
+            <a href="#" class="nav-item" data-tab="mymessages">💬 Messages</a>
+            <a href="#" class="nav-item" data-tab="newbooking">➕ Book Service</a>
+            <a href="#" class="nav-item" data-tab="profile">👤 My Profile</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="#" class="back-link" onclick="logout()">Log Out</a>
+            <a href="index.html" class="back-link" style="margin-top:8px;display:block">← Website</a>
+        </div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <button class="menu-toggle" id="menuToggle">☰</button>
+            <h1 class="page-title" id="pageTitle">Dashboard</h1>
+            <div class="topbar-right" style="position:relative">
+                <span class="today-date" id="todayDate"></span>
+                <div id="notifBell" style="position:relative"></div>
+            </div>
+        </header>
+        <div class="content" id="content"></div>
+    </main>
+
+    <script src="notifications.js"></script>
+    <script src="portal.js"></script>
+</body>
+</html>

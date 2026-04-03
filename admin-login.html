@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenusPupClub — Admin Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1E272E; }
+        .admin-card { background: #2D3436; border-radius: 20px; padding: 40px 32px; max-width: 400px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+        .admin-logo { text-align: center; margin-bottom: 24px; color: #fff; }
+        .admin-logo .logo-icon { font-size: 2rem; }
+        .admin-logo h2 { font-family: 'Fredoka', sans-serif; font-size: 1.3rem; color: #FF6B35; margin-top: 8px; }
+        .admin-logo p { font-size: .82rem; color: rgba(255,255,255,.4); }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: .82rem; font-weight: 600; margin-bottom: 4px; color: rgba(255,255,255,.5); }
+        .form-input { width: 100%; padding: 12px 14px; border: 2px solid rgba(255,255,255,.1); border-radius: 10px; font-size: .95rem; background: rgba(255,255,255,.05); color: #fff; outline: none; font-family: 'Inter', sans-serif; }
+        .form-input:focus { border-color: #FF6B35; }
+        .form-input::placeholder { color: rgba(255,255,255,.25); }
+        .auth-btn { width: 100%; padding: 14px; background: #FF6B35; color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; margin-top: 8px; }
+        .auth-btn:hover { background: #E55A2B; }
+        .auth-error { background: rgba(225,112,85,.15); color: #E17055; padding: 10px; border-radius: 8px; font-size: .85rem; margin-bottom: 12px; display: none; }
+        .back-link { display: block; text-align: center; margin-top: 16px; color: rgba(255,255,255,.3); font-size: .82rem; text-decoration: none; }
+        .back-link:hover { color: #FF6B35; }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="admin-card">
+            <div class="admin-logo">
+                <span class="logo-icon">🔒</span>
+                <h2>Admin Dashboard</h2>
+                <p>GenusPupClub Staff Only</p>
+            </div>
+            <div class="auth-error" id="adminError"></div>
+            <form onsubmit="adminLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Admin Email</label>
+                    <input class="form-input" type="email" id="adminEmail" required placeholder="admin@genuspupclub.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input class="form-input" type="password" id="adminPass" required placeholder="Admin password">
+                </div>
+                <button type="submit" class="auth-btn">Access Dashboard</button>
+            </form>
+            <a href="login.html" class="back-link">← Client Login</a>
+        </div>
+    </div>
+
+    <script>
+        // Default admin credentials (change in production)
+        const ADMIN_CREDS = JSON.parse(localStorage.getItem('gpc_admin_creds') || 'null') || {
+            email: 'admin@genuspupclub.com',
+            password: 'GenusPup2026!'
+        };
+
+        const adminLogin = (e) => {
+            e.preventDefault();
+            const email = document.getElementById('adminEmail').value.trim();
+            const pass = document.getElementById('adminPass').value;
+            const err = document.getElementById('adminError');
+
+            if (email === ADMIN_CREDS.email && pass === ADMIN_CREDS.password) {
+                sessionStorage.setItem('gpc_admin_auth', JSON.stringify({ email, role: 'admin', ts: Date.now() }));
+                window.location.href = 'dashboard.html';
+            } else {
+                err.textContent = 'Invalid credentials';
+                err.style.display = 'block';
+            }
+        };
+    </script>
+</body>
+</html>
