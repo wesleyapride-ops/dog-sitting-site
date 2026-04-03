@@ -577,30 +577,189 @@ const renderReviews = () => {
 };
 
 // ============================================
-// SITTERS
+// SITTERS / EMPLOYEES (Full Management)
 // ============================================
+let sitterPayroll = load('sitter_payroll', []);
+let sitterMessages = load('sitter_messages', []);
+
 const renderSitters = () => {
+    sitterPayroll = load('sitter_payroll', []);
+    sitterMessages = load('sitter_messages', []);
+
+    // Calculate stats per sitter
+    const sitterStats = sitters.map(s => {
+        const sBookings = bookings.filter(b => b.sitter === s.name);
+        const completed = sBookings.filter(b => b.status === 'completed');
+        const revenue = completed.reduce((sum, b) => sum + calcBookingTotal(b), 0);
+        const payRecords = sitterPayroll.filter(p => p.sitterId === s.id);
+        const totalPaid = payRecords.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        const hoursWorked = completed.reduce((sum, b) => {
+            const svc = services.find(sv => sv.name === b.service);
+            return sum + ((svc?.duration || 30) / 60);
+        }, 0);
+        const owed = (hoursWorked * (s.rate || 25)) - totalPaid;
+        const upcoming = sBookings.filter(b => b.date >= todayStr() && b.status !== 'cancelled');
+        const msgs = sitterMessages.filter(m => m.sitterId === s.id);
+        return { ...s, sBookings, completed, revenue, totalPaid, hoursWorked, owed, upcoming, msgs, payRecords };
+    });
+
+    const totalOwed = sitterStats.reduce((s, x) => s + Math.max(0, x.owed), 0);
+    const totalPaidOut = sitterPayroll.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+
     el.innerHTML = `
-        <div class="card">
-            <div class="card-header"><span class="card-title">Sitters (${sitters.length})</span><button class="btn btn-primary btn-sm" onclick="showModal('sitter')">+ Add Sitter</button></div>
-            ${sitters.map(s => {
-                const sBookings = bookings.filter(b => b.sitter === s.name);
-                const sRevenue = sBookings.filter(b => b.status !== 'cancelled').reduce((sum, b) => sum + calcBookingTotal(b), 0);
-                return `<div style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);align-items:flex-start">
-                    <div style="width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;flex-shrink:0">${s.name.split(' ').map(n => n[0]).join('')}</div>
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Total Sitters</div><div class="stat-value">${sitters.length}</div><div class="stat-sub">${sitters.filter(s => s.status === 'active').length} active</div></div>
+            <div class="stat-card green"><div class="stat-label">Total Paid Out</div><div class="stat-value">${fmt(totalPaidOut)}</div></div>
+            <div class="stat-card yellow"><div class="stat-label">Currently Owed</div><div class="stat-value">${fmt(totalOwed)}</div></div>
+            <div class="stat-card blue"><div class="stat-label">Total Visits Done</div><div class="stat-value">${sitterStats.reduce((s, x) => s + x.completed.length, 0)}</div></div>
+        </div>
+
+        <!-- Sitter Cards -->
+        ${sitterStats.map(s => `
+            <div class="card" style="margin-bottom:12px">
+                <div style="display:flex;gap:16px;align-items:flex-start">
+                    <div style="width:56px;height:56px;border-radius:50%;background:${s.status === 'active' ? 'var(--primary)' : '#6B7280'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;flex-shrink:0">${s.name.split(' ').map(n => n[0]).join('')}</div>
                     <div style="flex:1">
-                        <div style="display:flex;justify-content:space-between"><strong>${escHTML(s.name)}</strong><span class="badge badge-confirmed">${s.status}</span></div>
-                        <div style="font-size:.85rem;color:var(--text-light);margin:4px 0">${escHTML(s.phone || '')} · ${escHTML(s.email || '')} · ${fmt(s.rate)}/hr</div>
-                        <div style="font-size:.82rem;color:var(--text-muted)">Specialty: ${escHTML(s.specialty)} · Max ${s.maxDogs || 3} dogs · ${escHTML(s.availability || 'Flexible')}</div>
-                        ${s.certifications ? `<div style="font-size:.78rem;color:var(--accent);margin-top:2px">${escHTML(s.certifications)}</div>` : ''}
-                        ${s.bio ? `<div style="font-size:.82rem;color:var(--text-muted);margin-top:4px;font-style:italic">${escHTML(s.bio)}</div>` : ''}
-                        <div style="font-size:.82rem;margin-top:6px"><strong>${sBookings.length}</strong> bookings · <strong>${fmt(sRevenue)}</strong> revenue</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <strong style="font-size:1.05rem">${escHTML(s.name)}</strong>
+                                <span class="badge badge-${s.status === 'active' ? 'confirmed' : 'cancelled'}" style="margin-left:8px">${s.status}</span>
+                            </div>
+                            <div style="display:flex;gap:6px">
+                                <button class="btn btn-sm btn-ghost" onclick="editSitter('${s.id}')">✎ Edit</button>
+                                <button class="btn btn-sm btn-ghost" onclick="messageSitter('${s.id}','${escHTML(s.name)}')">💬</button>
+                                <button class="btn btn-sm btn-ghost" onclick="paySitter('${s.id}','${escHTML(s.name)}',${s.owed > 0 ? s.owed.toFixed(2) : 0})">💰 Pay</button>
+                                <button class="btn btn-sm btn-ghost" onclick="toggleSitterStatus('${s.id}')">${s.status === 'active' ? 'Deactivate' : 'Activate'}</button>
+                                <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="deleteItem('sitters','${s.id}')">✕</button>
+                            </div>
+                        </div>
+                        <div style="font-size:.85rem;color:var(--text-light);margin:6px 0">${escHTML(s.phone || '')} · ${escHTML(s.email || '')} · ${fmt(s.rate)}/hr · Max ${s.maxDogs || 3} dogs</div>
+                        ${s.specialty ? `<div style="font-size:.82rem;color:var(--text-muted)">Specialty: ${escHTML(s.specialty)}</div>` : ''}
+                        ${s.certifications ? `<div style="font-size:.78rem;color:var(--accent)">Certs: ${escHTML(s.certifications)}</div>` : ''}
+                        ${s.availability ? `<div style="font-size:.78rem;color:var(--text-muted)">Schedule: ${escHTML(s.availability)}</div>` : ''}
+                        ${s.bio ? `<div style="font-size:.82rem;color:var(--text-muted);margin-top:4px;font-style:italic">"${escHTML(s.bio)}"</div>` : ''}
+
+                        <!-- Performance Stats -->
+                        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+                            <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700">${s.completed.length}</div><div style="font-size:.7rem;color:var(--text-muted)">Visits Done</div></div>
+                            <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700">${s.hoursWorked.toFixed(1)}</div><div style="font-size:.7rem;color:var(--text-muted)">Hours</div></div>
+                            <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700">${fmt(s.revenue)}</div><div style="font-size:.7rem;color:var(--text-muted)">Revenue</div></div>
+                            <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700;color:var(--success)">${fmt(s.totalPaid)}</div><div style="font-size:.7rem;color:var(--text-muted)">Paid</div></div>
+                            <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700;color:${s.owed > 0 ? 'var(--danger)' : 'var(--success)'}">${s.owed > 0 ? fmt(s.owed) : 'Settled'}</div><div style="font-size:.7rem;color:var(--text-muted)">Owed</div></div>
+                        </div>
+
+                        <!-- Upcoming -->
+                        ${s.upcoming.length ? `<div style="margin-top:10px"><div style="font-size:.78rem;font-weight:600;color:var(--primary);margin-bottom:4px">Upcoming (${s.upcoming.length}):</div>${s.upcoming.slice(0, 3).map(b => `<div style="font-size:.78rem;color:var(--text-muted);padding:2px 0">${b.date} ${b.time || ''} — ${escHTML(b.petName)} (${escHTML(b.service)})</div>`).join('')}</div>` : ''}
+
+                        <!-- Recent Messages -->
+                        ${s.msgs.length ? `<div style="margin-top:10px"><div style="font-size:.78rem;font-weight:600;color:#8B5CF6;margin-bottom:4px">Recent Messages:</div>${s.msgs.slice(-2).reverse().map(m => `<div style="font-size:.78rem;color:var(--text-muted);padding:2px 0"><strong>${escHTML(m.from)}:</strong> ${escHTML(m.text).substring(0, 80)}${m.text.length > 80 ? '...' : ''} <span style="opacity:.4">${m.date}</span></div>`).join('')}</div>` : ''}
+
+                        <!-- Pay History -->
+                        ${s.payRecords.length ? `<div style="margin-top:10px"><div style="font-size:.78rem;font-weight:600;color:var(--success);margin-bottom:4px">Pay History:</div>${s.payRecords.slice(-3).reverse().map(p => `<div style="font-size:.78rem;color:var(--text-muted);padding:2px 0">${p.date} — ${fmt(p.amount)} via ${p.method} ${p.notes ? '(' + escHTML(p.notes) + ')' : ''}</div>`).join('')}</div>` : ''}
                     </div>
-                    <button class="btn btn-ghost btn-sm" onclick="deleteItem('sitters','${s.id}')">✕</button>
-                </div>`;
-            }).join('')}
+                </div>
+            </div>
+        `).join('')}
+
+        <div style="text-align:center;margin-top:12px">
+            <button class="btn btn-primary" onclick="showModal('sitter')">+ Add New Sitter/Employee</button>
         </div>
     `;
+};
+
+const toggleSitterStatus = (id) => {
+    const s = sitters.find(x => x.id === id);
+    if (s) { s.status = s.status === 'active' ? 'inactive' : 'active'; save('sitters', sitters); renderTab(); }
+};
+
+const editSitter = (id) => {
+    const s = sitters.find(x => x.id === id);
+    if (!s) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal">
+        <div class="modal-title">Edit: ${escHTML(s.name)}</div>
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="esName" value="${escHTML(s.name)}"></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="esPhone" value="${escHTML(s.phone || '')}"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="esEmail" value="${escHTML(s.email || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Rate ($/hr)</label><input class="form-input" id="esRate" type="number" value="${s.rate || 25}"></div><div class="form-group"><label class="form-label">Max Dogs</label><input class="form-input" id="esMax" type="number" value="${s.maxDogs || 3}"></div></div>
+        <div class="form-group"><label class="form-label">Specialty</label><input class="form-input" id="esSpec" value="${escHTML(s.specialty || '')}"></div>
+        <div class="form-group"><label class="form-label">Certifications</label><input class="form-input" id="esCerts" value="${escHTML(s.certifications || '')}"></div>
+        <div class="form-group"><label class="form-label">Availability</label><input class="form-input" id="esAvail" value="${escHTML(s.availability || '')}"></div>
+        <div class="form-group"><label class="form-label">Bio</label><textarea class="form-textarea" id="esBio" rows="2">${escHTML(s.bio || '')}</textarea></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditSitter('${s.id}')">Save</button></div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+const saveEditSitter = (id) => {
+    const s = sitters.find(x => x.id === id);
+    if (!s) return;
+    s.name = document.getElementById('esName')?.value?.trim() || s.name;
+    s.phone = document.getElementById('esPhone')?.value?.trim() || '';
+    s.email = document.getElementById('esEmail')?.value?.trim() || '';
+    s.rate = parseFloat(document.getElementById('esRate')?.value) || s.rate;
+    s.maxDogs = parseInt(document.getElementById('esMax')?.value) || 3;
+    s.specialty = document.getElementById('esSpec')?.value?.trim() || '';
+    s.certifications = document.getElementById('esCerts')?.value?.trim() || '';
+    s.availability = document.getElementById('esAvail')?.value?.trim() || '';
+    s.bio = document.getElementById('esBio')?.value?.trim() || '';
+    save('sitters', sitters);
+    closeModal(); renderTab();
+};
+
+const paySitter = (id, name, owed) => {
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal">
+        <div class="modal-title">Pay: ${escHTML(name)}</div>
+        ${owed > 0 ? `<div style="padding:12px;background:rgba(255,107,53,.05);border-radius:8px;margin-bottom:12px;font-size:.9rem"><strong>Owed:</strong> <span style="color:var(--primary);font-weight:700">${fmt(owed)}</span></div>` : '<div style="padding:12px;background:rgba(0,184,148,.05);border-radius:8px;margin-bottom:12px;font-size:.9rem;color:var(--success)">All settled up!</div>'}
+        <div class="form-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="spAmount" type="number" step="0.01" value="${owed > 0 ? owed.toFixed(2) : ''}"></div><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="spDate" type="date" value="${todayStr()}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Method</label><select class="form-select" id="spMethod"><option>Cash</option><option>CashApp</option><option>Venmo</option><option>Zelle</option><option>Check</option><option>Direct Deposit</option></select></div><div class="form-group"><label class="form-label">Period</label><input class="form-input" id="spPeriod" placeholder="e.g. Week of Mar 28"></div></div>
+        <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="spNotes" placeholder="e.g. Includes bonus for holiday shifts"></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSitterPay('${id}')">Record Payment</button></div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+const saveSitterPay = (sitterId) => {
+    const v = (id) => document.getElementById(id)?.value?.trim() || '';
+    sitterPayroll = load('sitter_payroll', []);
+    sitterPayroll.push({ id: uid(), sitterId, amount: parseFloat(v('spAmount')) || 0, date: v('spDate'), method: v('spMethod'), period: v('spPeriod'), notes: v('spNotes') });
+    save('sitter_payroll', sitterPayroll);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Payment Recorded', `${fmt(parseFloat(v('spAmount')))} paid to sitter`, 'payment');
+    closeModal(); renderTab();
+};
+
+const messageSitter = (sitterId, name) => {
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+
+    const history = (load('sitter_messages', []) || []).filter(m => m.sitterId === sitterId).slice(-10);
+
+    overlay.innerHTML = `<div class="modal" style="max-width:550px">
+        <div class="modal-title">Message: ${escHTML(name)}</div>
+        ${history.length ? `<div style="max-height:200px;overflow-y:auto;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;padding:8px">${history.map(m => `<div style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,.03);font-size:.85rem"><strong style="color:${m.from === 'Admin' ? 'var(--primary)' : 'var(--text)'}">${escHTML(m.from)}</strong> <span style="font-size:.7rem;color:var(--text-muted)">${m.date} ${m.time || ''}</span><br>${escHTML(m.text)}</div>`).join('')}</div>` : ''}
+        <div class="form-group"><label class="form-label">Message</label><textarea class="form-textarea" id="smText" rows="3" placeholder="Type your message to ${escHTML(name)}..."></textarea></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('smText').value='Hey! You have a new booking assigned. Check the schedule for details.'">New Booking</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('smText').value='Great job today! Client left a positive review.'">Great Job</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('smText').value='Reminder: You have visits scheduled tomorrow. Please confirm availability.'">Schedule Reminder</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('smText').value='Your pay for this period has been sent. Check your ${name.includes('Wesley') ? 'account' : 'CashApp/Venmo'}.'">Pay Sent</button>
+        </div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="sendSitterMsg('${sitterId}','${escHTML(name)}')">Send</button></div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+const sendSitterMsg = (sitterId, name) => {
+    const text = document.getElementById('smText')?.value?.trim();
+    if (!text) return;
+    sitterMessages = load('sitter_messages', []);
+    sitterMessages.push({ id: uid(), sitterId, from: 'Admin', to: name, text, date: todayStr(), time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) });
+    save('sitter_messages', sitterMessages);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Message Sent', `To ${name}`, 'message');
+    closeModal(); renderTab();
 };
 
 // ============================================
