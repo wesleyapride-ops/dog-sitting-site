@@ -51,20 +51,26 @@
     </div>
 
     <script>
-        // Default admin credentials (change in production)
-        const ADMIN_CREDS = JSON.parse(localStorage.getItem('gpc_admin_creds') || 'null') || {
-            email: 'genuspupclub@gmail.com',
-            password: 'GenusPup2026!'
-        };
-
         const adminLogin = (e) => {
             e.preventDefault();
-            const email = document.getElementById('adminEmail').value.trim();
+            const email = document.getElementById('adminEmail').value.trim().toLowerCase();
             const pass = document.getElementById('adminPass').value;
             const err = document.getElementById('adminError');
 
-            if (email === ADMIN_CREDS.email && pass === ADMIN_CREDS.password) {
-                sessionStorage.setItem('gpc_admin_auth', JSON.stringify({ email, role: 'admin', ts: Date.now() }));
+            // Check master admin creds
+            const masterCreds = JSON.parse(localStorage.getItem('gpc_admin_creds') || 'null') || { email: 'genuspupclub@gmail.com', password: 'GenusPup2026!' };
+
+            // Check all staff accounts
+            let staffAccounts = [];
+            try { staffAccounts = JSON.parse(localStorage.getItem('gpc_staff_accounts')) || []; } catch {}
+
+            const matchedStaff = staffAccounts.find(s => s.email.toLowerCase() === email && s.password === pass && s.status === 'active');
+
+            if (email === masterCreds.email.toLowerCase() && pass === masterCreds.password) {
+                sessionStorage.setItem('gpc_admin_auth', JSON.stringify({ email, role: 'master', name: 'Owner', permissions: 'all', ts: Date.now() }));
+                window.location.href = 'dashboard.html';
+            } else if (matchedStaff) {
+                sessionStorage.setItem('gpc_admin_auth', JSON.stringify({ email, role: matchedStaff.role, name: matchedStaff.name, permissions: matchedStaff.permissions, linkedSitter: matchedStaff.linkedSitter, ts: Date.now() }));
                 window.location.href = 'dashboard.html';
             } else {
                 err.textContent = 'Invalid credentials';

@@ -135,7 +135,7 @@ const renderTab = () => {
     sitters = load('sitters', sitters); reviews = load('reviews', reviews);
     messages = load('messages', []); businessSettings = load('settings', businessSettings);
 
-    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, loyalty: renderLoyalty, waivers: renderWaivers, website: renderWebsiteEditor, settings: renderSettings };
+    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, website: renderWebsiteEditor, settings: renderSettings };
     (views[activeTab] || renderOverview)();
 };
 
@@ -1066,6 +1066,102 @@ const renderWaivers = () => {
 };
 
 // ============================================
+// INFAMY HALL (Problem Dogs & Incidents)
+// ============================================
+const renderInfamy = () => {
+    let infamy = load('infamy', []);
+    const severityColors = { low: 'var(--warning)', medium: '#E17055', high: 'var(--danger)', banned: '#1a1a1a' };
+    const severityLabels = { low: 'Caution', medium: 'Problem', high: 'Serious', banned: 'BANNED' };
+
+    el.innerHTML = `
+        <div class="card" style="margin-bottom:16px;border-left:4px solid var(--danger)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <div class="card-title">⚠️ Infamy Hall — Problem Dogs & Incidents</div>
+                    <p style="font-size:.82rem;color:var(--text-muted);margin-top:4px">Track dogs with behavioral issues, incidents, owner problems. Keeps the team safe.</p>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="showModal('infamy')">+ Add Entry</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card" style="border-left-color:var(--warning)"><div class="stat-label">Caution</div><div class="stat-value">${infamy.filter(i => i.severity === 'low').length}</div></div>
+            <div class="stat-card" style="border-left-color:#E17055"><div class="stat-label">Problem</div><div class="stat-value">${infamy.filter(i => i.severity === 'medium').length}</div></div>
+            <div class="stat-card" style="border-left-color:var(--danger)"><div class="stat-label">Serious</div><div class="stat-value">${infamy.filter(i => i.severity === 'high').length}</div></div>
+            <div class="stat-card" style="border-left-color:#1a1a1a"><div class="stat-label">Banned</div><div class="stat-value">${infamy.filter(i => i.severity === 'banned').length}</div></div>
+        </div>
+
+        ${infamy.length ? infamy.sort((a, b) => { const order = {banned:0,high:1,medium:2,low:3}; return (order[a.severity]||4) - (order[b.severity]||4); }).map(i => `
+            <div class="card" style="margin-bottom:12px;border-left:4px solid ${severityColors[i.severity] || 'var(--border)'}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <h3 style="font-family:var(--font-display);font-size:1.05rem;margin-bottom:4px">🐕 ${escHTML(i.dogName)} <span class="badge" style="background:${severityColors[i.severity]}20;color:${severityColors[i.severity]}">${severityLabels[i.severity] || i.severity}</span></h3>
+                        <div style="font-size:.85rem;color:var(--text-light)">Owner: <strong>${escHTML(i.ownerName)}</strong> · Breed: ${escHTML(i.breed || '?')}</div>
+                    </div>
+                    <div style="display:flex;gap:4px">
+                        <button class="btn btn-ghost btn-sm" onclick="editInfamy('${i.id}')">✎</button>
+                        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteInfamy('${i.id}')">✕</button>
+                    </div>
+                </div>
+                <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.85rem">
+                    <div><strong>Issue Type:</strong> ${escHTML(i.issueType || '—')}</div>
+                    <div><strong>Date Reported:</strong> ${i.dateReported || '—'}</div>
+                </div>
+                <div style="margin-top:8px;padding:10px;background:rgba(225,112,85,.03);border-radius:8px;font-size:.88rem;color:var(--text-light)">${escHTML(i.description)}</div>
+                ${i.incidents?.length ? `<div style="margin-top:8px"><strong style="font-size:.82rem">Incident Log:</strong>${i.incidents.map(inc => `<div style="padding:4px 0;font-size:.82rem;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.03)">${inc.date} — ${escHTML(inc.note)}</div>`).join('')}</div>` : ''}
+                ${i.actionTaken ? `<div style="margin-top:6px;font-size:.82rem"><strong>Action Taken:</strong> ${escHTML(i.actionTaken)}</div>` : ''}
+                ${i.staffNotes ? `<div style="margin-top:4px;font-size:.82rem;color:var(--text-muted)"><strong>Staff Notes:</strong> ${escHTML(i.staffNotes)}</div>` : ''}
+                <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="addIncident('${i.id}')">+ Add Incident</button></div>
+            </div>
+        `).join('') : '<div class="card"><div class="empty"><div class="empty-icon">✓</div><p>No problem dogs! All good boys and girls.</p></div></div>'}
+    `;
+};
+
+const deleteInfamy = (id) => { if (!confirm('Remove from infamy hall?')) return; let infamy = load('infamy', []); infamy = infamy.filter(x => x.id !== id); save('infamy', infamy); renderTab(); };
+
+const addIncident = (id) => {
+    const note = prompt('Describe the incident:');
+    if (!note) return;
+    const infamy = load('infamy', []);
+    const entry = infamy.find(x => x.id === id);
+    if (entry) {
+        if (!entry.incidents) entry.incidents = [];
+        entry.incidents.push({ date: todayStr(), note });
+        save('infamy', infamy); renderTab();
+    }
+};
+
+const editInfamy = (id) => {
+    const infamy = load('infamy', []);
+    const i = infamy.find(x => x.id === id); if (!i) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(i.dogName)}</div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Dog Name</label><input class="form-input" id="eiDog" value="${escHTML(i.dogName)}"></div><div class="form-group"><label class="form-label">Owner</label><input class="form-input" id="eiOwner" value="${escHTML(i.ownerName)}"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="eiBreed" value="${escHTML(i.breed || '')}"></div><div class="form-group"><label class="form-label">Severity</label><select class="form-select" id="eiSeverity"><option ${i.severity==='low'?'selected':''} value="low">Caution</option><option ${i.severity==='medium'?'selected':''} value="medium">Problem</option><option ${i.severity==='high'?'selected':''} value="high">Serious</option><option ${i.severity==='banned'?'selected':''} value="banned">BANNED</option></select></div></div>
+        <div class="form-group"><label class="form-label">Issue Type</label><input class="form-input" id="eiType" value="${escHTML(i.issueType || '')}"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="eiDesc" rows="3">${escHTML(i.description || '')}</textarea></div>
+        <div class="form-group"><label class="form-label">Action Taken</label><input class="form-input" id="eiAction" value="${escHTML(i.actionTaken || '')}"></div>
+        <div class="form-group"><label class="form-label">Staff Notes</label><textarea class="form-textarea" id="eiNotes" rows="2">${escHTML(i.staffNotes || '')}</textarea></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditInfamy('${i.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+
+const saveEditInfamy = (id) => {
+    const infamy = load('infamy', []);
+    const i = infamy.find(x => x.id === id); if (!i) return;
+    i.dogName = document.getElementById('eiDog')?.value?.trim() || i.dogName;
+    i.ownerName = document.getElementById('eiOwner')?.value?.trim() || i.ownerName;
+    i.breed = document.getElementById('eiBreed')?.value?.trim() || '';
+    i.severity = document.getElementById('eiSeverity')?.value || i.severity;
+    i.issueType = document.getElementById('eiType')?.value?.trim() || '';
+    i.description = document.getElementById('eiDesc')?.value?.trim() || '';
+    i.actionTaken = document.getElementById('eiAction')?.value?.trim() || '';
+    i.staffNotes = document.getElementById('eiNotes')?.value?.trim() || '';
+    save('infamy', infamy); closeModal(); renderTab();
+};
+
+// ============================================
 // WEBSITE EDITOR (CMS)
 // ============================================
 let siteContent = load('site_content', {
@@ -1290,14 +1386,33 @@ const renderSettings = () => {
             <button class="btn btn-primary btn-sm" onclick="savePaymentHandles()">Save Payment Handles</button>
         </div>
 
-        <!-- Admin Credentials -->
+        <!-- Staff Accounts -->
         <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Admin Account</div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Admin Email</label><input class="form-input" id="sAdminEmail" value="${escHTML(load('admin_creds', {email:'genuspupclub@gmail.com'}).email)}"></div>
-                <div class="form-group"><label class="form-label">Admin Password</label><input class="form-input" id="sAdminPass" type="password" value="${escHTML(load('admin_creds', {password:'GenusPup2026!'}).password)}"><button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="const i=document.getElementById('sAdminPass');i.type=i.type==='password'?'text':'password'">Show/Hide</button></div>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="saveAdminCreds()">Update Admin Credentials</button>
+            <div class="card-header"><span class="card-title">Staff / Admin Accounts</span><button class="btn btn-primary btn-sm" onclick="showModal('staff_account')">+ Create Staff Login</button></div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Master admin + employee logins. Employees access the dashboard with their assigned permissions.</p>
+            <div class="table-wrap"><table>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Linked Sitter</th><th>Permissions</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                    ${(() => {
+                        const staffAccounts = load('staff_accounts', [{ id: 'master', name: 'Wesley (Owner)', email: 'genuspupclub@gmail.com', role: 'master', linkedSitter: 'Wesley', permissions: 'all', status: 'active', password: 'GenusPup2026!' }]);
+                        if (!localStorage.getItem(DB_KEY + 'staff_accounts')) save('staff_accounts', staffAccounts);
+                        return staffAccounts.map(sa => `<tr>
+                            <td><strong>${escHTML(sa.name)}</strong>${sa.role === 'master' ? ' <span class="badge badge-confirmed">OWNER</span>' : ''}</td>
+                            <td style="font-size:.85rem">${escHTML(sa.email)}</td>
+                            <td><span class="badge badge-${sa.role === 'master' ? 'confirmed' : sa.role === 'admin' ? 'completed' : 'pending'}">${sa.role}</span></td>
+                            <td>${escHTML(sa.linkedSitter || '—')}</td>
+                            <td style="font-size:.78rem;max-width:150px;overflow:hidden;text-overflow:ellipsis">${sa.permissions === 'all' ? 'Full access' : escHTML(sa.permissions)}</td>
+                            <td><span class="badge badge-${sa.status === 'active' ? 'confirmed' : 'cancelled'}">${sa.status}</span></td>
+                            <td>
+                                <button class="btn btn-ghost btn-sm" onclick="editStaffAccount('${sa.id}')">✎</button>
+                                <button class="btn btn-ghost btn-sm" onclick="showStaffCreds('${sa.id}')">🔑</button>
+                                ${sa.role !== 'master' ? `<button class="btn btn-ghost btn-sm" onclick="toggleStaffStatus('${sa.id}')">${sa.status === 'active' ? 'Disable' : 'Enable'}</button>
+                                <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteStaffAccount('${sa.id}')">✕</button>` : ''}
+                            </td>
+                        </tr>`).join('');
+                    })()}
+                </tbody>
+            </table></div>
         </div>
 
         <!-- Manage Client Accounts -->
@@ -1423,7 +1538,80 @@ const saveAdminCreds = () => {
     const pass = document.getElementById('sAdminPass')?.value;
     if (!email || !pass) { alert('Email and password required'); return; }
     save('admin_creds', { email, password: pass });
-    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Admin credentials updated. Use new login next time.', 'success');
+    // Also update master staff account
+    const staff = load('staff_accounts', []);
+    const master = staff.find(s => s.role === 'master');
+    if (master) { master.email = email; master.password = pass; save('staff_accounts', staff); }
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Admin credentials updated.', 'success');
+};
+
+// ---- Staff Account Management ----
+const showStaffCreds = (id) => {
+    const staff = load('staff_accounts', []);
+    const sa = staff.find(s => s.id === id); if (!sa) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal" style="max-width:420px">
+        <div class="modal-title">Login Credentials: ${escHTML(sa.name)}</div>
+        <div style="background:#F8F9FA;border-radius:10px;padding:20px;text-align:center;margin-bottom:16px">
+            <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:4px">Login Page</div>
+            <div style="font-size:.88rem;font-weight:600;margin-bottom:12px">genuspupclub.com/admin-login.html</div>
+            <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:4px">Email</div>
+            <div style="font-size:1rem;font-weight:700;margin-bottom:12px;font-family:monospace">${escHTML(sa.email)}</div>
+            <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:4px">Password</div>
+            <div style="font-size:1rem;font-weight:700;font-family:monospace">${escHTML(sa.password)}</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center">
+            <button class="btn btn-sm btn-primary" onclick="navigator.clipboard?.writeText('Login: ${sa.email} / Password: ${sa.password} / URL: genuspupclub.com/admin-login.html');alert('Copied!')">Copy All</button>
+            <button class="btn btn-sm btn-ghost" onclick="closeModal()">Close</button>
+        </div>
+    </div>`; overlay.classList.add('open');
+};
+
+const editStaffAccount = (id) => {
+    const staff = load('staff_accounts', []);
+    const sa = staff.find(s => s.id === id); if (!sa) return;
+    const sitterOpts = sitters.map(s => `<option value="${escHTML(s.name)}" ${sa.linkedSitter === s.name ? 'selected' : ''}>${escHTML(s.name)}</option>`).join('');
+    const perms = (sa.permissions === 'all') ? ['View Bookings','Edit Bookings','View Clients','View Pets','Check In/Out','Report Cards','View Schedule','Messages','View Payments','Photos'] : (sa.permissions || '').split(',').map(p => p.trim());
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(sa.name)}</div>
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="esaName" value="${escHTML(sa.name)}"></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="esaEmail" value="${escHTML(sa.email)}"></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="esaPass" value="${escHTML(sa.password)}" style="font-family:monospace"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Role</label><select class="form-select" id="esaRole"><option value="employee" ${sa.role==='employee'?'selected':''}>Employee</option><option value="admin" ${sa.role==='admin'?'selected':''}>Admin</option><option value="viewer" ${sa.role==='viewer'?'selected':''}>Viewer</option>${sa.role==='master'?'<option value="master" selected>Master (Owner)</option>':''}</select></div><div class="form-group"><label class="form-label">Link to Sitter</label><select class="form-select" id="esaSitter"><option value="">None</option>${sitterOpts}</select></div></div>
+        <div class="form-group"><label class="form-label">Permissions</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${['View Bookings','Edit Bookings','View Clients','View Pets','Check In/Out','Report Cards','View Schedule','Messages','View Payments','Photos'].map(p => `<label style="display:flex;gap:4px;align-items:center;font-size:.85rem"><input type="checkbox" class="esa-perm" value="${p}" ${perms.includes(p) ? 'checked' : ''}> ${p}</label>`).join('')}</div></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditStaff('${sa.id}')">Save</button></div>
+    </div>`; overlay.classList.add('open');
+};
+
+const saveEditStaff = (id) => {
+    const staff = load('staff_accounts', []);
+    const sa = staff.find(s => s.id === id); if (!sa) return;
+    sa.name = document.getElementById('esaName')?.value?.trim() || sa.name;
+    sa.email = document.getElementById('esaEmail')?.value?.trim() || sa.email;
+    sa.password = document.getElementById('esaPass')?.value || sa.password;
+    sa.role = document.getElementById('esaRole')?.value || sa.role;
+    sa.linkedSitter = document.getElementById('esaSitter')?.value || '';
+    const perms = [...document.querySelectorAll('.esa-perm:checked')].map(c => c.value);
+    sa.permissions = sa.role === 'master' || sa.role === 'admin' ? 'all' : perms.join(', ');
+    save('staff_accounts', staff);
+    // Update admin_creds if master
+    if (sa.role === 'master') save('admin_creds', { email: sa.email, password: sa.password });
+    closeModal(); renderTab();
+};
+
+const toggleStaffStatus = (id) => {
+    const staff = load('staff_accounts', []);
+    const sa = staff.find(s => s.id === id); if (!sa) return;
+    sa.status = sa.status === 'active' ? 'disabled' : 'active';
+    save('staff_accounts', staff); renderTab();
+};
+
+const deleteStaffAccount = (id) => {
+    if (!confirm('Delete this staff account?')) return;
+    let staff = load('staff_accounts', []);
+    staff = staff.filter(s => s.id !== id);
+    save('staff_accounts', staff); renderTab();
 };
 
 const resetClientPassword = (userId, name) => {
@@ -1655,6 +1843,33 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Areas Covered</label><input class="form-input" id="mAreas" placeholder="e.g. Goochland, Powhatan"></div>
             <div class="form-group"><label class="form-label">Surcharge ($)</label><input class="form-input" id="mSurcharge" type="number" step="0.01" value="0"></div>
         ` },
+        infamy: { title: 'Add to Infamy Hall', body: `
+            <div class="form-row"><div class="form-group"><label class="form-label">Dog Name</label><input class="form-input" id="mDogName"></div><div class="form-group"><label class="form-label">Owner Name</label><input class="form-input" id="mOwnerName"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="mBreed"></div><div class="form-group"><label class="form-label">Severity</label><select class="form-select" id="mSeverity"><option value="low">Caution — minor issues</option><option value="medium">Problem — recurring issues</option><option value="high">Serious — safety risk</option><option value="banned">BANNED — do not accept</option></select></div></div>
+            <div class="form-group"><label class="form-label">Issue Type</label><select class="form-select" id="mIssueType"><option>Aggression (dog)</option><option>Aggression (human)</option><option>Biting</option><option>Escape Artist</option><option>Destruction</option><option>Excessive Barking</option><option>Resource Guarding</option><option>Separation Anxiety (extreme)</option><option>Not Housebroken</option><option>Medical Issues (undisclosed)</option><option>Owner Problems</option><option>Unpaid Balance</option><option>Other</option></select></div>
+            <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="mDescription" rows="3" placeholder="What happened? Be specific for safety."></textarea></div>
+            <div class="form-group"><label class="form-label">Action Taken</label><input class="form-input" id="mAction" placeholder="e.g. Warned owner, extra sitter required, banned"></div>
+            <div class="form-group"><label class="form-label">Staff Notes</label><textarea class="form-textarea" id="mStaffNotes" rows="2" placeholder="Internal notes for the team"></textarea></div>
+        ` },
+        staff_account: { title: 'Create Staff Login', body: `
+            <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="mStaffName"></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Login Email</label><input class="form-input" id="mStaffEmail" type="email" placeholder="employee@genuspupclub.com"></div>
+                <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="mStaffPass" value="${'GPC' + Math.random().toString(36).substring(2, 8).toUpperCase()}" style="font-family:monospace"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="mStaffRole"><option value="employee">Employee (limited)</option><option value="admin">Admin (full access)</option><option value="viewer">Viewer (read only)</option></select></div>
+                <div class="form-group"><label class="form-label">Link to Sitter</label><select class="form-select" id="mStaffSitter"><option value="">None</option>${sitterOptions}</select></div>
+            </div>
+            <div class="form-group"><label class="form-label">Permissions</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                    ${['View Bookings', 'Edit Bookings', 'View Clients', 'View Pets', 'Check In/Out', 'Report Cards', 'View Schedule', 'Messages', 'View Payments', 'Photos'].map(p => `<label style="display:flex;gap:4px;align-items:center;font-size:.85rem"><input type="checkbox" class="staff-perm" value="${p}" checked> ${p}</label>`).join('')}
+                </div>
+            </div>
+            <div style="padding:12px;background:rgba(255,107,53,.05);border-radius:8px;margin-top:8px;font-size:.82rem;color:var(--text-muted)">
+                The employee will use the <strong>Admin Login</strong> page with their email and password. Their access is limited to the permissions you select above.
+            </div>
+        ` },
         recurring: { title: 'Set Up Recurring Booking', body: `
             <div class="form-row"><div class="form-group"><label class="form-label">Client</label><select class="form-select" id="mClient" onchange="autofillClient(this.value)"><option value="">Select</option>${clientOptions}</select></div><div class="form-group"><label class="form-label">Client Name</label><input class="form-input" id="mClientName"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mPetName"></div><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService">${svcOptions}</select></div></div>
@@ -1788,6 +2003,21 @@ const saveModal = (type) => {
     } else if (type === 'zone') {
         zones.push({ id: uid(), name: v('mName'), areas: v('mAreas'), surcharge: parseFloat(v('mSurcharge')) || 0 });
         save('zones', zones);
+    } else if (type === 'infamy') {
+        let infamy = load('infamy', []);
+        infamy.push({ id: uid(), dogName: v('mDogName'), ownerName: v('mOwnerName'), breed: v('mBreed'), severity: v('mSeverity'), issueType: v('mIssueType'), description: v('mDescription'), actionTaken: v('mAction'), staffNotes: v('mStaffNotes'), dateReported: todayStr(), incidents: [] });
+        save('infamy', infamy);
+    } else if (type === 'staff_account') {
+        const perms = [...document.querySelectorAll('.staff-perm:checked')].map(c => c.value);
+        const role = v('mStaffRole');
+        const staff = load('staff_accounts', []);
+        staff.push({
+            id: uid(), name: v('mStaffName'), email: v('mStaffEmail'), password: v('mStaffPass'),
+            role, linkedSitter: v('mStaffSitter'), permissions: role === 'admin' ? 'all' : perms.join(', '),
+            status: 'active', createdAt: todayStr()
+        });
+        save('staff_accounts', staff);
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Account Created', `${v('mStaffName')} can now log in`, 'success');
     } else if (type === 'recurring') {
         const days = [...document.querySelectorAll('.rec-day:checked')].map(cb => cb.value);
         const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
