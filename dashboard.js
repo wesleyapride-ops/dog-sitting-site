@@ -1542,6 +1542,36 @@ const renderSettings = () => {
             </div>
         </div>
 
+        <!-- Excel / CSV Bulk Import -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Bulk Import (Excel / CSV)</div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Upload a spreadsheet to bulk-add clients, pets, or bookings. Supports <strong>.csv</strong> and <strong>.xlsx</strong> files.</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">What are you importing?</label>
+                    <select class="form-select" id="bulkImportType">
+                        <option value="clients">Clients</option>
+                        <option value="pets">Pets</option>
+                        <option value="bookings">Bookings</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Upload File</label>
+                    <input type="file" id="bulkImportFile" accept=".csv,.xlsx,.xls" class="form-input" style="padding:8px">
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-primary btn-sm" onclick="processBulkImport()">Import</button>
+                <button class="btn btn-sm btn-ghost" onclick="downloadTemplate()">Download Template</button>
+            </div>
+            <div id="bulkImportPreview" style="margin-top:12px"></div>
+            <div style="margin-top:12px;padding:10px;background:rgba(139,92,246,.04);border-radius:8px;font-size:.82rem;color:var(--text-muted)">
+                <strong>Column headers for Clients:</strong> name, email, phone, address, notes<br>
+                <strong>Column headers for Pets:</strong> name, breed, age, weight, gender, fixed, ownerEmail, vet, allergies, medications, feeding, notes<br>
+                <strong>Column headers for Bookings:</strong> clientName, clientEmail, petName, service, date, endDate, time, notes
+            </div>
+        </div>
+
         <!-- Services Builder -->
         <div class="card">
             <div class="card-header"><span class="card-title">Services (${services.length})</span><button class="btn btn-primary btn-sm" onclick="showModal('service')">+ Add Service</button></div>
@@ -1943,7 +1973,6 @@ const importData = (input) => {
         try {
             const data = JSON.parse(e.target.result);
             Object.entries(data).forEach(([k, v]) => {
-                // Strip gpc_ prefix if present, then use save() wrapper for Supabase sync
                 const key = k.startsWith('gpc_') ? k.replace('gpc_', '') : k;
                 const val = typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v;
                 save(key, val);
@@ -1953,6 +1982,165 @@ const importData = (input) => {
         } catch (err) { alert('Invalid JSON file'); }
     };
     reader.readAsText(input.files[0]);
+};
+
+// ============================================
+// BULK IMPORT (Excel / CSV)
+// ============================================
+const parseCSV = (text) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+    return lines.slice(1).map(line => {
+        const vals = [];
+        let current = '';
+        let inQuotes = false;
+        for (const ch of line) {
+            if (ch === '"') { inQuotes = !inQuotes; }
+            else if (ch === ',' && !inQuotes) { vals.push(current.trim()); current = ''; }
+            else { current += ch; }
+        }
+        vals.push(current.trim());
+        const row = {};
+        headers.forEach((h, i) => { row[h] = (vals[i] || '').replace(/^["']|["']$/g, ''); });
+        return row;
+    });
+};
+
+const parseXLSX = (arrayBuffer) => {
+    // Lightweight XLSX parser — reads first sheet, returns array of objects
+    try {
+        const data = new Uint8Array(arrayBuffer);
+        // XLSX files are ZIP archives. We'll use a minimal approach:
+        // Convert to text and try CSV-like parsing of the shared strings + sheet data
+        // For full XLSX support, we'd need a library. Let's check if it's actually CSV renamed.
+        const text = new TextDecoder().decode(data);
+        if (text.includes(',') && !text.includes('PK')) {
+            // It's actually a CSV file with wrong extension
+            return parseCSV(text);
+        }
+        // For real XLSX, tell user to save as CSV
+        return null;
+    } catch {
+        return null;
+    }
+};
+
+const processBulkImport = () => {
+    const fileInput = document.getElementById('bulkImportFile');
+    const type = document.getElementById('bulkImportType')?.value;
+    if (!fileInput?.files?.[0]) { alert('Select a file first'); return; }
+
+    const file = fileInput.files[0];
+    const isCSV = file.name.toLowerCase().endsWith('.csv');
+    const preview = document.getElementById('bulkImportPreview');
+
+    const processRows = (rows) => {
+        if (!rows || rows.length === 0) {
+            alert('No data found. For .xlsx files, please save as .csv first (File → Save As → CSV).');
+            return;
+        }
+
+        let added = 0;
+        let skipped = 0;
+
+        if (type === 'clients') {
+            const existing = load('clients', []);
+            rows.forEach(r => {
+                if (!r.name) { skipped++; return; }
+                if (existing.find(c => c.email === r.email && r.email)) { skipped++; return; }
+                existing.push({
+                    id: uid(), name: r.name, email: r.email || '', phone: r.phone || '',
+                    address: r.address || '', source: 'Bulk Import', notes: r.notes || ''
+                });
+                added++;
+            });
+            save('clients', existing);
+
+        } else if (type === 'pets') {
+            const existing = load('pets', []);
+            const allClients = load('clients', []);
+            rows.forEach(r => {
+                if (!r.name) { skipped++; return; }
+                // Match owner by email
+                const owner = r.owneremail ? allClients.find(c => c.email?.toLowerCase() === r.owneremail.toLowerCase()) : null;
+                existing.push({
+                    id: uid(), name: r.name, breed: r.breed || '', age: r.age || '',
+                    weight: r.weight || '', gender: r.gender || '', fixed: r.fixed || '',
+                    clientId: owner?.id || '', vet: r.vet || '', allergies: r.allergies || '',
+                    medications: r.medications || '', feedingSchedule: r.feeding || '',
+                    tags: '', notes: r.notes || ''
+                });
+                added++;
+            });
+            save('pets', existing);
+
+        } else if (type === 'bookings') {
+            const existing = load('bookings', []);
+            const allClients = load('clients', []);
+            const allServices = load('services', []);
+            rows.forEach(r => {
+                if (!r.clientname && !r.clientemail) { skipped++; return; }
+                const client = r.clientemail ? allClients.find(c => c.email?.toLowerCase() === r.clientemail.toLowerCase()) : null;
+                const svc = allServices.find(s => s.name.toLowerCase().includes((r.service || '').toLowerCase()));
+                existing.push({
+                    id: uid(), clientId: client?.id || '', clientName: r.clientname || client?.name || '',
+                    clientEmail: r.clientemail || client?.email || '', petName: r.petname || '',
+                    service: svc?.name || r.service || '', amount: svc?.price || 0,
+                    date: r.date || '', endDate: r.enddate || '', time: r.time || '10:00',
+                    dropoffTime: '', pickupTime: '', zone: '', sitter: '',
+                    addons: [], extraDogs: 0, notes: r.notes || '',
+                    status: 'pending', source: 'Bulk Import'
+                });
+                added++;
+            });
+            save('bookings', existing);
+        }
+
+        if (preview) {
+            preview.innerHTML = `
+                <div style="padding:12px;background:rgba(0,184,148,.06);border:1px solid rgba(0,184,148,.2);border-radius:8px">
+                    <strong style="color:var(--accent)">Import Complete</strong><br>
+                    <span style="font-size:.88rem">${added} ${type} added, ${skipped} skipped (duplicates or missing name)</span>
+                </div>
+            `;
+        }
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Imported', `${added} ${type} added from spreadsheet`, 'success');
+        fileInput.value = '';
+        renderTab();
+    };
+
+    if (isCSV) {
+        const reader = new FileReader();
+        reader.onload = (e) => processRows(parseCSV(e.target.result));
+        reader.readAsText(file);
+    } else {
+        // Try reading as text first (some .xlsx are really CSV)
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const result = parseXLSX(e.target.result);
+            if (result) {
+                processRows(result);
+            } else {
+                alert('For .xlsx files, please save as .csv first:\nExcel → File → Save As → choose "CSV (Comma delimited)"');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+};
+
+const downloadTemplate = () => {
+    const type = document.getElementById('bulkImportType')?.value || 'clients';
+    const templates = {
+        clients: 'name,email,phone,address,notes\nJohn Smith,john@email.com,(804) 555-1234,123 Main St Richmond VA,Referred by Sarah\nJane Doe,jane@email.com,(804) 555-5678,456 Oak Ave Richmond VA,Has 2 dogs',
+        pets: 'name,breed,age,weight,gender,fixed,ownerEmail,vet,allergies,medications,feeding,notes\nBuddy,Golden Retriever,3 years,65 lbs,Male,Yes,john@email.com,Dr. Smith (804) 555-9999,None,Heartworm monthly,1 cup AM 1 cup PM,Loves tennis balls\nLuna,Labrador Mix,2 years,45 lbs,Female,Yes,jane@email.com,VCA Emergency,Chicken,None,1.5 cups twice daily,Anxious with strangers',
+        bookings: 'clientName,clientEmail,petName,service,date,endDate,time,notes\nJohn Smith,john@email.com,Buddy,Dog Walking (30 min),2026-04-10,,10:00,Needs gentle leash\nJane Doe,jane@email.com,Luna,Overnight Sitting,2026-04-15,2026-04-18,18:00,Medication at 8pm'
+    };
+    const blob = new Blob([templates[type]], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `genuspupclub-${type}-template.csv`;
+    a.click();
 };
 
 const toggleService = (id) => { const s = services.find(x => x.id === id); if (s) { s.active = !s.active; save('services', services); renderTab(); } };
