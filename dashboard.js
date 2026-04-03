@@ -304,62 +304,211 @@ const renderSchedule = () => {
 };
 
 // ============================================
-// PAYMENTS (Admin View)
+// PAYMENTS (Admin View — Full Financial Dashboard)
 // ============================================
+let expenses = load('expenses', []);
+
 const renderPaymentsAdmin = () => {
     const allPayments = load('payments', []);
+    expenses = load('expenses', []);
     const pending = allPayments.filter(p => p.status === 'pending');
     const paid = allPayments.filter(p => p.status === 'paid');
-    const totalPaid = paid.reduce((s, p) => s + (parseFloat(p.amount) || 0) + (parseFloat(p.tip) || 0), 0);
-    const totalPending = pending.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+
+    // Revenue calculations
+    const grossIncome = paid.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     const totalTips = allPayments.reduce((s, p) => s + (parseFloat(p.tip) || 0), 0);
+    const totalPending = pending.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+    const totalExpenses = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+
+    // Tax calculations
+    const taxRate = parseFloat(businessSettings.taxRate) || 0;
+    const taxOwed = grossIncome * (taxRate / 100);
+    const netIncome = grossIncome - totalExpenses - taxOwed;
+
+    // By method
     const byMethod = {};
-    allPayments.forEach(p => { byMethod[p.method || 'unknown'] = (byMethod[p.method || 'unknown'] || 0) + (parseFloat(p.amount) || 0) + (parseFloat(p.tip) || 0); });
+    paid.forEach(p => { byMethod[p.method || 'unknown'] = (byMethod[p.method || 'unknown'] || 0) + (parseFloat(p.amount) || 0); });
+
+    // Monthly breakdown
+    const monthlyData = {};
+    paid.forEach(p => {
+        const m = (p.date || '').substring(0, 7);
+        if (!m) return;
+        if (!monthlyData[m]) monthlyData[m] = { income: 0, tips: 0, expenses: 0, count: 0 };
+        monthlyData[m].income += parseFloat(p.amount) || 0;
+        monthlyData[m].tips += parseFloat(p.tip) || 0;
+        monthlyData[m].count++;
+    });
+    expenses.forEach(e => {
+        const m = (e.date || '').substring(0, 7);
+        if (!m) return;
+        if (!monthlyData[m]) monthlyData[m] = { income: 0, tips: 0, expenses: 0, count: 0 };
+        monthlyData[m].expenses += parseFloat(e.amount) || 0;
+    });
+
+    // Quarterly estimate
+    const thisQuarter = Math.floor(new Date().getMonth() / 3);
+    const quarterMonths = [thisQuarter * 3, thisQuarter * 3 + 1, thisQuarter * 3 + 2].map(m => {
+        const d = new Date(); d.setMonth(m); return d.toISOString().substring(0, 7);
+    });
+    const quarterIncome = quarterMonths.reduce((s, m) => s + (monthlyData[m]?.income || 0), 0);
+    const quarterTax = quarterIncome * (taxRate / 100);
+
+    // Expense categories
+    const expByCat = {};
+    expenses.forEach(e => { expByCat[e.category || 'Other'] = (expByCat[e.category || 'Other'] || 0) + (parseFloat(e.amount) || 0); });
 
     el.innerHTML = `
+        <!-- Financial Overview -->
         <div class="stats-grid">
-            <div class="stat-card green"><div class="stat-label">Total Received</div><div class="stat-value">${fmt(totalPaid)}</div><div class="stat-sub">${paid.length} payments</div></div>
+            <div class="stat-card green"><div class="stat-label">Gross Income</div><div class="stat-value">${fmt(grossIncome)}</div><div class="stat-sub">${paid.length} payments received</div></div>
+            <div class="stat-card"><div class="stat-label">Tips</div><div class="stat-value">${fmt(totalTips)}</div><div class="stat-sub">Avg ${paid.length ? fmt(totalTips / paid.length) : '$0'}/visit</div></div>
             <div class="stat-card yellow"><div class="stat-label">Pending</div><div class="stat-value">${fmt(totalPending)}</div><div class="stat-sub">${pending.length} awaiting</div></div>
-            <div class="stat-card"><div class="stat-label">Total Tips</div><div class="stat-value">${fmt(totalTips)}</div></div>
-            <div class="stat-card blue"><div class="stat-label">By Method</div><div class="stat-value" style="font-size:1rem">${Object.entries(byMethod).map(([m, v]) => `${m}: ${fmt(v)}`).join('<br>') || '—'}</div></div>
+            <div class="stat-card blue"><div class="stat-label">Expenses</div><div class="stat-value">${fmt(totalExpenses)}</div><div class="stat-sub">${expenses.length} items</div></div>
+        </div>
+        <div class="stats-grid" style="margin-top:-8px">
+            <div class="stat-card" style="border-left-color:${netIncome >= 0 ? '#00B894' : '#E17055'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="color:${netIncome >= 0 ? '#00B894' : '#E17055'}">${fmt(netIncome)}</div><div class="stat-sub">After expenses & tax</div></div>
+            <div class="stat-card" style="border-left-color:#E17055"><div class="stat-label">Tax Owed (${taxRate}%)</div><div class="stat-value">${fmt(taxOwed)}</div><div class="stat-sub">Set rate in Settings</div></div>
+            <div class="stat-card" style="border-left-color:#8B5CF6"><div class="stat-label">Q${thisQuarter + 1} Estimated Tax</div><div class="stat-value">${fmt(quarterTax)}</div><div class="stat-sub">Quarterly estimate</div></div>
+            <div class="stat-card"><div class="stat-label">Profit Margin</div><div class="stat-value">${grossIncome > 0 ? Math.round((netIncome / grossIncome) * 100) : 0}%</div></div>
         </div>
 
-        ${pending.length ? `<div class="card" style="margin-bottom:16px">
+        <div class="grid-2">
+            <!-- Payment Method Breakdown -->
+            <div class="card">
+                <div class="card-title" style="margin-bottom:12px">Income by Payment Method</div>
+                ${Object.entries(byMethod).sort((a, b) => b[1] - a[1]).map(([m, v]) => {
+                    const pct = grossIncome > 0 ? Math.round(v / grossIncome * 100) : 0;
+                    return `<div style="margin-bottom:10px">
+                        <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:4px"><span>${escHTML(m)}</span><strong>${fmt(v)} (${pct}%)</strong></div>
+                        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div></div>
+                    </div>`;
+                }).join('') || '<div class="empty">No data</div>'}
+            </div>
+
+            <!-- Expense Breakdown -->
+            <div class="card">
+                <div class="card-header"><span class="card-title">Expenses by Category</span><button class="btn btn-primary btn-sm" onclick="showModal('expense')">+ Add Expense</button></div>
+                ${Object.entries(expByCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => {
+                    const pct = totalExpenses > 0 ? Math.round(v / totalExpenses * 100) : 0;
+                    return `<div style="margin-bottom:10px">
+                        <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:4px"><span>${escHTML(c)}</span><strong>${fmt(v)} (${pct}%)</strong></div>
+                        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:#8B5CF6;border-radius:3px"></div></div>
+                    </div>`;
+                }).join('') || '<div class="empty">No expenses tracked</div>'}
+            </div>
+        </div>
+
+        <!-- Monthly P&L -->
+        <div class="card">
+            <div class="card-header"><span class="card-title">Monthly Profit & Loss</span></div>
+            <div class="table-wrap"><table>
+                <thead><tr><th>Month</th><th>Income</th><th>Tips</th><th>Expenses</th><th>Tax (${taxRate}%)</th><th>Net Profit</th><th>Visits</th></tr></thead>
+                <tbody>${Object.entries(monthlyData).sort().reverse().map(([m, d]) => {
+                    const tax = d.income * (taxRate / 100);
+                    const net = d.income + d.tips - d.expenses - tax;
+                    return `<tr>
+                        <td><strong>${m}</strong></td><td>${fmt(d.income)}</td><td>${fmt(d.tips)}</td>
+                        <td style="color:var(--danger)">${fmt(d.expenses)}</td><td style="color:var(--danger)">${fmt(tax)}</td>
+                        <td style="color:${net >= 0 ? 'var(--success)' : 'var(--danger)'}"><strong>${fmt(net)}</strong></td>
+                        <td>${d.count}</td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="7" class="empty">No data yet</td></tr>'}</tbody>
+            </table></div>
+        </div>
+
+        <!-- Pending Payments -->
+        ${pending.length ? `<div class="card">
             <div class="card-header"><span class="card-title">Pending Payments (${pending.length})</span></div>
             <div class="table-wrap"><table>
                 <thead><tr><th>Date</th><th>Client</th><th>Service</th><th>Amount</th><th>Method</th><th>Tip</th><th></th></tr></thead>
-                <tbody>${pending.map(p => {
-                    const client = load('users', []).find(u => u.id === p.clientId);
-                    return `<tr>
-                        <td>${p.date}</td><td>${escHTML(client?.name || '—')}</td><td>${escHTML(p.service)}</td>
-                        <td><strong>${fmt(p.amount)}</strong></td>
-                        <td><span class="badge badge-pending">${p.method}</span></td>
-                        <td>${p.tip ? fmt(p.tip) : '—'}</td>
-                        <td>
-                            <button class="btn btn-success btn-sm" onclick="confirmPayment('${p.id}')">Confirm Received</button>
-                            <button class="btn btn-ghost btn-sm" onclick="deletePayment('${p.id}')">✕</button>
-                        </td>
-                    </tr>`;
-                }).join('')}</tbody>
+                <tbody>${pending.map(p => `<tr>
+                    <td>${p.date}</td><td>${escHTML(p.clientName || '—')}</td><td>${escHTML(p.service)}</td>
+                    <td><strong>${fmt(p.amount)}</strong></td><td><span class="badge badge-pending">${p.method}</span></td>
+                    <td>${p.tip ? fmt(p.tip) : '—'}</td>
+                    <td><button class="btn btn-success btn-sm" onclick="confirmPayment('${p.id}')">Confirm</button> <button class="btn btn-ghost btn-sm" onclick="deletePayment('${p.id}')">✕</button></td>
+                </tr>`).join('')}</tbody>
             </table></div>
         </div>` : ''}
 
+        <!-- All Payments -->
         <div class="card">
-            <div class="card-header"><span class="card-title">All Payments (${allPayments.length})</span><button class="btn btn-primary btn-sm" onclick="showModal('manual_payment')">+ Record Cash Payment</button></div>
-            ${allPayments.length ? `<div class="table-wrap"><table>
-                <thead><tr><th>Date</th><th>Client</th><th>Service</th><th>Amount</th><th>Tip</th><th>Method</th><th>Status</th></tr></thead>
-                <tbody>${allPayments.slice().reverse().map(p => {
-                    const client = load('users', []).find(u => u.id === p.clientId);
-                    return `<tr>
-                        <td>${p.date}</td><td>${escHTML(client?.name || p.clientId || '—')}</td><td>${escHTML(p.service || '—')}</td>
-                        <td>${fmt(p.amount)}</td><td>${p.tip ? fmt(p.tip) : '—'}</td>
-                        <td><span class="badge badge-completed">${p.method}</span></td>
-                        <td><span class="badge badge-${p.status === 'paid' ? 'confirmed' : 'pending'}">${p.status}</span></td>
-                    </tr>`;
-                }).join('')}</tbody>
-            </table></div>` : '<div class="empty"><p>No payments recorded yet</p></div>'}
+            <div class="card-header"><span class="card-title">All Transactions (${allPayments.length + expenses.length})</span>
+                <div style="display:flex;gap:6px">
+                    <button class="btn btn-primary btn-sm" onclick="showModal('manual_payment')">+ Record Payment</button>
+                    <button class="btn btn-sm btn-ghost" onclick="showModal('expense')">+ Expense</button>
+                    <button class="btn btn-sm btn-ghost" onclick="exportFinances()">Export CSV</button>
+                </div>
+            </div>
+            <div class="table-wrap"><table>
+                <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th><th>Tip</th><th>Method</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                    ${allPayments.slice().reverse().map(p => `<tr>
+                        <td>${p.date}</td><td><span class="badge badge-confirmed">Income</span></td>
+                        <td>${escHTML(p.clientName || '')} — ${escHTML(p.service || '')}</td>
+                        <td style="color:var(--success)">+${fmt(p.amount)}</td><td>${p.tip ? fmt(p.tip) : '—'}</td>
+                        <td>${p.method || '—'}</td><td><span class="badge badge-${p.status === 'paid' ? 'confirmed' : 'pending'}">${p.status}</span></td>
+                        <td><button class="btn btn-ghost btn-sm" onclick="deletePayment('${p.id}')">✕</button></td>
+                    </tr>`).join('')}
+                    ${expenses.slice().reverse().map(e => `<tr style="background:rgba(225,112,85,.02)">
+                        <td>${e.date}</td><td><span class="badge badge-cancelled">Expense</span></td>
+                        <td>${escHTML(e.description || '')} <span style="font-size:.72rem;color:var(--text-muted)">(${escHTML(e.category || '')})</span></td>
+                        <td style="color:var(--danger)">-${fmt(e.amount)}</td><td>—</td>
+                        <td>${escHTML(e.method || '—')}</td><td>—</td>
+                        <td><button class="btn btn-ghost btn-sm" onclick="deleteExpense('${e.id}')">✕</button></td>
+                    </tr>`).join('')}
+                </tbody>
+            </table></div>
+        </div>
+
+        <!-- Tax Summary -->
+        <div class="card">
+            <div class="card-header"><span class="card-title">Tax Summary (${new Date().getFullYear()})</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div>
+                    <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:4px">Gross Income (taxable)</div>
+                    <div style="font-size:1.3rem;font-weight:700">${fmt(grossIncome + totalTips)}</div>
+                </div>
+                <div>
+                    <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:4px">Deductible Expenses</div>
+                    <div style="font-size:1.3rem;font-weight:700;color:var(--success)">-${fmt(totalExpenses)}</div>
+                </div>
+                <div>
+                    <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:4px">Taxable Income</div>
+                    <div style="font-size:1.3rem;font-weight:700">${fmt(grossIncome + totalTips - totalExpenses)}</div>
+                </div>
+                <div>
+                    <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:4px">Estimated Tax (${taxRate}%)</div>
+                    <div style="font-size:1.3rem;font-weight:700;color:var(--danger)">${fmt((grossIncome + totalTips - totalExpenses) * (taxRate / 100))}</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;padding:12px;background:rgba(139,92,246,.05);border-radius:8px;font-size:.82rem;color:var(--text-muted)">
+                <strong>Reminder:</strong> Estimated quarterly taxes due: Jan 15, Apr 15, Jun 15, Sep 15. Self-employment tax is ~15.3% + income tax bracket. Track all expenses — gas, supplies, insurance, phone — they're deductible. Set your tax rate in Settings → Policies.
+            </div>
         </div>
     `;
+};
+
+// Expense management
+const deleteExpense = (id) => {
+    if (!confirm('Delete expense?')) return;
+    expenses = expenses.filter(x => x.id !== id);
+    save('expenses', expenses);
+    renderTab();
+};
+
+// CSV Export
+const exportFinances = () => {
+    const allPayments = load('payments', []);
+    expenses = load('expenses', []);
+    let csv = 'Date,Type,Description,Amount,Tip,Method,Status\n';
+    allPayments.forEach(p => { csv += `${p.date},Income,"${p.clientName || ''} - ${p.service || ''}",${p.amount || 0},${p.tip || 0},${p.method || ''},${p.status}\n`; });
+    expenses.forEach(e => { csv += `${e.date},Expense,"${e.description || ''} (${e.category || ''})",-${e.amount || 0},0,${e.method || ''},paid\n`; });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `genuspupclub-finances-${todayStr()}.csv`;
+    a.click();
 };
 
 const confirmPayment = (id) => {
@@ -637,7 +786,7 @@ const renderSettings = () => {
                     <td><strong>${fmt(s.price)}</strong></td>
                     <td>${s.duration ? s.duration + ' min' : '—'}</td>
                     <td><button class="btn btn-sm ${s.active ? 'btn-success' : 'btn-ghost'}" onclick="toggleService('${s.id}')">${s.active ? 'ON' : 'OFF'}</button></td>
-                    <td><button class="btn btn-ghost btn-sm" onclick="deleteService('${s.id}')">✕</button></td>
+                    <td><button class="btn btn-ghost btn-sm" onclick="editService('${s.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteService('${s.id}')">✕</button></td>
                 </tr>`).join('')}</tbody>
             </table></div>
         </div>
@@ -700,6 +849,34 @@ const saveSettings = () => {
 };
 
 const toggleService = (id) => { const s = services.find(x => x.id === id); if (s) { s.active = !s.active; save('services', services); renderTab(); } };
+const editService = (id) => {
+    const s = services.find(x => x.id === id);
+    if (!s) return;
+    const cats = ['Walking', 'Visits', 'Daycare', 'Sitting', 'Specialty', 'Transport', 'Grooming', 'Training', 'Other'];
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal">
+        <div class="modal-title">Edit Service: ${escHTML(s.name)}</div>
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="esName" value="${escHTML(s.name)}"></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Price ($)</label><input class="form-input" id="esPrice" type="number" step="0.01" value="${s.price}"></div><div class="form-group"><label class="form-label">Duration (min)</label><input class="form-input" id="esDuration" type="number" value="${s.duration || ''}"></div></div>
+        <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="esCat">${cats.map(c => `<option ${s.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="esDesc" value="${escHTML(s.description || '')}"></div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditService('${s.id}')">Save</button></div>
+    </div>`;
+    overlay.classList.add('open');
+};
+const saveEditService = (id) => {
+    const s = services.find(x => x.id === id);
+    if (!s) return;
+    s.name = document.getElementById('esName')?.value?.trim() || s.name;
+    s.price = parseFloat(document.getElementById('esPrice')?.value) || s.price;
+    s.duration = parseInt(document.getElementById('esDuration')?.value) || s.duration;
+    s.category = document.getElementById('esCat')?.value || s.category;
+    s.description = document.getElementById('esDesc')?.value?.trim() || s.description;
+    save('services', services);
+    closeModal();
+    renderTab();
+};
 const deleteService = (id) => { if (!confirm('Delete service?')) return; services = services.filter(x => x.id !== id); save('services', services); renderTab(); };
 const deleteAddon = (id) => { if (!confirm('Delete add-on?')) return; addons = addons.filter(x => x.id !== id); save('addons', addons); renderTab(); };
 const deletePackage = (id) => { if (!confirm('Delete package?')) return; packages = packages.filter(x => x.id !== id); save('packages', packages); renderTab(); };
@@ -782,6 +959,16 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Zone Name</label><input class="form-input" id="mName" placeholder="e.g. Zone 4 — Far West"></div>
             <div class="form-group"><label class="form-label">Areas Covered</label><input class="form-input" id="mAreas" placeholder="e.g. Goochland, Powhatan"></div>
             <div class="form-group"><label class="form-label">Surcharge ($)</label><input class="form-input" id="mSurcharge" type="number" step="0.01" value="0"></div>
+        ` },
+        expense: { title: 'Add Business Expense', body: `
+            <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="mDesc" placeholder="e.g. Dog treats, gas, leashes"></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="mAmount" type="number" step="0.01"></div><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="mDate" type="date" value="${todayStr()}"></div></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="mCategory"><option>Supplies</option><option>Gas/Mileage</option><option>Insurance</option><option>Phone/Internet</option><option>Marketing</option><option>Equipment</option><option>Food/Treats</option><option>Vet/Medical</option><option>Software</option><option>Training</option><option>Uniforms</option><option>Vehicle</option><option>Office</option><option>Other</option></select></div>
+                <div class="form-group"><label class="form-label">Payment Method</label><select class="form-select" id="mMethod"><option>Cash</option><option>Debit</option><option>Credit</option><option>Venmo</option><option>Zelle</option></select></div>
+            </div>
+            <div class="form-group"><label class="form-label">Notes / Receipt #</label><input class="form-input" id="mNotes" placeholder="Optional"></div>
+            <div style="padding:10px;background:rgba(0,184,148,.05);border-radius:8px;font-size:.82rem;color:var(--text-muted);margin-top:8px">Track all business expenses for tax deductions. Gas, supplies, insurance, phone — all deductible for self-employed dog sitters.</div>
         ` },
         manual_payment: { title: 'Record Cash/Manual Payment', body: `
             <div class="form-row"><div class="form-group"><label class="form-label">Client Name</label><input class="form-input" id="mClientName"></div><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService">${svcOptions}</select></div></div>
@@ -888,6 +1075,10 @@ const saveModal = (type) => {
     } else if (type === 'zone') {
         zones.push({ id: uid(), name: v('mName'), areas: v('mAreas'), surcharge: parseFloat(v('mSurcharge')) || 0 });
         save('zones', zones);
+    } else if (type === 'expense') {
+        expenses = load('expenses', []);
+        expenses.push({ id: uid(), description: v('mDesc'), amount: parseFloat(v('mAmount')) || 0, date: v('mDate'), category: v('mCategory'), method: v('mMethod'), notes: v('mNotes') });
+        save('expenses', expenses);
     } else if (type === 'manual_payment') {
         const payments = load('payments', []);
         payments.push({
