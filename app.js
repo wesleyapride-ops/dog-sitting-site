@@ -164,31 +164,32 @@ const renderDynamicPricing = () => {
 const bookingForm = document.getElementById('bookingForm');
 bookingForm?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const inputs = bookingForm.querySelectorAll('input, select, textarea');
-    const data = {};
-    inputs.forEach(inp => {
-        const key = inp.placeholder?.toLowerCase().replace(/[^a-z]/g, '_') || inp.type || 'field';
-        data[key] = inp.value;
-    });
 
-    const services = gpcLoad('services', []);
+    const name = document.getElementById('bookingName')?.value?.trim() || '';
+    const email = document.getElementById('bookingEmail')?.value?.trim() || '';
+    const phone = document.getElementById('bookingPhone')?.value?.trim() || '';
+    const petName = document.getElementById('bookingPetName')?.value?.trim() || '';
+    const date = document.getElementById('bookingDate')?.value || new Date().toISOString().split('T')[0];
+    const notes = document.getElementById('bookingNotes')?.value?.trim() || '';
     const selectedService = document.getElementById('bookingServiceSelect')?.value || '';
-    const svc = services.find(s => s.name === selectedService);
-
-    // Save as booking to dashboard
-    const bookings = gpcLoad('bookings', []);
     const numDogs = parseInt(document.getElementById('bookingNumDogs')?.value) || 1;
     const transportType = document.getElementById('bookingTransport')?.value || 'none';
     const pickupAddr = document.getElementById('bookingPickupAddr')?.value?.trim() || '';
     const dropoffAddr = document.getElementById('bookingDropoffAddr')?.value?.trim() || '';
 
+    const services = gpcLoad('services', []);
+    const svc = services.find(s => s.name === selectedService);
+
+    const bookings = gpcLoad('bookings', []);
     const newBooking = {
         id: gpcUid(),
-        clientName: data.your_name_ || data.field || '',
-        petName: data.dog_s_name___breed_ || '',
+        clientName: name,
+        clientEmail: email,
+        clientPhone: phone,
+        petName,
         service: selectedService.replace('PKG:', ''),
         amount: svc?.price || 0,
-        date: data.date || new Date().toISOString().split('T')[0],
+        date,
         time: '10:00',
         dropoffTime: '',
         pickupTime: '',
@@ -200,7 +201,7 @@ bookingForm?.addEventListener('submit', (e) => {
         transportType,
         pickupAddr,
         dropoffAddr,
-        notes: data.tell_us_about_your_pup____age__personality__special_needs__anything_we_should_know___ || '',
+        notes,
         status: 'pending',
         source: 'website'
     };
@@ -209,13 +210,13 @@ bookingForm?.addEventListener('submit', (e) => {
 
     // Also save as client if new
     const clients = gpcLoad('clients', []);
-    const existingClient = clients.find(c => c.email === data.email_ || c.name === data.your_name_);
-    if (!existingClient && data.your_name_) {
+    const existingClient = clients.find(c => c.email === email || c.name === name);
+    if (!existingClient && name) {
         clients.push({
             id: gpcUid(),
-            name: data.your_name_ || '',
-            email: data.email_ || '',
-            phone: data.phone_number_ || '',
+            name,
+            email,
+            phone,
             address: '',
             source: 'Website Booking',
             notes: ''
@@ -237,7 +238,7 @@ bookingForm?.addEventListener('submit', (e) => {
     // Show confirmation
     const confirm = document.createElement('div');
     confirm.style.cssText = 'background:rgba(0,184,148,0.1);border:1px solid #00B894;border-radius:12px;padding:16px;margin-top:16px;text-align:center;color:#00B894;font-weight:600;';
-    confirm.innerHTML = `Booking received! We'll contact you within 2 hours to schedule your free meet & greet. Check your email at <strong>${data.email_ || 'your inbox'}</strong>.`;
+    confirm.innerHTML = `Booking received! We'll contact you within 2 hours to schedule your free meet & greet. Check your email at <strong>${email || 'your inbox'}</strong>.`;
     bookingForm.after(confirm);
 
     setTimeout(() => {

@@ -280,19 +280,18 @@
                 <p>Book your first visit today. No commitment — just see why 500+ dogs love GenusPupClub.</p>
                 <form class="booking-form" id="bookingForm">
                     <div class="form-row">
-                        <input type="text" placeholder="Your Name" required>
-                        <input type="email" placeholder="Email" required>
+                        <input type="text" id="bookingName" placeholder="Your Name" required>
+                        <input type="email" id="bookingEmail" placeholder="Email" required>
                     </div>
                     <div class="form-row">
-                        <input type="tel" placeholder="Phone Number" required>
+                        <input type="tel" id="bookingPhone" placeholder="Phone Number" required>
                         <select required id="bookingServiceSelect">
                             <option value="" disabled selected>Select Service</option>
-                            <!-- Populated dynamically from dashboard data -->
                         </select>
                     </div>
                     <div class="form-row">
-                        <input type="text" placeholder="Dog's Name & Breed">
-                        <input type="date" placeholder="Preferred Date">
+                        <input type="text" id="bookingPetName" placeholder="Dog's Name & Breed">
+                        <input type="date" id="bookingDate">
                     </div>
                     <div class="form-row">
                         <select id="bookingNumDogs">
@@ -314,7 +313,7 @@
                         <input type="text" id="bookingPickupAddr" placeholder="Pickup Address">
                         <input type="text" id="bookingDropoffAddr" placeholder="Dropoff Address (vet, groomer, etc.)">
                     </div>
-                    <textarea placeholder="Tell us about your pup(s) — names, ages, personalities, special needs, anything we should know..." rows="3"></textarea>
+                    <textarea id="bookingNotes" placeholder="Tell us about your pup(s) — names, ages, personalities, special needs, anything we should know..." rows="3"></textarea>
                     <button type="submit" class="btn btn-primary btn-lg btn-full">Book Now</button>
                     <div style="text-align:center;margin-top:12px;font-size:.85rem">
                         <span style="color:rgba(255,255,255,.5)">First time?</span>
