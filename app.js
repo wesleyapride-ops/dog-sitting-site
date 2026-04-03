@@ -133,9 +133,9 @@ const renderDynamicPricing = () => {
     // Pricing note with dynamic discounts
     const note = document.getElementById('pricingNote');
     if (note) {
-        const multiDiscount = settings.multiDogDiscount || 10;
+        const extraDogFee = settings.extraDogFee || 0;
         const recurringDiscount = settings.recurringDiscount || 15;
-        note.innerHTML = `<p class="pricing-note">Multi-dog discount: 2nd dog +$${multiDiscount}/service. Weekly recurring clients save ${recurringDiscount}%.</p>`;
+        note.innerHTML = `<p class="pricing-note">${extraDogFee > 0 ? `Extra dog fee: +$${extraDogFee}/dog per visit. ` : ''}Weekly recurring clients save ${recurringDiscount}%. Pickup/dropoff fees may apply.</p>`;
     }
 
     // Packages section

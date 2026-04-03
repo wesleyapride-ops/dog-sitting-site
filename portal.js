@@ -416,12 +416,26 @@ const updateNBPrice = () => {
     const selectedPets = document.querySelectorAll('.nb-pet-cb:checked');
     const extraDogs = selectedPets.length > 1 ? selectedPets.length - 1 : 0;
     const settings = load('settings', {});
-    const extraDogFee = settings.extraDogFee || settings.multiDogDiscount || 10;
+    const perDogFee = parseFloat(settings.extraDogFee) || 0;
+    const hasPickup = document.getElementById('nbPickupAddr')?.value?.trim();
+    const hasDropoff = document.getElementById('nbDropoffAddr')?.value?.trim();
+    const transport = document.getElementById('nbTransport')?.value || 'none';
+    const pickupFee = (transport === 'pickup' || transport === 'roundtrip') && hasPickup ? (parseFloat(settings.pickupFee) || 0) : 0;
+    const dropoffFee = (transport === 'dropoff' || transport === 'roundtrip') && hasDropoff ? (parseFloat(settings.dropoffFee) || 0) : 0;
+
     let total = baseRate * days;
-    total += extraDogs * extraDogFee * days;
+    if (extraDogs > 0 && perDogFee > 0) total += extraDogs * perDogFee * days;
     document.querySelectorAll('.nb-addon:checked').forEach(cb => total += parseFloat(cb.dataset.price) || 0);
+    total += pickupFee + dropoffFee;
+
+    const parts = [];
+    if (days > 1) parts.push(`${days} days`);
+    if (extraDogs > 0 && perDogFee > 0) parts.push(`+${extraDogs} dog${extraDogs > 1 ? 's' : ''}`);
+    if (pickupFee > 0) parts.push(`pickup ${fmt(pickupFee)}`);
+    if (dropoffFee > 0) parts.push(`dropoff ${fmt(dropoffFee)}`);
+
     const el2 = document.getElementById('nbTotal');
-    if (el2) el2.textContent = `${fmt(total)}${days > 1 ? ` (${days} days)` : ''}`;
+    if (el2) el2.textContent = `${fmt(total)}${parts.length ? ' (' + parts.join(' + ') + ')' : ''}`;
 };
 
 const submitBooking = () => {

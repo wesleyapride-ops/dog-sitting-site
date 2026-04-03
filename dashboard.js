@@ -105,7 +105,7 @@ let reviews = load('reviews', [
 let messages = load('messages', []);
 let businessSettings = load('settings', {
     name: 'GenusPupClub', phone: '(804) 555-1234', email: 'hello@genuspupclub.com',
-    address: 'Richmond, VA', taxRate: 0, multiDogDiscount: 10, recurringDiscount: 15,
+    address: 'Richmond, VA', taxRate: 0, extraDogFee: 10, recurringDiscount: 15, pickupFee: 10, dropoffFee: 10,
     cancellationHours: 24, cancellationFee: 50, maxBookingsPerDay: 8,
     operatingHours: '7:00 AM - 8:00 PM', operatingDays: 'Mon-Sun',
     acceptedPayments: 'Credit/Debit, Venmo, Zelle, CashApp, Apple Pay',
@@ -261,17 +261,26 @@ const calcBookingTotal = (b) => {
     const baseRate = parseFloat(b.amount) || 0;
     const days = calcDays(b.date, b.endDate);
     let total = baseRate * days;
+    // Extra dogs — per dog, per day
+    if (b.extraDogs > 0) {
+        const fee = parseFloat(businessSettings.extraDogFee) || 0;
+        total += b.extraDogs * fee * days;
+    }
+    // Add-ons (flat, once per booking)
     if (b.addons?.length) {
         b.addons.forEach(aName => {
             const addon = addons.find(a => a.name === aName);
             if (addon) total += addon.price;
         });
     }
+    // Zone surcharge (once per booking)
     if (b.zone) {
         const zone = zones.find(z => z.name === b.zone);
         if (zone) total += zone.surcharge;
     }
-    if (b.extraDogs) total += (b.extraDogs * (businessSettings.multiDogDiscount || 10)) * days;
+    // Pickup/dropoff fees
+    if (b.pickupAddr) total += parseFloat(businessSettings.pickupFee) || 0;
+    if (b.dropoffAddr) total += parseFloat(businessSettings.dropoffFee) || 0;
     return total;
 };
 
@@ -1387,7 +1396,7 @@ const renderSettings = () => {
         <div class="card">
             <div class="card-title" style="margin-bottom:16px">Policies & Discounts</div>
             <div class="form-row">
-                <div class="form-group"><label class="form-label">Multi-Dog Discount (%)</label><input class="form-input" id="sMultiDog" type="number" value="${businessSettings.multiDogDiscount}"></div>
+                <div class="form-group"><label class="form-label">Extra Dog Fee ($)</label><input class="form-input" id="sExtraDogFee" type="number" step="0.01" value="${businessSettings.extraDogFee || 0}"></div>
                 <div class="form-group"><label class="form-label">Recurring Client Discount (%)</label><input class="form-input" id="sRecurring" type="number" value="${businessSettings.recurringDiscount}"></div>
             </div>
             <div class="form-row">
@@ -1397,6 +1406,10 @@ const renderSettings = () => {
             <div class="form-row">
                 <div class="form-group"><label class="form-label">Tax Rate (%)</label><input class="form-input" id="sTax" type="number" value="${businessSettings.taxRate}"></div>
                 <div class="form-group"><label class="form-label">Max Bookings/Day</label><input class="form-input" id="sMaxBookings" type="number" value="${businessSettings.maxBookingsPerDay}"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Pickup Fee ($)</label><input class="form-input" id="sPickupFee" type="number" step="0.01" value="${businessSettings.pickupFee || 0}"></div>
+                <div class="form-group"><label class="form-label">Dropoff Fee ($)</label><input class="form-input" id="sDropoffFee" type="number" step="0.01" value="${businessSettings.dropoffFee || 0}"></div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Policies</button>
         </div>
@@ -1656,7 +1669,7 @@ const renderSettings = () => {
 // ============================================
 const saveSettings = () => {
     const v = (id) => document.getElementById(id)?.value || '';
-    businessSettings = { ...businessSettings, name: v('sName'), phone: v('sPhone'), email: v('sEmail'), address: v('sAddress'), operatingHours: v('sHours'), operatingDays: v('sDays'), acceptedPayments: v('sPayments'), emergencyVet: v('sVet'), multiDogDiscount: parseInt(v('sMultiDog')) || 0, recurringDiscount: parseInt(v('sRecurring')) || 0, cancellationHours: parseInt(v('sCancel')) || 24, cancellationFee: parseInt(v('sCancelFee')) || 50, taxRate: parseFloat(v('sTax')) || 0, maxBookingsPerDay: parseInt(v('sMaxBookings')) || 8 };
+    businessSettings = { ...businessSettings, name: v('sName'), phone: v('sPhone'), email: v('sEmail'), address: v('sAddress'), operatingHours: v('sHours'), operatingDays: v('sDays'), acceptedPayments: v('sPayments'), emergencyVet: v('sVet'), extraDogFee: parseFloat(v('sExtraDogFee')) || 0, recurringDiscount: parseInt(v('sRecurring')) || 0, cancellationHours: parseInt(v('sCancel')) || 24, cancellationFee: parseInt(v('sCancelFee')) || 50, taxRate: parseFloat(v('sTax')) || 0, maxBookingsPerDay: parseInt(v('sMaxBookings')) || 8, pickupFee: parseFloat(v('sPickupFee')) || 0, dropoffFee: parseFloat(v('sDropoffFee')) || 0 };
     save('settings', businessSettings);
     if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', 'Business settings updated', 'success');
 };
@@ -2570,17 +2583,31 @@ const updateBookingPrice = () => {
     const endDate = document.getElementById('mEndDate')?.value || '';
     const days = calcDays(startDate, endDate);
     const extraDogs = parseInt(document.getElementById('mExtraDogs')?.value) || 0;
+    const extraDogFee = parseFloat(businessSettings.extraDogFee) || 0;
+    const hasPickup = document.getElementById('mPickupAddr')?.value || document.getElementById('mPickupAddrCustom')?.value;
+    const hasDropoff = document.getElementById('mDropoffAddr')?.value || document.getElementById('mDropoffAddrCustom')?.value;
+    const pickupFee = hasPickup ? (parseFloat(businessSettings.pickupFee) || 0) : 0;
+    const dropoffFee = hasDropoff ? (parseFloat(businessSettings.dropoffFee) || 0) : 0;
+
     let total = baseRate * days;
-    total += extraDogs * (businessSettings.multiDogDiscount || 10) * days;
+    if (extraDogs > 0) total += extraDogs * extraDogFee * days;
     document.querySelectorAll('.addon-check:checked').forEach(cb => { total += parseFloat(cb.dataset.price) || 0; });
+    total += pickupFee + dropoffFee;
+
+    const parts = [];
+    if (days > 1) parts.push(`${days} days × ${fmt(baseRate)}`);
+    if (extraDogs > 0 && extraDogFee > 0) parts.push(`+${extraDogs} dog${extraDogs > 1 ? 's' : ''} × ${fmt(extraDogFee)}${days > 1 ? '/day' : ''}`);
+    if (pickupFee > 0) parts.push(`pickup ${fmt(pickupFee)}`);
+    if (dropoffFee > 0) parts.push(`dropoff ${fmt(dropoffFee)}`);
+
     const preview = document.getElementById('mPricePreview');
-    if (preview) preview.textContent = `${fmt(total)}${days > 1 ? ` (${days} days × ${fmt(baseRate)})` : ''}`;
+    if (preview) preview.textContent = `${fmt(total)}${parts.length ? ' (' + parts.join(' + ') + ')' : ''}`;
 };
 
 // Wire addon checkboxes + date changes to price update
 document.addEventListener('change', (e) => {
     if (e.target.classList.contains('addon-check')) updateBookingPrice();
-    if (e.target.id === 'mDate' || e.target.id === 'mEndDate' || e.target.id === 'mExtraDogs') updateBookingPrice();
+    if (['mDate', 'mEndDate', 'mExtraDogs', 'mPickupAddr', 'mDropoffAddr', 'mService'].includes(e.target.id)) updateBookingPrice();
 });
 
 const saveModal = (type) => {
@@ -2958,16 +2985,21 @@ const saveCompletionFlow = (bookingId) => {
 
     // Generate and send invoice
     const days = calcDays(booking.date, booking.endDate);
-    const extraDogFee = (booking.extraDogs || 0) * (businessSettings.multiDogDiscount || 10) * days;
+    const perDogFee = parseFloat(businessSettings.extraDogFee) || 0;
+    const extraDogFee = (booking.extraDogs || 0) * perDogFee * days;
     const addonTotal = (booking.addons || []).reduce((s, aName) => { const a = addons.find(x => x.name === aName); return s + (a?.price || 0); }, 0);
     const zoneSurcharge = booking.zone ? (zones.find(z => z.name === booking.zone)?.surcharge || 0) : 0;
-    const total = (amt * days) + extraDogFee + addonTotal + zoneSurcharge;
+    const pickupFee = booking.pickupAddr ? (parseFloat(businessSettings.pickupFee) || 0) : 0;
+    const dropoffFee = booking.dropoffAddr ? (parseFloat(businessSettings.dropoffFee) || 0) : 0;
+    const total = (amt * days) + extraDogFee + addonTotal + zoneSurcharge + pickupFee + dropoffFee;
 
     const lineItems = [
         `${booking.service}: ${fmt(amt)}${days > 1 ? ` × ${days} days = ${fmt(amt * days)}` : ''}`,
-        booking.extraDogs > 0 ? `Extra dogs (${booking.extraDogs}): ${fmt(extraDogFee)}` : null,
+        booking.extraDogs > 0 ? `Extra dogs (${booking.extraDogs} × ${fmt(perDogFee)}${days > 1 ? '/day' : ''}): ${fmt(extraDogFee)}` : null,
         addonTotal > 0 ? `Add-ons: ${fmt(addonTotal)}` : null,
         zoneSurcharge > 0 ? `Zone surcharge: ${fmt(zoneSurcharge)}` : null,
+        pickupFee > 0 ? `Pickup fee: ${fmt(pickupFee)}` : null,
+        dropoffFee > 0 ? `Dropoff fee: ${fmt(dropoffFee)}` : null,
         tip > 0 ? `Tip: ${fmt(tip)}` : null
     ].filter(Boolean).join('\n');
 
