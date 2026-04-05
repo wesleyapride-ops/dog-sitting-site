@@ -439,15 +439,17 @@
                 if (cfg.theme.textColor) r.style.setProperty('--text', cfg.theme.textColor);
                 if (cfg.theme.borderRadius !== undefined) r.style.setProperty('--radius', cfg.theme.borderRadius + 'px');
                 if (cfg.theme.darkMode) {
-                    r.style.setProperty('--bg', '#1a1a2e'); r.style.setProperty('--card', '#16213e');
+                    r.style.setProperty('--bg', '#1a1a2e'); r.style.setProperty('--card-bg', '#16213e');
                     r.style.setProperty('--text', '#eee'); r.style.setProperty('--text-light', '#bbb');
+                    r.style.setProperty('--text-muted', '#888'); r.style.setProperty('--border', '#2a2a4a');
+                    document.body.style.background = '#1a1a2e'; document.body.style.color = '#eee';
                 }
             }
 
             // Homepage section visibility
             if (cfg.homepage?.sections) {
-                const map = { hero: '.hero', services: '#services', about: '#about', gallery: '.gallery-section',
-                    pricing: '#pricing', reviews: '#reviews', faq: '#faq', cta: '.cta', footer: 'footer' };
+                const map = { hero: '.hero', services: '#services', about: '#about',
+                    pricing: '#pricing', reviews: '#reviews', faq: '#faq', cta: '#book', footer: 'footer' };
                 Object.entries(cfg.homepage.sections).forEach(([key, visible]) => {
                     if (!visible && map[key]) {
                         const el = document.querySelector(map[key]);

@@ -2049,6 +2049,29 @@ const DEFAULT_SITE_CONFIG = {
         smsOnBooking: false, smsReminder: false, smsBirthday: false,
         autoReminder24h: true, autoReminder1h: false, autoThankYou: true
     },
+    automation: {
+        autoConfirmBookings: false, autoConfirmDelay: 0,
+        autoCompleteVisits: false, autoCompleteTime: '18:00',
+        autoInvoiceOnComplete: true, autoReceiptOnPayment: true,
+        autoReviewRequest: true, reviewRequestDelay: 24,
+        autoFollowUp7Day: false, autoFollowUp30Day: false,
+        autoBirthdayGreeting: true, autoWelcomeNewClient: true,
+        autoWaitlistNotify: true, autoNoShowFlag: false, noShowThreshold: 2,
+        autoSeasonalPricing: false, peakMultiplier: 1.25, offPeakDiscount: 10,
+        peakMonths: [6, 7, 8, 12],
+        quickResponses: [
+            { id: 'qr1', label: 'Booking Confirmed', message: 'Your booking is confirmed! We can\'t wait to see {petName}. Remember to bring any medications and your pup\'s favorite toy.' },
+            { id: 'qr2', label: 'Running Late', message: 'Hi {clientName}! Just a heads up — we\'re running about 10 minutes behind schedule. Your pup is having a great time!' },
+            { id: 'qr3', label: 'Visit Complete', message: '{petName} had an amazing visit! Check your portal for photos and a report card. See you next time!' },
+            { id: 'qr4', label: 'Payment Reminder', message: 'Hi {clientName}, friendly reminder that your invoice for {petName}\'s recent visit is ready. You can pay through your portal anytime.' },
+            { id: 'qr5', label: 'Weather Advisory', message: 'Due to weather conditions, today\'s walk may be shortened or moved indoors. Your pup\'s safety comes first!' },
+            { id: 'qr6', label: 'Rebook Nudge', message: 'Hi {clientName}! It\'s been a while since {petName}\'s last visit. Ready to book again? We\'d love to see that tail wag!' },
+            { id: 'qr7', label: 'Referral Reminder', message: 'Love GenusPupClub? Refer a friend and you both get a discount! Share your referral code from your portal.' }
+        ],
+        businessHoursEnforce: false, businessHoursStart: '07:00', businessHoursEnd: '20:00',
+        maxBookingsPerDay: 8, overbookingBuffer: 0,
+        autoBlackoutHolidays: false, blackoutDates: []
+    },
     advanced: { customCSS: '', customJS: '' }
 };
 let labConfig = load('site_config', DEFAULT_SITE_CONFIG);
@@ -2095,6 +2118,7 @@ const renderAdminLab = () => {
         { id: 'homepage', icon: '🏠', label: 'Homepage' },
         { id: 'gamification', icon: '🏆', label: 'Gamification' },
         { id: 'notifications', icon: '🔔', label: 'Notifications' },
+        { id: 'automation', icon: '🤖', label: 'Automation' },
         { id: 'advanced', icon: '⚙️', label: 'Advanced' }
     ];
 
@@ -2119,6 +2143,7 @@ const renderAdminLab = () => {
     ${labActiveTab === 'homepage' ? renderLabHomepage(cfg, sc) : ''}
     ${labActiveTab === 'gamification' ? renderLabGamification(cfg) : ''}
     ${labActiveTab === 'notifications' ? renderLabNotifications(cfg) : ''}
+    ${labActiveTab === 'automation' ? renderLabAutomation(cfg) : ''}
     ${labActiveTab === 'advanced' ? renderLabAdvanced(cfg) : ''}
     </div>`;
 };
@@ -2409,7 +2434,109 @@ const renderLabNotifications = (cfg) => `
         ${renderToggle('Auto Thank-You', 'notifications.autoThankYou', 'Automatically send thank-you after visit')}
     </div>`;
 
-// ---- TAB 7: ADVANCED ----
+// ---- TAB 7: AUTOMATION ----
+const renderLabAutomation = (cfg) => {
+    const qr = cfg.automation?.quickResponses || DEFAULT_SITE_CONFIG.automation.quickResponses;
+    return `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Booking Automation</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Let the system handle routine tasks so you can focus on the dogs.</p>
+        ${renderToggle('Auto-Confirm Bookings', 'automation.autoConfirmBookings', 'Instantly confirm new bookings without manual approval')}
+        ${renderToggle('Auto-Complete Visits', 'automation.autoCompleteVisits', 'Automatically mark visits as completed at end of day')}
+        ${cfg.automation?.autoCompleteVisits ? `<div style="padding:4px 0 8px 20px"><label class="form-label">Auto-complete time</label><input type="time" class="form-input" style="width:140px" value="${cfg.automation?.autoCompleteTime || '18:00'}" onchange="labToggle('automation.autoCompleteTime',this.value)"></div>` : ''}
+        ${renderToggle('Auto-Invoice on Complete', 'automation.autoInvoiceOnComplete', 'Generate and send invoice when visit is marked complete')}
+        ${renderToggle('Auto-Receipt on Payment', 'automation.autoReceiptOnPayment', 'Send receipt email when payment is recorded')}
+        ${renderToggle('Enforce Business Hours', 'automation.businessHoursEnforce', 'Only allow bookings within operating hours')}
+        ${cfg.automation?.businessHoursEnforce ? `<div style="padding:4px 0 8px 20px;display:flex;gap:12px"><div><label class="form-label">Opens</label><input type="time" class="form-input" style="width:120px" value="${cfg.automation?.businessHoursStart || '07:00'}" onchange="labToggle('automation.businessHoursStart',this.value)"></div><div><label class="form-label">Closes</label><input type="time" class="form-input" style="width:120px" value="${cfg.automation?.businessHoursEnd || '20:00'}" onchange="labToggle('automation.businessHoursEnd',this.value)"></div></div>` : ''}
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Capacity & Scheduling</div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Max Bookings Per Day</label><input type="number" class="form-input" value="${cfg.automation?.maxBookingsPerDay ?? 8}" min="1" max="50" onchange="labToggle('automation.maxBookingsPerDay',parseInt(this.value))"></div>
+            <div class="form-group"><label class="form-label">Overbooking Buffer</label><input type="number" class="form-input" value="${cfg.automation?.overbookingBuffer ?? 0}" min="0" max="10" onchange="labToggle('automation.overbookingBuffer',parseInt(this.value))"><span style="font-size:.72rem;color:var(--text-muted)">Extra slots above max (for flexibility)</span></div>
+        </div>
+        ${renderToggle('Auto-Blackout Holidays', 'automation.autoBlackoutHolidays', 'Block bookings on major holidays (Thanksgiving, Christmas, New Year)')}
+        ${renderToggle('Auto-Flag No-Shows', 'automation.autoNoShowFlag', 'Automatically flag clients who miss appointments')}
+        ${cfg.automation?.autoNoShowFlag ? `<div style="padding:4px 0 8px 20px"><label class="form-label">No-show threshold (add to Infamy Hall after X no-shows)</label><input type="number" class="form-input" style="width:80px" value="${cfg.automation?.noShowThreshold ?? 2}" min="1" max="10" onchange="labToggle('automation.noShowThreshold',parseInt(this.value))"></div>` : ''}
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Follow-Up Automation</div>
+        ${renderToggle('Review Request After Visit', 'automation.autoReviewRequest', 'Ask clients to rate their experience')}
+        ${cfg.automation?.autoReviewRequest ? `<div style="padding:4px 0 8px 20px"><label class="form-label">Send review request after (hours)</label><input type="number" class="form-input" style="width:80px" value="${cfg.automation?.reviewRequestDelay ?? 24}" min="1" max="168" onchange="labToggle('automation.reviewRequestDelay',parseInt(this.value))"></div>` : ''}
+        ${renderToggle('7-Day Follow-Up', 'automation.autoFollowUp7Day', '"How\'s your pup doing?" check-in 7 days after visit')}
+        ${renderToggle('30-Day Rebook Nudge', 'automation.autoFollowUp30Day', '"Ready to book again?" message after 30 days of inactivity')}
+        ${renderToggle('Birthday Greetings', 'automation.autoBirthdayGreeting', 'Auto-send birthday messages for pets with birthdays on file')}
+        ${renderToggle('Welcome New Clients', 'automation.autoWelcomeNewClient', 'Auto-send welcome message when a new client is added')}
+        ${renderToggle('Waitlist Notify', 'automation.autoWaitlistNotify', 'Auto-notify waitlisted clients when a slot opens up')}
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Smart Pricing</div>
+        ${renderToggle('Seasonal Pricing', 'automation.autoSeasonalPricing', 'Automatically adjust prices during peak/off-peak seasons')}
+        ${cfg.automation?.autoSeasonalPricing ? `<div style="padding:8px 0 8px 20px">
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Peak Season Multiplier</label><input type="number" class="form-input" step="0.05" min="1" max="2" value="${cfg.automation?.peakMultiplier ?? 1.25}" onchange="labToggle('automation.peakMultiplier',parseFloat(this.value))"><span style="font-size:.72rem;color:var(--text-muted)">1.25 = 25% higher</span></div>
+                <div class="form-group"><label class="form-label">Off-Peak Discount (%)</label><input type="number" class="form-input" min="0" max="50" value="${cfg.automation?.offPeakDiscount ?? 10}" onchange="labToggle('automation.offPeakDiscount',parseInt(this.value))"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Peak Months</label>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => {
+                    const peakMonths = cfg.automation?.peakMonths || [6,7,8,12];
+                    const isPeak = peakMonths.includes(i + 1);
+                    return `<button class="btn btn-sm ${isPeak ? 'btn-primary' : 'btn-ghost'}" onclick="togglePeakMonth(${i+1})">${m}</button>`;
+                }).join('')}</div>
+            </div>
+        </div>` : ''}
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Quick Responses</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Pre-written messages you can send with one click. Uses {clientName} and {petName} as placeholders.</p>
+        ${qr.map((r, i) => `
+            <div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <strong style="font-size:.88rem">${escHTML(r.label)}</strong>
+                    <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="removeQuickResponse(${i})">✕</button>
+                </div>
+                <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px">${escHTML(r.message)}</div>
+            </div>
+        `).join('')}
+        <button class="btn btn-sm btn-ghost" onclick="addQuickResponse()">+ Add Quick Response</button>
+    </div>`;
+};
+
+const togglePeakMonth = (month) => {
+    if (!labConfig.automation) labConfig.automation = {};
+    if (!labConfig.automation.peakMonths) labConfig.automation.peakMonths = [6,7,8,12];
+    const idx = labConfig.automation.peakMonths.indexOf(month);
+    if (idx >= 0) labConfig.automation.peakMonths.splice(idx, 1);
+    else labConfig.automation.peakMonths.push(month);
+    save('site_config', labConfig);
+    renderAdminLab();
+};
+
+const addQuickResponse = () => {
+    const label = prompt('Response name (e.g. "Running Late"):');
+    if (!label) return;
+    const message = prompt('Message text (use {clientName} and {petName} as placeholders):');
+    if (!message) return;
+    if (!labConfig.automation) labConfig.automation = {};
+    if (!labConfig.automation.quickResponses) labConfig.automation.quickResponses = [...DEFAULT_SITE_CONFIG.automation.quickResponses];
+    labConfig.automation.quickResponses.push({ id: 'qr_' + uid(), label, message });
+    save('site_config', labConfig);
+    renderAdminLab();
+};
+
+const removeQuickResponse = (idx) => {
+    if (!confirm('Remove this quick response?')) return;
+    if (!labConfig.automation?.quickResponses) return;
+    labConfig.automation.quickResponses.splice(idx, 1);
+    save('site_config', labConfig);
+    renderAdminLab();
+};
+
+// ---- TAB 8: ADVANCED ----
 const renderLabAdvanced = (cfg) => `
     <div class="card">
         <div class="card-title" style="margin-bottom:12px">Custom CSS</div>
@@ -2453,17 +2580,6 @@ const addCustomMilestone = () => {
     labConfig.gamification.milestones.push({ id: 'custom_' + uid(), name, icon, description: desc, threshold });
     save('site_config', labConfig);
     renderAdminLab();
-};
-
-const exportAllData = () => {
-    const data = {};
-    Object.keys(localStorage).filter(k => k.startsWith(DB_KEY)).forEach(k => {
-        try { data[k.replace(DB_KEY, '')] = JSON.parse(localStorage.getItem(k)); } catch { data[k.replace(DB_KEY, '')] = localStorage.getItem(k); }
-    });
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `genuspupclub-backup-${todayStr()}.json`; a.click();
-    URL.revokeObjectURL(a.href);
 };
 
 const importAllData = (input) => {
@@ -2510,8 +2626,10 @@ const saveSiteContent = () => {
         aboutImage: v('cmsAboutImg'), aboutQuote: v('cmsAboutQuote'),
         pricingTitle: v('cmsPriceTitle'), pricingSubtitle: v('cmsPriceSub'),
         ctaTitle: v('cmsCtaTitle'), ctaHighlight: v('cmsCtaHL'), ctaSubtitle: v('cmsCtaSub'),
-        primaryColor: v('cmsColor1'), secondaryColor: v('cmsColor2'),
-        accentColor: v('cmsColor3'), bgColor: v('cmsColor4'),
+        primaryColor: labConfig.theme?.primaryColor || siteContent.primaryColor || '#FF6B35',
+        secondaryColor: labConfig.theme?.secondaryColor || siteContent.secondaryColor || '#2D3436',
+        accentColor: labConfig.theme?.accentColor || siteContent.accentColor || '#00B894',
+        bgColor: labConfig.theme?.bgColor || siteContent.bgColor || '#FFFAF5',
         footerText: v('cmsFooter'),
         galleryImages: getGalleryImages()
     };

@@ -63,16 +63,10 @@ document.getElementById('menuToggle')?.addEventListener('click', () => document.
 
 // ---- Site Config (from Admin Lab) ----
 const getSiteConfig = () => load('site_config', {});
-const cfgEnabled = (path) => {
-    const keys = path.split('.');
-    let obj = getSiteConfig();
-    for (const k of keys) { if (obj === undefined || obj === null) return true; obj = obj[k]; }
-    return obj !== false;
-};
 
 const renderTab = () => {
     refreshData();
-    const views = { dashboard: renderDashboard, mybookings: renderMyBookings, mypets: renderMyPets, payments: renderPayments, loyalty: renderMyLoyalty, mymessages: renderMyMessages, newbooking: renderNewBooking, reviews: renderMyReviews, profile: renderProfile };
+    const views = { dashboard: renderDashboard, mybookings: renderMyBookings, mypets: renderMyPets, payments: renderPayments, loyalty: renderMyLoyalty, mymessages: renderMyMessages, newbooking: renderNewBooking, reviews: renderMyReviews, suggestions: renderSuggestions, profile: renderProfile };
     // Respect portal section toggles from Admin Lab
     const cfg = getSiteConfig();
     if (cfg.portal?.sections && cfg.portal.sections[activeTab] === false) { activeTab = 'dashboard'; }
@@ -1000,13 +994,126 @@ const submitSurvey = (bookingId) => {
         const allBookings = load('bookings', []);
         const b = allBookings.find(x => x.id === bookingId);
         const reviews = load('reviews', []);
-        reviews.push({ id: uid(), name: userName, pet: b?.petName || '', stars: rating, text: good, service: b?.service || '', date: todayStr() });
+        reviews.push({ id: uid(), clientId: userId, name: userName, pet: b?.petName || '', stars: rating, text: good, service: b?.service || '', date: todayStr() });
         save('reviews', reviews);
     }
 
     alert('Thank you for your feedback! 🐾');
     activeTab = 'mybookings';
     renderTab();
+};
+
+// ============================================
+// SUGGESTIONS BOX — Client-Facing Feedback
+// ============================================
+const SUGGESTION_CATS = [
+    { value: 'suggestion', label: 'Suggestion', icon: '💡' },
+    { value: 'complaint', label: 'Complaint', icon: '😤' },
+    { value: 'bug', label: 'Something Broken', icon: '🐛' },
+    { value: 'feature', label: 'Feature Request', icon: '🚀' },
+    { value: 'compliment', label: 'Compliment', icon: '🌟' },
+    { value: 'other', label: 'Other', icon: '📝' }
+];
+
+const renderSuggestions = () => {
+    const allFeedback = load('feedback', []);
+    const myFeedback = allFeedback.filter(f => f.clientId === userId);
+
+    el.innerHTML = `
+        <div class="card">
+            <div class="card-title" style="margin-bottom:12px">📬 Suggestion Box</div>
+            <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px">Help us improve! Tell us what you love, what's broken, or what you wish we had. Every suggestion goes straight to our team.</p>
+
+            <div class="form-group">
+                <label class="form-label">What type of feedback?</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    ${SUGGESTION_CATS.map(c => `<label style="display:flex;gap:4px;align-items:center;font-size:.88rem;cursor:pointer;padding:8px 14px;border:2px solid var(--border);border-radius:8px;transition:all .2s">
+                        <input type="radio" name="sugCat" value="${c.value}"> ${c.icon} ${c.label}
+                    </label>`).join('')}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">What's on your mind?</label>
+                <input class="form-input" id="sugSummary" placeholder="e.g. 'Add text message updates' or 'Calendar is hard to read on my phone'">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Details (optional)</label>
+                <textarea class="form-textarea" id="sugDetails" rows="4" placeholder="Tell us more... What happened? What did you expect? Any specific page or feature?"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">📸 Screenshot (optional)</label>
+                <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:6px">Take a screenshot of the issue or feature you're talking about — helps us fix it faster.</p>
+                <input type="file" id="sugScreenshot" accept="image/*" style="font-size:.88rem">
+            </div>
+
+            <button class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px" onclick="submitSuggestion()">📩 Submit Feedback</button>
+        </div>
+
+        ${myFeedback.length > 0 ? `
+        <div class="card">
+            <div class="card-title" style="margin-bottom:12px">Your Past Submissions (${myFeedback.length})</div>
+            ${[...myFeedback].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(f => {
+                const cat = SUGGESTION_CATS.find(c => c.value === f.category) || SUGGESTION_CATS[5];
+                const statusColors = { new: '#74B9FF', reviewed: '#A29BFE', in_progress: '#FDCB6E', implemented: '#00B894', wont_fix: '#636E72', duplicate: '#B2BEC3' };
+                const statusLabels = { new: 'Submitted', reviewed: 'Reviewed', in_progress: 'Working On It', implemented: 'Done!', wont_fix: "Can't Do", duplicate: 'Already Reported' };
+                return `<div style="padding:12px;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <div>
+                            <span style="font-size:.95rem">${cat.icon}</span>
+                            <strong style="font-size:.9rem">${esc(f.summary || '(no summary)')}</strong>
+                        </div>
+                        <span class="badge" style="background:${statusColors[f.status] || '#ccc'}20;color:${statusColors[f.status] || '#ccc'}">${statusLabels[f.status] || f.status}</span>
+                    </div>
+                    ${f.details ? `<div style="font-size:.82rem;color:var(--text-muted);margin-top:4px">${esc(f.details)}</div>` : ''}
+                    ${f.adminNotes ? `<div style="font-size:.82rem;margin-top:6px;padding:8px;background:rgba(108,92,231,.04);border-radius:6px"><strong>Team response:</strong> ${esc(f.adminNotes)}</div>` : ''}
+                    <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">${f.createdAt ? new Date(f.createdAt).toLocaleDateString() : ''}</div>
+                </div>`;
+            }).join('')}
+        </div>` : ''}
+    `;
+};
+
+const submitSuggestion = () => {
+    const summary = document.getElementById('sugSummary')?.value?.trim();
+    if (!summary) { alert('Please describe your suggestion or issue.'); return; }
+    const category = document.querySelector('input[name="sugCat"]:checked')?.value || 'suggestion';
+    const details = document.getElementById('sugDetails')?.value?.trim() || '';
+
+    const feedback = load('feedback', []);
+    const newItem = {
+        id: uid(), category, priority: 'medium', affects: '',
+        summary, details, clientId: userId, clientName: userName,
+        screenshots: [], status: 'new',
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        loggedBy: 'client-portal', adminNotes: '', source: 'client'
+    };
+
+    // Handle screenshot
+    const fileInput = document.getElementById('sugScreenshot');
+    if (fileInput?.files?.length) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            newItem.screenshots.push({ name: fileInput.files[0].name, data: e.target.result, addedAt: new Date().toISOString() });
+            feedback.push(newItem);
+            save('feedback', feedback);
+            alert('Thank you! Your feedback has been submitted. We\'ll review it soon.');
+            renderSuggestions();
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    } else {
+        feedback.push(newItem);
+        save('feedback', feedback);
+        alert('Thank you! Your feedback has been submitted. We\'ll review it soon.');
+        renderSuggestions();
+    }
+
+    // Notify admin
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.create({ type: 'client_feedback', title: 'New Client Suggestion', body: `${userName}: ${summary}`, audience: 'admin', createdAt: new Date().toISOString() });
+    }
 };
 
 // ---- Apply Admin Lab Config to Portal ----
