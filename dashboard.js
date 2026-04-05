@@ -5569,7 +5569,16 @@ const exportFeedbackForAI = (filter) => {
 
     if (items.length === 0) { alert('No feedback items to export.'); return; }
 
-    const header = `# GenusPupClub — Client Feedback (${items.length} items)\nExported: ${new Date().toLocaleString()}\nSource: Admin Dashboard → Feedback Box\n\nPlease review and implement the following client feedback for our dog care website/service:\n`;
+    const header = [
+        `# GenusPupClub — Client Feedback for AI Implementation`,
+        `Exported: ${new Date().toLocaleString()}`,
+        `Items: ${items.length} (${items.filter(f => f.priority === 'urgent').length} urgent, ${items.filter(f => f.priority === 'high').length} high)`,
+        `Project: ~/Desktop/GenusPupClub/`,
+        ``,
+        `## Instructions`,
+        `Implement the following client feedback. Each item includes the category, priority, which page/area is affected, what the client said, and technical context (screen size, page URL). Screenshots are referenced but must be viewed in the admin dashboard.`,
+        ``
+    ].join('\n');
 
     const body = items.map((f, i) => {
         const cat = getFeedbackCat(f.category);
@@ -5577,21 +5586,33 @@ const exportFeedbackForAI = (filter) => {
         const clientObj = f.clientId ? clients.find(c => c.id === f.clientId) : null;
         return [
             `---`,
-            `## ${i + 1}. [${cat.label.toUpperCase()}] ${f.summary}`,
-            `- **Priority:** ${pri.label}`,
-            `- **Area:** ${f.affects || 'General'}`,
-            `- **Client:** ${clientObj?.name || f.clientName || 'Anonymous'}`,
-            `- **Status:** ${getFeedbackStatus(f.status).label}`,
-            `- **Logged:** ${f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '—'}`,
-            f.details ? `- **Details:** ${f.details}` : '',
-            f.adminNotes ? `- **Admin Notes:** ${f.adminNotes}` : '',
-            f.screenshots?.length ? `- **Screenshots:** ${f.screenshots.length} attached (see dashboard for images)` : ''
+            `### ${i + 1}. [${pri.label.toUpperCase()}] [${cat.label}] ${f.summary}`,
+            `- **Page/Area:** ${f.affects || 'General'}`,
+            f.pageUrl ? `- **URL:** ${f.pageUrl}` : '',
+            `- **Client:** ${clientObj?.name || f.clientName || 'Anonymous'}${f.source ? ` (via ${f.source})` : ''}`,
+            `- **Date:** ${f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '—'}`,
+            f.screenSize ? `- **Screen:** ${f.screenSize}` : '',
+            f.details ? `\n**What they said:**\n${f.details}` : '',
+            f.adminNotes ? `\n**Admin notes:**\n${f.adminNotes}` : '',
+            f.screenshots?.length ? `\n**${f.screenshots.length} screenshot(s) attached** — view in admin dashboard Feedback Box` : ''
         ].filter(Boolean).join('\n');
     }).join('\n\n');
 
-    const fullText = header + '\n' + body + '\n\n---\nEnd of feedback export.';
+    const footer = [
+        ``,
+        `---`,
+        `## Priority Guide`,
+        `- **URGENT** = Site is broken / can't complete core actions`,
+        `- **HIGH** = Major issue affecting client experience`,
+        `- **MEDIUM** = Should fix, improves quality`,
+        `- **LOW** = Nice to have / minor polish`,
+        ``,
+        `Implement in priority order. Mark each as "implemented" in the Feedback Box when done.`
+    ].join('\n');
+
+    const fullText = header + '\n' + body + '\n' + footer;
     navigator.clipboard.writeText(fullText).then(() => {
-        alert(`Copied ${items.length} feedback item(s) to clipboard!\n\nPaste into your AI and say:\n"Here's client feedback for my dog care website. Implement these changes."`);
+        alert(`Copied ${items.length} item(s) to clipboard!\n\nPaste into Claude and say:\n"Here's client feedback for my GenusPupClub site at ~/Desktop/GenusPupClub/. Implement these changes."`);
     });
 };
 
