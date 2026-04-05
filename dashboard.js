@@ -162,7 +162,7 @@ const renderTab = () => {
     sitters = load('sitters', sitters); reviews = load('reviews', reviews);
     messages = load('messages', []); businessSettings = load('settings', businessSettings);
 
-    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, emails: renderEmailCenter, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, approvals: renderApprovals, satisfaction: renderSatisfaction, feedback: renderFeedback, website: renderWebsiteEditor, settings: renderSettings };
+    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, emails: renderEmailCenter, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, approvals: renderApprovals, satisfaction: renderSatisfaction, feedback: renderFeedback, adminlab: renderAdminLab, settings: renderSettings };
     (views[activeTab] || renderOverview)();
 };
 
@@ -2003,158 +2003,489 @@ window.removeGalleryImage = (idx) => {
     renderGalleryPreview(gallery, 'cmsGalleryZone');
 };
 
-const renderWebsiteEditor = () => {
+// ============================================
+// ADMIN LAB — Ultra-Customizable Site Control Center
+// ============================================
+const DEFAULT_SITE_CONFIG = {
+    features: {
+        satisfactionSurveys: true, feedbackBox: true, editRequests: true, referrals: true,
+        loyaltyPoints: true, reportCards: true, photoGallery: true, smsNotifications: true,
+        emailNotifications: true, pushNotifications: false, waivers: true, infamyHall: true,
+        recurringBookings: true, packages: true, petTaxi: true, grooming: true,
+        checkinOut: true, invoices: true, staffAccounts: true, multiProperty: true
+    },
+    theme: {
+        primaryColor: '#FF6B35', secondaryColor: '#2D3436', accentColor: '#00B894', bgColor: '#FFFAF5',
+        textColor: '#2D3436', cardBg: '#FFFFFF', fontDisplay: 'Fredoka', fontBody: 'Inter',
+        borderRadius: 12, darkMode: false, animationLevel: 'full'
+    },
+    portal: {
+        sections: { dashboard: true, mybookings: true, mypets: true, payments: true, mymessages: true, loyalty: true, reviews: true, newbooking: true, profile: true },
+        customCursors: false, cursorStyle: 'paw', easterEggs: true, petBirthdays: true,
+        achievements: true, quickRebook: true, favoriteSitter: true, photoWall: true,
+        themeCustomizer: false, welcomeAnimation: true
+    },
+    homepage: {
+        sections: { hero: true, services: true, about: true, gallery: true, pricing: true, reviews: true, faq: true, cta: true, footer: true },
+        showNav: true, showLoginButton: true, showBookNowButton: true, stickyNav: true
+    },
+    gamification: {
+        badges: true, milestones: [
+            { id: 'first_visit', name: 'First Timer', icon: '🐾', description: 'Completed first visit', threshold: 1 },
+            { id: 'loyal_5', name: 'Loyal Pup', icon: '💛', description: '5 completed visits', threshold: 5 },
+            { id: 'loyal_10', name: 'Pack Member', icon: '🏅', description: '10 completed visits', threshold: 10 },
+            { id: 'loyal_25', name: 'Top Dog', icon: '👑', description: '25 completed visits', threshold: 25 },
+            { id: 'loyal_50', name: 'Legend', icon: '🌟', description: '50 completed visits', threshold: 50 },
+            { id: 'one_year', name: 'Anniversary Pup', icon: '🎂', description: '1 year member', threshold: 365 },
+            { id: 'big_spender', name: 'VIP', icon: '💎', description: 'Spent $500+', threshold: 500 },
+            { id: 'referral_king', name: 'Pack Builder', icon: '🤝', description: 'Referred 3+ friends', threshold: 3 }
+        ],
+        confettiOnBooking: true, soundEffects: false, loadingAnimations: true,
+        cursorStyle: 'paw', easterEggKonami: true, easterEggLogoClick: true, easterEggDogFacts: true
+    },
+    notifications: {
+        emailOnBooking: true, emailOnComplete: true, emailOnPayment: true, emailInvoice: true,
+        emailReminder24h: true, emailReminder1h: false, emailBirthday: true, emailReviewRequest: true,
+        smsOnBooking: false, smsReminder: false, smsBirthday: false,
+        autoReminder24h: true, autoReminder1h: false, autoThankYou: true
+    },
+    advanced: { customCSS: '', customJS: '' }
+};
+let labConfig = load('site_config', DEFAULT_SITE_CONFIG);
+if (!localStorage.getItem(DB_KEY + 'site_config')) save('site_config', labConfig);
+
+let labActiveTab = 'features';
+
+const labToggle = (path, val) => {
+    const keys = path.split('.');
+    let obj = labConfig;
+    for (let i = 0; i < keys.length - 1; i++) { if (!obj[keys[i]]) obj[keys[i]] = {}; obj = obj[keys[i]]; }
+    obj[keys[keys.length - 1]] = val;
+    save('site_config', labConfig);
+};
+const labGet = (path) => {
+    const keys = path.split('.');
+    let obj = labConfig;
+    for (const k of keys) { if (obj === undefined || obj === null) return undefined; obj = obj[k]; }
+    return obj;
+};
+
+const renderToggle = (label, path, description) => {
+    const val = labGet(path);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1"><strong style="font-size:.9rem">${label}</strong>${description ? `<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">${description}</div>` : ''}</div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
+            <input type="checkbox" ${val ? 'checked' : ''} onchange="labToggle('${path}',this.checked);renderAdminLab()" style="opacity:0;width:0;height:0">
+            <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:${val ? 'var(--success)' : '#ccc'};border-radius:26px;transition:.3s"></span>
+            <span style="position:absolute;top:3px;left:${val ? '25px' : '3px'};width:20px;height:20px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+        </label>
+    </div>`;
+};
+
+const renderAdminLab = () => {
+    labConfig = load('site_config', DEFAULT_SITE_CONFIG);
     siteContent = load('site_content', siteContent);
     const sc = siteContent;
+    const cfg = labConfig;
+
+    const tabs = [
+        { id: 'features', icon: '⚡', label: 'Features' },
+        { id: 'theme', icon: '🎨', label: 'Look & Feel' },
+        { id: 'portal', icon: '👤', label: 'Client Portal' },
+        { id: 'homepage', icon: '🏠', label: 'Homepage' },
+        { id: 'gamification', icon: '🏆', label: 'Gamification' },
+        { id: 'notifications', icon: '🔔', label: 'Notifications' },
+        { id: 'advanced', icon: '⚙️', label: 'Advanced' }
+    ];
 
     el.innerHTML = `
-        <div class="card" style="margin-bottom:16px;padding:16px;background:rgba(255,107,53,.03);border-left:4px solid var(--primary)">
-            <strong>Website Editor</strong> — Change any text, image, or color below and click Save. Changes appear on the homepage instantly.
-            <div style="margin-top:8px"><a href="index.html" target="_blank" class="btn btn-sm btn-ghost">Preview Site →</a></div>
+    <div style="margin-bottom:16px;padding:16px 20px;background:linear-gradient(135deg,rgba(255,107,53,.06),rgba(0,184,148,.04));border-radius:var(--radius);border-left:4px solid var(--primary);display:flex;justify-content:space-between;align-items:center">
+        <div>
+            <strong style="font-size:1.1rem;font-family:var(--font-display)">🧪 Admin Lab</strong>
+            <div style="font-size:.85rem;color:var(--text-muted);margin-top:2px">Your website, your rules. Every toggle, color, and feature — fully in your hands.</div>
         </div>
+        <a href="index.html" target="_blank" class="btn btn-sm btn-primary">Preview Site →</a>
+    </div>
 
-        <!-- HERO SECTION -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Hero Section</div>
-            <div class="form-group"><label class="form-label">Badge Text</label><input class="form-input" id="cmsBadge" value="${escHTML(sc.heroBadge)}"></div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Hero Title (line 1)</label><input class="form-input" id="cmsHeroTitle" value="${escHTML(sc.heroTitle)}"></div>
-                <div class="form-group"><label class="form-label">Hero Title (highlight)</label><input class="form-input" id="cmsHeroHighlight" value="${escHTML(sc.heroTitleHighlight)}" style="color:var(--primary);font-weight:700"></div>
-            </div>
-            <div class="form-group"><label class="form-label">Subtitle</label><textarea class="form-textarea" id="cmsHeroSub" rows="2">${escHTML(sc.heroSubtitle)}</textarea></div>
-            <div class="form-group">
-                <label class="form-label">Hero Image</label>
-                <div id="cmsHeroImgZone" class="photo-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--bg-alt)"
-                     ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='rgba(255,107,53,.05)'"
-                     ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)'"
-                     ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)';handlePhotoDrop(event,'cmsHeroImg','cmsHeroImgZone')"
-                     onclick="document.getElementById('cmsHeroImgFile').click()">
-                    ${sc.heroImage ? '<img src="' + escHTML(sc.heroImage) + '" style="width:120px;height:120px;object-fit:cover;border-radius:12px"><div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">Click or drag to replace</div>' : '<div style="font-size:2rem">📸</div><div style="font-size:.88rem;color:var(--text-muted)">Drag & drop image here or click to upload</div>'}
-                </div>
-                <input type="file" id="cmsHeroImgFile" accept="image/*" style="display:none" onchange="handlePhotoSelect(this,'cmsHeroImg','cmsHeroImgZone')">
-                <input type="hidden" id="cmsHeroImg" value="${escHTML(sc.heroImage)}">
-                ${sc.heroImage ? '<button type="button" class="btn btn-sm btn-ghost" style="margin-top:8px;color:var(--danger)" onclick="clearPhoto(\'cmsHeroImg\',\'cmsHeroImgZone\')">✕ Remove image</button>' : ''}
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
-                <div class="form-group"><label class="form-label">Stat 1 Number</label><input class="form-input" id="cmsStat1" value="${escHTML(sc.trustStat1)}"></div>
-                <div class="form-group"><label class="form-label">Stat 2 Number</label><input class="form-input" id="cmsStat2" value="${escHTML(sc.trustStat2)}"></div>
-                <div class="form-group"><label class="form-label">Stat 3 Number</label><input class="form-input" id="cmsStat3" value="${escHTML(sc.trustStat3)}"></div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-                <div class="form-group"><label class="form-label">Stat 1 Label</label><input class="form-input" id="cmsLabel1" value="${escHTML(sc.trustLabel1)}"></div>
-                <div class="form-group"><label class="form-label">Stat 2 Label</label><input class="form-input" id="cmsLabel2" value="${escHTML(sc.trustLabel2)}"></div>
-                <div class="form-group"><label class="form-label">Stat 3 Label</label><input class="form-input" id="cmsLabel3" value="${escHTML(sc.trustLabel3)}"></div>
-            </div>
+    <!-- LAB TABS -->
+    <div style="display:flex;gap:4px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px">
+        ${tabs.map(t => `<button class="btn btn-sm ${labActiveTab === t.id ? 'btn-primary' : 'btn-ghost'}" onclick="labActiveTab='${t.id}';renderAdminLab()" style="white-space:nowrap">${t.icon} ${t.label}</button>`).join('')}
+    </div>
+
+    <div id="labContent">
+    ${labActiveTab === 'features' ? renderLabFeatures(cfg) : ''}
+    ${labActiveTab === 'theme' ? renderLabTheme(cfg, sc) : ''}
+    ${labActiveTab === 'portal' ? renderLabPortal(cfg) : ''}
+    ${labActiveTab === 'homepage' ? renderLabHomepage(cfg, sc) : ''}
+    ${labActiveTab === 'gamification' ? renderLabGamification(cfg) : ''}
+    ${labActiveTab === 'notifications' ? renderLabNotifications(cfg) : ''}
+    ${labActiveTab === 'advanced' ? renderLabAdvanced(cfg) : ''}
+    </div>`;
+};
+
+// ---- TAB 1: FEATURES & TOGGLES ----
+const renderLabFeatures = (cfg) => `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Booking Features</div>
+        ${renderToggle('Recurring Bookings', 'features.recurringBookings', 'Allow clients to set up recurring weekly/monthly bookings with discounts')}
+        ${renderToggle('Packages & Bundles', 'features.packages', 'Offer multi-visit packages at discounted rates')}
+        ${renderToggle('Pet Taxi / Transport', 'features.petTaxi', 'Offer pickup and dropoff services')}
+        ${renderToggle('Grooming Services', 'features.grooming', 'Bath, brush, nail trim, full grooming menu')}
+        ${renderToggle('Check-In / Check-Out', 'features.checkin', 'Track dog check-in and check-out with timestamps')}
+        ${renderToggle('Booking Edit Requests', 'features.editRequests', 'Let clients request changes to their bookings (you approve/deny)')}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Client & Communication</div>
+        ${renderToggle('Email Notifications', 'features.emailNotifications', 'Confirmation emails, invoices, reminders')}
+        ${renderToggle('SMS Notifications', 'features.smsNotifications', 'Text message alerts to clients')}
+        ${renderToggle('Push Notifications', 'features.pushNotifications', 'Browser push notifications (requires HTTPS)')}
+        ${renderToggle('Photo Gallery', 'features.photoGallery', 'Upload and share photos from visits')}
+        ${renderToggle('Report Cards', 'features.reportCards', 'Post-visit report cards with ratings and notes')}
+        ${renderToggle('Waivers', 'features.waivers', 'Digital waiver signing before first visit')}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Revenue & Loyalty</div>
+        ${renderToggle('Invoices', 'features.invoices', 'Generate and email invoices on completion')}
+        ${renderToggle('Referral Program', 'features.referrals', 'Reward clients for referring friends')}
+        ${renderToggle('Loyalty Points', 'features.loyaltyPoints', 'Earn points per dollar spent, redeem for discounts')}
+        ${renderToggle('Satisfaction Surveys', 'features.satisfactionSurveys', 'Post-visit ratings and feedback from clients')}
+        ${renderToggle('Feedback Box', 'features.feedbackBox', 'Log client suggestions and complaints at drop-off')}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Admin & Operations</div>
+        ${renderToggle('Infamy Hall', 'features.infamyHall', 'Track problem dogs or difficult clients')}
+        ${renderToggle('Staff Accounts', 'features.staffAccounts', 'Multiple admin/sitter logins with role-based access')}
+        ${renderToggle('Multi-Property', 'features.multiProperty', 'Manage multiple care locations')}
+    </div>`;
+
+// ---- TAB 2: LOOK & FEEL ----
+const renderLabTheme = (cfg, sc) => `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Brand Colors</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">
+            <div class="form-group"><label class="form-label">Primary</label><input type="color" id="ltPrimary" value="${cfg.theme?.primaryColor || '#FF6B35'}" onchange="labToggle('theme.primaryColor',this.value)" style="width:100%;height:44px;border:none;cursor:pointer;border-radius:8px"></div>
+            <div class="form-group"><label class="form-label">Secondary</label><input type="color" id="ltSecondary" value="${cfg.theme?.secondaryColor || '#2D3436'}" onchange="labToggle('theme.secondaryColor',this.value)" style="width:100%;height:44px;border:none;cursor:pointer;border-radius:8px"></div>
+            <div class="form-group"><label class="form-label">Accent</label><input type="color" id="ltAccent" value="${cfg.theme?.accentColor || '#00B894'}" onchange="labToggle('theme.accentColor',this.value)" style="width:100%;height:44px;border:none;cursor:pointer;border-radius:8px"></div>
+            <div class="form-group"><label class="form-label">Background</label><input type="color" id="ltBg" value="${cfg.theme?.bgColor || '#FFFAF5'}" onchange="labToggle('theme.bgColor',this.value)" style="width:100%;height:44px;border:none;cursor:pointer;border-radius:8px"></div>
+            <div class="form-group"><label class="form-label">Text</label><input type="color" id="ltText" value="${cfg.theme?.textColor || '#2D3436'}" onchange="labToggle('theme.textColor',this.value)" style="width:100%;height:44px;border:none;cursor:pointer;border-radius:8px"></div>
+            <div class="form-group"><label class="form-label">Card BG</label><input type="color" id="ltCard" value="${cfg.theme?.cardBg || '#FFFFFF'}" onchange="labToggle('theme.cardBg',this.value)" style="width:100%;height:44px;border:none;cursor:pointer;border-radius:8px"></div>
         </div>
-
-        <!-- SERVICES SECTION -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Services Section</div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Section Title</label><input class="form-input" id="cmsSvcTitle" value="${escHTML(sc.servicesTitle)}"></div>
-                <div class="form-group"><label class="form-label">Section Subtitle</label><input class="form-input" id="cmsSvcSub" value="${escHTML(sc.servicesSubtitle)}"></div>
-            </div>
-            <p style="font-size:.82rem;color:var(--text-muted);margin-top:4px">Service cards are auto-generated from your Services list in Settings. Turn them on/off there.</p>
-        </div>
-
-        <!-- ABOUT SECTION -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">About Section</div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="cmsAboutTitle" value="${escHTML(sc.aboutTitle)}"></div>
-                <div class="form-group"><label class="form-label">Highlight Word</label><input class="form-input" id="cmsAboutHL" value="${escHTML(sc.aboutHighlight)}" style="color:var(--primary);font-weight:700"></div>
-            </div>
-            <div class="form-group"><label class="form-label">Paragraph 1</label><textarea class="form-textarea" id="cmsAbout1" rows="2">${escHTML(sc.aboutText1)}</textarea></div>
-            <div class="form-group"><label class="form-label">Paragraph 2</label><textarea class="form-textarea" id="cmsAbout2" rows="2">${escHTML(sc.aboutText2)}</textarea></div>
-            <div class="form-group">
-                <label class="form-label">About Image</label>
-                <div id="cmsAboutImgZone" class="photo-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--bg-alt)"
-                     ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='rgba(255,107,53,.05)'"
-                     ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)'"
-                     ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)';handlePhotoDrop(event,'cmsAboutImg','cmsAboutImgZone')"
-                     onclick="document.getElementById('cmsAboutImgFile').click()">
-                    ${sc.aboutImage ? '<img src="' + escHTML(sc.aboutImage) + '" style="width:120px;height:120px;object-fit:cover;border-radius:12px"><div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">Click or drag to replace</div>' : '<div style="font-size:2rem">📸</div><div style="font-size:.88rem;color:var(--text-muted)">Drag & drop image here or click to upload</div>'}
-                </div>
-                <input type="file" id="cmsAboutImgFile" accept="image/*" style="display:none" onchange="handlePhotoSelect(this,'cmsAboutImg','cmsAboutImgZone')">
-                <input type="hidden" id="cmsAboutImg" value="${escHTML(sc.aboutImage)}">
-                ${sc.aboutImage ? '<button type="button" class="btn btn-sm btn-ghost" style="margin-top:8px;color:var(--danger)" onclick="clearPhoto(\'cmsAboutImg\',\'cmsAboutImgZone\')">✕ Remove image</button>' : ''}
-            </div>
-            <div class="form-group"><label class="form-label">Quote</label><input class="form-input" id="cmsAboutQuote" value="${escHTML(sc.aboutQuote)}"></div>
-        </div>
-
-        <!-- GALLERY SECTION -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Photo Gallery</div>
-            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Manage your photo gallery. Drag and drop multiple images at once, or click to select.</p>
-            <div id="cmsGalleryZone" class="photo-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;cursor:pointer;transition:all .2s;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--bg-alt)"
-                 ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='rgba(255,107,53,.05)'"
-                 ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)'"
-                 ondrop="handleGalleryDrop(event,'cmsGalleryZone')"
-                 onclick="document.getElementById('cmsGalleryFile').click()">
-                <div style="font-size:2.5rem">🖼️</div>
-                <div style="font-size:.95rem;font-weight:500">Drop images or click to upload</div>
-                <div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">Upload multiple images at once</div>
-            </div>
-            <input type="file" id="cmsGalleryFile" accept="image/*" multiple style="display:none" onchange="handleGallerySelect(this,'cmsGalleryZone')">
-            <input type="hidden" id="cmsGalleryImages" value="${escHTML(JSON.stringify(sc.galleryImages || []))}">
-            <div id="cmsGalleryPreview" style="margin-top:16px">
-                ${sc.galleryImages && sc.galleryImages.length > 0 ? `
-                    <div style="display:flex;gap:12px;flex-wrap:wrap">
-                        ${sc.galleryImages.map((img, idx) => `
-                            <div style="position:relative;display:inline-block">
-                                <img src="${img}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
-                                <button type="button" onclick="removeGalleryImage(${idx})" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;padding:0;border-radius:50%;background:var(--danger);color:white;border:none;cursor:pointer;font-size:.75rem">✕</button>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
+        <!-- LIVE PREVIEW -->
+        <div style="margin-top:16px;padding:16px;border-radius:${cfg.theme?.borderRadius || 12}px;background:${cfg.theme?.bgColor || '#FFFAF5'};border:1px solid #ddd">
+            <div style="font-family:'${cfg.theme?.fontDisplay || 'Fredoka'}',sans-serif;font-size:1.1rem;font-weight:700;color:${cfg.theme?.primaryColor || '#FF6B35'}">Live Preview</div>
+            <div style="font-family:'${cfg.theme?.fontBody || 'Inter'}',sans-serif;font-size:.88rem;color:${cfg.theme?.textColor || '#2D3436'};margin-top:4px">This is how your site will look with these settings.</div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+                <span style="padding:6px 14px;background:${cfg.theme?.primaryColor || '#FF6B35'};color:#fff;border-radius:${cfg.theme?.borderRadius || 12}px;font-size:.82rem;font-weight:600">Book Now</span>
+                <span style="padding:6px 14px;background:${cfg.theme?.accentColor || '#00B894'};color:#fff;border-radius:${cfg.theme?.borderRadius || 12}px;font-size:.82rem;font-weight:600">Learn More</span>
             </div>
         </div>
-
-        <!-- PRICING SECTION -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Pricing Section</div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="cmsPriceTitle" value="${escHTML(sc.pricingTitle)}"></div>
-                <div class="form-group"><label class="form-label">Subtitle</label><input class="form-input" id="cmsPriceSub" value="${escHTML(sc.pricingSubtitle)}"></div>
-            </div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Typography</div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Display Font</label><select class="form-select" onchange="labToggle('theme.fontDisplay',this.value);renderAdminLab()">
+                ${['Fredoka', 'Poppins', 'Nunito', 'Quicksand', 'Baloo 2', 'Comfortaa'].map(f => `<option ${cfg.theme?.fontDisplay === f ? 'selected' : ''}>${f}</option>`).join('')}
+            </select></div>
+            <div class="form-group"><label class="form-label">Body Font</label><select class="form-select" onchange="labToggle('theme.fontBody',this.value);renderAdminLab()">
+                ${['Inter', 'Roboto', 'Open Sans', 'Lato', 'Source Sans 3', 'Nunito Sans'].map(f => `<option ${cfg.theme?.fontBody === f ? 'selected' : ''}>${f}</option>`).join('')}
+            </select></div>
         </div>
-
-        <!-- CTA / BOOKING SECTION -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Booking Section (CTA)</div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="cmsCtaTitle" value="${escHTML(sc.ctaTitle)}"></div>
-                <div class="form-group"><label class="form-label">Highlight</label><input class="form-input" id="cmsCtaHL" value="${escHTML(sc.ctaHighlight)}"></div>
-            </div>
-            <div class="form-group"><label class="form-label">Subtitle</label><input class="form-input" id="cmsCtaSub" value="${escHTML(sc.ctaSubtitle)}"></div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Layout & Effects</div>
+        <div class="form-group">
+            <label class="form-label">Corner Radius: ${cfg.theme?.borderRadius || 12}px</label>
+            <input type="range" min="0" max="24" value="${cfg.theme?.borderRadius || 12}" oninput="labToggle('theme.borderRadius',parseInt(this.value));this.previousElementSibling.textContent='Corner Radius: '+this.value+'px'" style="width:100%">
         </div>
-
-        <!-- COLORS -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Brand Colors</div>
-            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
-                <div class="form-group"><label class="form-label">Primary</label><input type="color" id="cmsColor1" value="${sc.primaryColor}" style="width:100%;height:40px;border:none;cursor:pointer;border-radius:8px"></div>
-                <div class="form-group"><label class="form-label">Secondary</label><input type="color" id="cmsColor2" value="${sc.secondaryColor}" style="width:100%;height:40px;border:none;cursor:pointer;border-radius:8px"></div>
-                <div class="form-group"><label class="form-label">Accent</label><input type="color" id="cmsColor3" value="${sc.accentColor}" style="width:100%;height:40px;border:none;cursor:pointer;border-radius:8px"></div>
-                <div class="form-group"><label class="form-label">Background</label><input type="color" id="cmsColor4" value="${sc.bgColor}" style="width:100%;height:40px;border:none;cursor:pointer;border-radius:8px"></div>
-            </div>
-        </div>
-
-        <!-- FOOTER -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Footer</div>
-            <div class="form-group"><label class="form-label">Footer Description</label><textarea class="form-textarea" id="cmsFooter" rows="2">${escHTML(sc.footerText)}</textarea></div>
-        </div>
-
-        <div style="position:sticky;bottom:16px;background:var(--card-bg);padding:16px;border-radius:12px;box-shadow:0 -4px 20px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:.88rem;color:var(--text-muted)">Changes save to localStorage and appear on the homepage instantly.</span>
+        <div class="form-group">
+            <label class="form-label">Animation Level</label>
             <div style="display:flex;gap:8px">
-                <button class="btn btn-ghost" onclick="resetSiteContent()">Reset to Defaults</button>
-                <button class="btn btn-primary" onclick="saveSiteContent()">Save All Changes</button>
+                ${['none', 'subtle', 'full'].map(l => `<button class="btn btn-sm ${cfg.theme?.animationLevel === l ? 'btn-primary' : 'btn-ghost'}" onclick="labToggle('theme.animationLevel','${l}');renderAdminLab()">${l === 'none' ? 'None' : l === 'subtle' ? 'Subtle' : 'Full'}</button>`).join('')}
             </div>
         </div>
-    `;
+        ${renderToggle('Dark Mode', 'theme.darkMode', 'Dark theme across the entire site')}
+    </div>`;
+
+// ---- TAB 3: CLIENT PORTAL CONTROLS ----
+const renderLabPortal = (cfg) => `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Portal Sections</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Toggle which sections clients can see in their portal.</p>
+        ${renderToggle('Dashboard', 'portal.sections.dashboard', 'Overview with upcoming bookings and stats')}
+        ${renderToggle('My Bookings', 'portal.sections.mybookings', 'View and manage their bookings')}
+        ${renderToggle('My Pets', 'portal.sections.mypets', 'Pet profiles with health info, photos, history')}
+        ${renderToggle('Payments', 'portal.sections.payments', 'View invoices, make payments, see balance')}
+        ${renderToggle('Messages', 'portal.sections.mymessages', 'Direct messaging with sitters/admin')}
+        ${renderToggle('Rewards & Referrals', 'portal.sections.loyalty', 'Loyalty points, referral codes, rewards')}
+        ${renderToggle('Leave a Review', 'portal.sections.reviews', 'Post-visit review form')}
+        ${renderToggle('Book Service', 'portal.sections.newbooking', 'Self-service booking form')}
+        ${renderToggle('My Profile', 'portal.sections.profile', 'Edit name, phone, address, emergency contact, photo')}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Portal Experience</div>
+        ${renderToggle('Custom Cursors', 'portal.customCursors', 'Fun paw/bone cursors on the client portal')}
+        <div style="padding:8px 0 12px;margin-left:20px;${cfg.portal?.customCursors ? '' : 'opacity:.4;pointer-events:none'}">
+            <label class="form-label">Cursor Style</label>
+            <div style="display:flex;gap:8px">
+                ${[{id:'paw',icon:'🐾',label:'Paw'},{id:'bone',icon:'🦴',label:'Bone'},{id:'tennis',icon:'🎾',label:'Ball'},{id:'heart',icon:'💛',label:'Heart'}].map(c => `<button class="btn btn-sm ${cfg.portal?.cursorStyle === c.id ? 'btn-primary' : 'btn-ghost'}" onclick="labToggle('portal.cursorStyle','${c.id}');renderAdminLab()">${c.icon} ${c.label}</button>`).join('')}
+            </div>
+        </div>
+        ${renderToggle('Easter Eggs', 'portal.easterEggs', 'Hidden surprises throughout the portal')}
+        ${renderToggle('Pet Birthday Celebrations', 'portal.petBirthdays', 'Confetti and banner on pet birthdays')}
+        ${renderToggle('Achievement Badges', 'portal.achievements', 'Milestone badges (first visit, 10th visit, etc.)')}
+        ${renderToggle('Quick Rebook', 'portal.quickRebook', 'One-click button to rebook last service')}
+        ${renderToggle('Favorite Sitter', 'portal.favoriteSitter', 'Let clients mark a preferred sitter')}
+        ${renderToggle('Photo Wall', 'portal.photoWall', 'Gallery of photos from past visits on the dashboard')}
+        ${renderToggle('Welcome Animation', 'portal.welcomeAnimation', 'Animated greeting when client logs in')}
+        ${renderToggle('Let Clients Customize Theme', 'portal.themeCustomizer', 'Clients can pick their own portal colors')}
+    </div>`;
+
+// ---- TAB 4: HOMEPAGE EDITOR ----
+const renderLabHomepage = (cfg, sc) => `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Homepage Sections</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Toggle which sections appear on your public homepage.</p>
+        ${renderToggle('Hero Banner', 'homepage.sections.hero', 'Big headline, image, and trust stats')}
+        ${renderToggle('Services', 'homepage.sections.services', 'Service cards with descriptions and prices')}
+        ${renderToggle('About Us', 'homepage.sections.about', 'Your story, mission, and team photo')}
+        ${renderToggle('Photo Gallery', 'homepage.sections.gallery', 'Photo grid of happy pups')}
+        ${renderToggle('Pricing Table', 'homepage.sections.pricing', 'Transparent pricing with packages')}
+        ${renderToggle('Reviews', 'homepage.sections.reviews', 'Client testimonials and star ratings')}
+        ${renderToggle('FAQ', 'homepage.sections.faq', 'Frequently asked questions accordion')}
+        ${renderToggle('Call to Action', 'homepage.sections.cta', 'Big booking CTA at the bottom')}
+        ${renderToggle('Footer', 'homepage.sections.footer', 'Contact info, links, social')}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Navigation</div>
+        ${renderToggle('Show Navigation Bar', 'homepage.showNav', 'Top navigation with links')}
+        ${renderToggle('Sticky Nav', 'homepage.stickyNav', 'Nav stays fixed at the top when scrolling')}
+        ${renderToggle('Show Login Button', 'homepage.showLoginButton', '"My Account" button in nav')}
+        ${renderToggle('Show Book Now Button', 'homepage.showBookNowButton', 'Prominent CTA button in nav')}
+    </div>
+    <!-- CONTENT EDITOR (absorbed from old Website Editor) -->
+    <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Hero Content</div>
+        <div class="form-group"><label class="form-label">Badge Text</label><input class="form-input" id="cmsBadge" value="${escHTML(sc.heroBadge)}"></div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="cmsHeroTitle" value="${escHTML(sc.heroTitle)}"></div>
+            <div class="form-group"><label class="form-label">Highlight</label><input class="form-input" id="cmsHeroHighlight" value="${escHTML(sc.heroTitleHighlight)}" style="color:var(--primary);font-weight:700"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Subtitle</label><textarea class="form-textarea" id="cmsHeroSub" rows="2">${escHTML(sc.heroSubtitle)}</textarea></div>
+        <div class="form-group">
+            <label class="form-label">Hero Image</label>
+            <div id="cmsHeroImgZone" class="photo-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--bg)"
+                 ondragover="event.preventDefault();this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'"
+                 ondrop="event.preventDefault();this.style.borderColor='var(--border)';handlePhotoDrop(event,'cmsHeroImg','cmsHeroImgZone')" onclick="document.getElementById('cmsHeroImgFile').click()">
+                ${sc.heroImage ? '<img src="' + escHTML(sc.heroImage) + '" style="width:100px;height:100px;object-fit:cover;border-radius:12px">' : '<div style="font-size:2rem">📸</div><div style="font-size:.82rem;color:var(--text-muted)">Drag or click to upload</div>'}
+            </div>
+            <input type="file" id="cmsHeroImgFile" accept="image/*" style="display:none" onchange="handlePhotoSelect(this,'cmsHeroImg','cmsHeroImgZone')">
+            <input type="hidden" id="cmsHeroImg" value="${escHTML(sc.heroImage)}">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:8px">
+            <div class="form-group"><label class="form-label">Stat 1</label><input class="form-input" id="cmsStat1" value="${escHTML(sc.trustStat1)}"><input class="form-input" id="cmsLabel1" value="${escHTML(sc.trustLabel1)}" style="margin-top:4px" placeholder="Label"></div>
+            <div class="form-group"><label class="form-label">Stat 2</label><input class="form-input" id="cmsStat2" value="${escHTML(sc.trustStat2)}"><input class="form-input" id="cmsLabel2" value="${escHTML(sc.trustLabel2)}" style="margin-top:4px" placeholder="Label"></div>
+            <div class="form-group"><label class="form-label">Stat 3</label><input class="form-input" id="cmsStat3" value="${escHTML(sc.trustStat3)}"><input class="form-input" id="cmsLabel3" value="${escHTML(sc.trustLabel3)}" style="margin-top:4px" placeholder="Label"></div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">About Section</div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="cmsAboutTitle" value="${escHTML(sc.aboutTitle)}"></div>
+            <div class="form-group"><label class="form-label">Highlight</label><input class="form-input" id="cmsAboutHL" value="${escHTML(sc.aboutHighlight)}" style="color:var(--primary);font-weight:700"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Paragraph 1</label><textarea class="form-textarea" id="cmsAbout1" rows="2">${escHTML(sc.aboutText1)}</textarea></div>
+        <div class="form-group"><label class="form-label">Paragraph 2</label><textarea class="form-textarea" id="cmsAbout2" rows="2">${escHTML(sc.aboutText2)}</textarea></div>
+        <div class="form-group"><label class="form-label">Quote</label><input class="form-input" id="cmsAboutQuote" value="${escHTML(sc.aboutQuote)}"></div>
+        <div class="form-group">
+            <label class="form-label">About Image</label>
+            <div id="cmsAboutImgZone" style="border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;min-height:80px;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bg)"
+                 ondragover="event.preventDefault();this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'"
+                 ondrop="event.preventDefault();this.style.borderColor='var(--border)';handlePhotoDrop(event,'cmsAboutImg','cmsAboutImgZone')" onclick="document.getElementById('cmsAboutImgFile').click()">
+                ${sc.aboutImage ? '<img src="' + escHTML(sc.aboutImage) + '" style="width:80px;height:80px;object-fit:cover;border-radius:8px">' : '📸 Upload'}
+            </div>
+            <input type="file" id="cmsAboutImgFile" accept="image/*" style="display:none" onchange="handlePhotoSelect(this,'cmsAboutImg','cmsAboutImgZone')">
+            <input type="hidden" id="cmsAboutImg" value="${escHTML(sc.aboutImage)}">
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Services & Pricing Text</div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Services Title</label><input class="form-input" id="cmsSvcTitle" value="${escHTML(sc.servicesTitle)}"></div>
+            <div class="form-group"><label class="form-label">Services Subtitle</label><input class="form-input" id="cmsSvcSub" value="${escHTML(sc.servicesSubtitle)}"></div>
+        </div>
+        <div class="form-row" style="margin-top:8px">
+            <div class="form-group"><label class="form-label">Pricing Title</label><input class="form-input" id="cmsPriceTitle" value="${escHTML(sc.pricingTitle)}"></div>
+            <div class="form-group"><label class="form-label">Pricing Subtitle</label><input class="form-input" id="cmsPriceSub" value="${escHTML(sc.pricingSubtitle)}"></div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">CTA & Footer</div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">CTA Title</label><input class="form-input" id="cmsCtaTitle" value="${escHTML(sc.ctaTitle)}"></div>
+            <div class="form-group"><label class="form-label">CTA Highlight</label><input class="form-input" id="cmsCtaHL" value="${escHTML(sc.ctaHighlight)}"></div>
+        </div>
+        <div class="form-group"><label class="form-label">CTA Subtitle</label><input class="form-input" id="cmsCtaSub" value="${escHTML(sc.ctaSubtitle)}"></div>
+        <div class="form-group"><label class="form-label">Footer Text</label><textarea class="form-textarea" id="cmsFooter" rows="2">${escHTML(sc.footerText)}</textarea></div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Photo Gallery</div>
+        <div id="cmsGalleryZone" style="border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;cursor:pointer;background:var(--bg)"
+             ondragover="event.preventDefault();this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'"
+             ondrop="handleGalleryDrop(event,'cmsGalleryZone')" onclick="document.getElementById('cmsGalleryFile').click()">
+            <div style="font-size:2rem">🖼️</div><div style="font-size:.88rem;color:var(--text-muted)">Drop images or click to upload</div>
+        </div>
+        <input type="file" id="cmsGalleryFile" accept="image/*" multiple style="display:none" onchange="handleGallerySelect(this,'cmsGalleryZone')">
+        <input type="hidden" id="cmsGalleryImages" value="${escHTML(JSON.stringify(sc.galleryImages || []))}">
+        <div id="cmsGalleryPreview" style="margin-top:12px">${sc.galleryImages?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${sc.galleryImages.map((img, idx) => `<div style="position:relative"><img src="${img}" style="width:70px;height:70px;object-fit:cover;border-radius:8px"><button onclick="removeGalleryImage(${idx})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:.65rem">✕</button></div>`).join('')}</div>` : ''}</div>
+    </div>
+    <div style="position:sticky;bottom:16px;background:var(--card-bg);padding:14px;border-radius:12px;box-shadow:0 -4px 20px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center;z-index:10">
+        <span style="font-size:.85rem;color:var(--text-muted)">Changes appear on the homepage instantly.</span>
+        <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="resetSiteContent()">Reset</button>
+            <button class="btn btn-primary" onclick="saveSiteContent()">Save Homepage</button>
+        </div>
+    </div>`;
+
+// ---- TAB 5: GAMIFICATION & FUN ----
+const renderLabGamification = (cfg) => `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Achievement Badges</div>
+        ${renderToggle('Enable Badges', 'gamification.badges', 'Clients earn badges for milestones')}
+        <div style="${cfg.gamification?.badges ? '' : 'opacity:.4;pointer-events:none'}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:12px">
+                ${(cfg.gamification?.milestones || DEFAULT_SITE_CONFIG.gamification.milestones).map(m => `
+                    <div style="padding:12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;gap:10px">
+                        <span style="font-size:1.5rem">${m.icon}</span>
+                        <div><strong style="font-size:.85rem">${escHTML(m.name)}</strong><div style="font-size:.72rem;color:var(--text-muted)">${escHTML(m.description)}</div></div>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-sm btn-ghost" style="margin-top:10px" onclick="addCustomMilestone()">+ Add Custom Badge</button>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Fun Effects</div>
+        ${renderToggle('Confetti on Booking', 'gamification.confettiOnBooking', 'Burst of confetti when a booking is confirmed')}
+        ${renderToggle('Sound Effects', 'gamification.soundEffects', 'Subtle audio feedback on actions (bark on booking, etc.)')}
+        ${renderToggle('Loading Animations', 'gamification.loadingAnimations', 'Animated paw prints during page loads')}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Custom Cursor</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${[{id:'default',icon:'🖱️',label:'Default'},{id:'paw',icon:'🐾',label:'Paw Print'},{id:'bone',icon:'🦴',label:'Bone'},{id:'tennis',icon:'🎾',label:'Tennis Ball'},{id:'heart',icon:'💛',label:'Heart'}].map(c => `<button class="btn btn-sm ${cfg.gamification?.cursorStyle === c.id ? 'btn-primary' : 'btn-ghost'}" onclick="labToggle('gamification.cursorStyle','${c.id}');renderAdminLab()">${c.icon} ${c.label}</button>`).join('')}
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Easter Eggs</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Hidden surprises that delight clients who discover them.</p>
+        ${renderToggle('Konami Code', 'gamification.easterEggKonami', '↑↑↓↓←→←→BA — triggers a hidden animation')}
+        ${renderToggle('Logo Secret Click', 'gamification.easterEggLogoClick', 'Click the logo 7 times for a surprise')}
+        ${renderToggle('Random Dog Facts', 'gamification.easterEggDogFacts', 'Hidden dog facts appear on hover/idle')}
+    </div>`;
+
+// ---- TAB 6: NOTIFICATIONS ----
+const renderLabNotifications = (cfg) => `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Email Notifications</div>
+        ${renderToggle('Booking Confirmation', 'notifications.emailOnBooking', 'Email when a new booking is created')}
+        ${renderToggle('Visit Complete', 'notifications.emailOnComplete', 'Email when visit is marked as completed')}
+        ${renderToggle('Payment Receipt', 'notifications.emailOnPayment', 'Email receipt after payment')}
+        ${renderToggle('Invoice', 'notifications.emailInvoice', 'Send detailed invoice on completion')}
+        ${renderToggle('24hr Reminder', 'notifications.emailReminder24h', 'Reminder email 24 hours before visit')}
+        ${renderToggle('1hr Reminder', 'notifications.emailReminder1h', 'Reminder email 1 hour before visit')}
+        ${renderToggle('Birthday Email', 'notifications.emailBirthday', 'Happy birthday email for pets')}
+        ${renderToggle('Review Request', 'notifications.emailReviewRequest', 'Ask for review after completed visit')}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">SMS Notifications</div>
+        ${renderToggle('SMS on Booking', 'notifications.smsOnBooking', 'Text confirmation when booked')}
+        ${renderToggle('SMS Reminder', 'notifications.smsReminder', 'Text reminder before visit')}
+        ${renderToggle('SMS Pet Birthday', 'notifications.smsBirthday', 'Birthday text for pets')}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Auto-Actions</div>
+        ${renderToggle('24hr Auto-Reminder', 'notifications.autoReminder24h', 'Automatically send reminder 24hrs before')}
+        ${renderToggle('1hr Auto-Reminder', 'notifications.autoReminder1h', 'Automatically send reminder 1hr before')}
+        ${renderToggle('Auto Thank-You', 'notifications.autoThankYou', 'Automatically send thank-you after visit')}
+    </div>`;
+
+// ---- TAB 7: ADVANCED ----
+const renderLabAdvanced = (cfg) => `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Custom CSS</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Inject custom CSS into the homepage and portal. For power users only.</p>
+        <textarea class="form-textarea" id="advCSS" rows="8" style="font-family:monospace;font-size:.82rem" placeholder="/* Your custom CSS here */\n.hero { background: linear-gradient(...); }">${escHTML(cfg.advanced?.customCSS || '')}</textarea>
+        <button class="btn btn-sm btn-primary" style="margin-top:8px" onclick="labToggle('advanced.customCSS',document.getElementById('advCSS').value);if(typeof GPC_NOTIFY!=='undefined')GPC_NOTIFY.showToast('Saved','Custom CSS saved','success')">Save CSS</button>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Custom JavaScript</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Inject custom JS into the homepage and portal. Runs after page load.</p>
+        <textarea class="form-textarea" id="advJS" rows="8" style="font-family:monospace;font-size:.82rem" placeholder="// Your custom JS here\nconsole.log('Hello from Admin Lab!');">${escHTML(cfg.advanced?.customJS || '')}</textarea>
+        <button class="btn btn-sm btn-primary" style="margin-top:8px" onclick="labToggle('advanced.customJS',document.getElementById('advJS').value);if(typeof GPC_NOTIFY!=='undefined')GPC_NOTIFY.showToast('Saved','Custom JS saved','success')">Save JS</button>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Data Management</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-primary" onclick="exportAllData()">📦 Export All Data (JSON)</button>
+            <button class="btn btn-sm btn-ghost" onclick="document.getElementById('importFile').click()">📥 Import Data</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importAllData(this)">
+            <button class="btn btn-sm btn-ghost" onclick="exportLabConfig()">⚙️ Export Config Only</button>
+        </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--danger)">
+        <div class="card-title" style="margin-bottom:12px;color:var(--danger)">Danger Zone</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="if(confirm('Reset ALL Admin Lab settings to defaults? This cannot be undone.')){localStorage.removeItem('${DB_KEY}site_config');labConfig=JSON.parse(JSON.stringify(DEFAULT_SITE_CONFIG));save('site_config',labConfig);renderAdminLab()}">Reset Lab Config</button>
+            <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="resetSiteContent()">Reset Homepage Content</button>
+            <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="if(confirm('⚠️ This will DELETE ALL GenusPupClub data — bookings, clients, pets, payments, everything. Are you absolutely sure?')&&confirm('LAST CHANCE — this is permanent. Continue?')){Object.keys(localStorage).filter(k=>k.startsWith('${DB_KEY}')).forEach(k=>localStorage.removeItem(k));location.reload()}">Factory Reset (Delete Everything)</button>
+        </div>
+    </div>`;
+
+// ---- Admin Lab helper functions ----
+const addCustomMilestone = () => {
+    const name = prompt('Badge name (e.g. "Super Fan"):');
+    if (!name) return;
+    const icon = prompt('Emoji icon (e.g. 🏆):') || '⭐';
+    const desc = prompt('Description:') || '';
+    const threshold = parseInt(prompt('Threshold (number of visits/dollars):') || '10');
+    if (!labConfig.gamification) labConfig.gamification = {};
+    if (!labConfig.gamification.milestones) labConfig.gamification.milestones = [...DEFAULT_SITE_CONFIG.gamification.milestones];
+    labConfig.gamification.milestones.push({ id: 'custom_' + uid(), name, icon, description: desc, threshold });
+    save('site_config', labConfig);
+    renderAdminLab();
+};
+
+const exportAllData = () => {
+    const data = {};
+    Object.keys(localStorage).filter(k => k.startsWith(DB_KEY)).forEach(k => {
+        try { data[k.replace(DB_KEY, '')] = JSON.parse(localStorage.getItem(k)); } catch { data[k.replace(DB_KEY, '')] = localStorage.getItem(k); }
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `genuspupclub-backup-${todayStr()}.json`; a.click();
+    URL.revokeObjectURL(a.href);
+};
+
+const importAllData = (input) => {
+    const file = input.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!confirm(`Import ${Object.keys(data).length} data keys? This will overwrite existing data.`)) return;
+            Object.entries(data).forEach(([key, val]) => { localStorage.setItem(DB_KEY + key, JSON.stringify(val)); });
+            alert('Data imported! Reloading...');
+            location.reload();
+        } catch { alert('Invalid JSON file.'); }
+    };
+    reader.readAsText(file);
+};
+
+const exportLabConfig = () => {
+    const blob = new Blob([JSON.stringify(labConfig, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `gpc-lab-config-${todayStr()}.json`; a.click();
+    URL.revokeObjectURL(a.href);
 };
 
 const saveSiteContent = () => {

@@ -61,10 +61,23 @@ document.querySelectorAll('.nav-item').forEach(item => {
 });
 document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
 
+// ---- Site Config (from Admin Lab) ----
+const getSiteConfig = () => load('site_config', {});
+const cfgEnabled = (path) => {
+    const keys = path.split('.');
+    let obj = getSiteConfig();
+    for (const k of keys) { if (obj === undefined || obj === null) return true; obj = obj[k]; }
+    return obj !== false;
+};
+
 const renderTab = () => {
     refreshData();
     const views = { dashboard: renderDashboard, mybookings: renderMyBookings, mypets: renderMyPets, payments: renderPayments, loyalty: renderMyLoyalty, mymessages: renderMyMessages, newbooking: renderNewBooking, reviews: renderMyReviews, profile: renderProfile };
+    // Respect portal section toggles from Admin Lab
+    const cfg = getSiteConfig();
+    if (cfg.portal?.sections && cfg.portal.sections[activeTab] === false) { activeTab = 'dashboard'; }
     (views[activeTab] || renderDashboard)();
+    applyPortalConfig();
 };
 
 const logout = () => { sessionStorage.removeItem('gpc_client_auth'); window.location.href = 'login.html'; };
@@ -994,6 +1007,122 @@ const submitSurvey = (bookingId) => {
     alert('Thank you for your feedback! 🐾');
     activeTab = 'mybookings';
     renderTab();
+};
+
+// ---- Apply Admin Lab Config to Portal ----
+const applyPortalConfig = () => {
+    const cfg = getSiteConfig();
+
+    // Hide disabled portal sections from nav
+    if (cfg.portal?.sections) {
+        document.querySelectorAll('.nav-item[data-tab]').forEach(link => {
+            const tab = link.dataset.tab;
+            if (cfg.portal.sections[tab] === false) link.style.display = 'none';
+            else link.style.display = '';
+        });
+    }
+
+    // Custom cursors
+    if (cfg.portal?.customCursors || cfg.gamification?.cursorStyle !== 'default') {
+        const style = cfg.portal?.cursorStyle || cfg.gamification?.cursorStyle || 'paw';
+        const cursors = {
+            paw: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='28' font-size='28'>🐾</text></svg>",
+            bone: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='28' font-size='28'>🦴</text></svg>",
+            tennis: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='28' font-size='28'>🎾</text></svg>",
+            heart: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='28' font-size='28'>💛</text></svg>"
+        };
+        if (cfg.portal?.customCursors && cursors[style]) {
+            document.body.style.cursor = `url("${cursors[style]}") 4 4, auto`;
+        } else {
+            document.body.style.cursor = '';
+        }
+    }
+
+    // Theme colors
+    if (cfg.theme) {
+        const root = document.documentElement;
+        if (cfg.theme.primaryColor) root.style.setProperty('--primary', cfg.theme.primaryColor);
+        if (cfg.theme.accentColor) root.style.setProperty('--accent', cfg.theme.accentColor);
+        if (cfg.theme.bgColor) root.style.setProperty('--bg', cfg.theme.bgColor);
+        if (cfg.theme.borderRadius !== undefined) root.style.setProperty('--radius', cfg.theme.borderRadius + 'px');
+        if (cfg.theme.darkMode) {
+            root.style.setProperty('--bg', '#1a1a2e'); root.style.setProperty('--card-bg', '#16213e');
+            root.style.setProperty('--text', '#eee'); root.style.setProperty('--text-light', '#bbb');
+            root.style.setProperty('--text-muted', '#888'); root.style.setProperty('--border', '#2a2a4a');
+            root.style.setProperty('--sidebar-bg', '#0f0f23');
+        }
+    }
+
+    // Easter eggs
+    if (cfg.portal?.easterEggs || cfg.gamification?.easterEggKonami) {
+        if (!window._konamiWired) {
+            window._konamiWired = true;
+            let seq = []; const code = [38,38,40,40,37,39,37,39,66,65];
+            document.addEventListener('keydown', (e) => {
+                seq.push(e.keyCode); seq = seq.slice(-10);
+                if (seq.join(',') === code.join(',')) {
+                    document.body.style.transition = 'transform .5s';
+                    document.body.style.transform = 'rotate(360deg)';
+                    setTimeout(() => { document.body.style.transform = ''; }, 600);
+                    alert('🐾 You found the secret! GenusPupClub loves you! 🐶');
+                }
+            });
+        }
+    }
+
+    // Dog facts on idle
+    if (cfg.gamification?.easterEggDogFacts) {
+        if (!window._dogFactsWired) {
+            window._dogFactsWired = true;
+            const facts = [
+                "Dogs can smell up to 100,000 times better than humans!",
+                "A dog's nose print is unique, like a human fingerprint.",
+                "Dogs dream just like humans — they even twitch in their sleep!",
+                "The average dog can understand about 165 words.",
+                "Dogs can detect diseases like cancer through scent.",
+                "A wagging tail doesn't always mean a happy dog — direction matters!",
+                "Dogs have three eyelids — the third one keeps their eyes moist.",
+                "Puppies are born deaf — they can't hear until about 3 weeks old.",
+                "A greyhound could beat a cheetah in a long-distance race.",
+                "Dogs can be trained to detect low blood sugar in diabetics."
+            ];
+            let idle;
+            const resetIdle = () => { clearTimeout(idle); idle = setTimeout(() => {
+                const fact = facts[Math.floor(Math.random() * facts.length)];
+                const popup = document.createElement('div');
+                popup.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:14px 20px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);font-size:.88rem;max-width:300px;z-index:9999;border-left:4px solid var(--primary);animation:fadeIn .3s';
+                popup.innerHTML = `<strong>🐕 Did you know?</strong><br>${fact}`;
+                document.body.appendChild(popup);
+                setTimeout(() => popup.remove(), 8000);
+            }, 45000); };
+            ['mousemove', 'keydown', 'scroll', 'click'].forEach(ev => document.addEventListener(ev, resetIdle));
+            resetIdle();
+        }
+    }
+
+    // Welcome animation
+    if (cfg.portal?.welcomeAnimation && !window._welcomeShown) {
+        window._welcomeShown = true;
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
+        overlay.innerHTML = `<div style="background:#fff;padding:30px 40px;border-radius:16px;text-align:center;animation:fadeIn .4s">
+            <div style="font-size:3rem;margin-bottom:12px">🐶</div>
+            <h2 style="font-family:var(--font-display);margin:0 0 8px">Welcome back, ${esc(userName)}!</h2>
+            <p style="color:var(--text-muted);margin:0">Your pups missed you.</p>
+        </div>`;
+        document.body.appendChild(overlay);
+        setTimeout(() => { overlay.style.opacity = '0'; overlay.style.transition = 'opacity .3s'; setTimeout(() => overlay.remove(), 300); }, 2000);
+    }
+
+    // Custom CSS/JS from Admin Lab
+    if (cfg.advanced?.customCSS && !document.getElementById('gpc-custom-css')) {
+        const style = document.createElement('style'); style.id = 'gpc-custom-css'; style.textContent = cfg.advanced.customCSS;
+        document.head.appendChild(style);
+    }
+    if (cfg.advanced?.customJS && !window._customJSRan) {
+        window._customJSRan = true;
+        try { new Function(cfg.advanced.customJS)(); } catch (e) { console.warn('Admin Lab custom JS error:', e); }
+    }
 };
 
 // Init

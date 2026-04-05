@@ -424,5 +424,80 @@
     <script src="db.js"></script>
     <script src="notifications.js" defer></script>
     <script src="app.js" defer></script>
+    <script>
+    // Admin Lab Config — apply site-wide settings
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const cfg = JSON.parse(localStorage.getItem('gpc_site_config') || '{}');
+
+            // Theme colors
+            if (cfg.theme) {
+                const r = document.documentElement;
+                if (cfg.theme.primaryColor) r.style.setProperty('--primary', cfg.theme.primaryColor);
+                if (cfg.theme.accentColor) r.style.setProperty('--accent', cfg.theme.accentColor);
+                if (cfg.theme.bgColor) r.style.setProperty('--bg', cfg.theme.bgColor);
+                if (cfg.theme.textColor) r.style.setProperty('--text', cfg.theme.textColor);
+                if (cfg.theme.borderRadius !== undefined) r.style.setProperty('--radius', cfg.theme.borderRadius + 'px');
+                if (cfg.theme.darkMode) {
+                    r.style.setProperty('--bg', '#1a1a2e'); r.style.setProperty('--card', '#16213e');
+                    r.style.setProperty('--text', '#eee'); r.style.setProperty('--text-light', '#bbb');
+                }
+            }
+
+            // Homepage section visibility
+            if (cfg.homepage?.sections) {
+                const map = { hero: '.hero', services: '#services', about: '#about', gallery: '.gallery-section',
+                    pricing: '#pricing', reviews: '#reviews', faq: '#faq', cta: '.cta', footer: 'footer' };
+                Object.entries(cfg.homepage.sections).forEach(([key, visible]) => {
+                    if (!visible && map[key]) {
+                        const el = document.querySelector(map[key]);
+                        if (el) el.style.display = 'none';
+                    }
+                });
+            }
+
+            // Nav toggles
+            if (cfg.homepage) {
+                if (cfg.homepage.showNav === false) { const nav = document.getElementById('nav'); if (nav) nav.style.display = 'none'; }
+                if (cfg.homepage.showLoginButton === false) { document.querySelectorAll('a[href="login.html"]').forEach(a => a.style.display = 'none'); }
+                if (cfg.homepage.showBookNowButton === false) { document.querySelectorAll('a[href="#book"]').forEach(a => a.style.display = 'none'); }
+                if (cfg.homepage.stickyNav === false) { const nav = document.getElementById('nav'); if (nav) nav.style.position = 'relative'; }
+            }
+
+            // Gamification cursors
+            if (cfg.gamification?.cursorStyle && cfg.gamification.cursorStyle !== 'default') {
+                const cursors = {
+                    paw: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='28' font-size='28'>🐾</text></svg>",
+                    bone: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='28' font-size='28'>🦴</text></svg>",
+                    tennis: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='28' font-size='28'>🎾</text></svg>",
+                    heart: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='28' font-size='28'>💛</text></svg>"
+                };
+                if (cursors[cfg.gamification.cursorStyle]) document.body.style.cursor = `url("${cursors[cfg.gamification.cursorStyle]}") 4 4, auto`;
+            }
+
+            // Confetti on booking
+            if (cfg.gamification?.confettiOnBooking) {
+                window.GPC_CONFETTI = () => {
+                    const colors = ['#FF6B35','#00B894','#FDCB6E','#74B9FF','#A29BFE','#E17055'];
+                    for (let i = 0; i < 60; i++) {
+                        const p = document.createElement('div');
+                        p.style.cssText = `position:fixed;top:-10px;left:${Math.random()*100}%;width:${6+Math.random()*6}px;height:${6+Math.random()*6}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};z-index:99999;pointer-events:none;animation:confettiFall ${1.5+Math.random()*2}s ease-out forwards`;
+                        document.body.appendChild(p);
+                        setTimeout(() => p.remove(), 4000);
+                    }
+                };
+                if (!document.getElementById('confetti-style')) {
+                    const s = document.createElement('style'); s.id = 'confetti-style';
+                    s.textContent = '@keyframes confettiFall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}';
+                    document.head.appendChild(s);
+                }
+            }
+
+            // Custom CSS/JS
+            if (cfg.advanced?.customCSS) { const s = document.createElement('style'); s.textContent = cfg.advanced.customCSS; document.head.appendChild(s); }
+            if (cfg.advanced?.customJS) { try { new Function(cfg.advanced.customJS)(); } catch(e) { console.warn('Custom JS error:', e); } }
+        } catch (e) { console.warn('Admin Lab config error:', e); }
+    });
+    </script>
 </body>
 </html>
