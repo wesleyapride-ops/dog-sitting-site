@@ -162,7 +162,7 @@ const renderTab = () => {
     sitters = load('sitters', sitters); reviews = load('reviews', reviews);
     messages = load('messages', []); businessSettings = load('settings', businessSettings);
 
-    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, emails: renderEmailCenter, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, approvals: renderApprovals, satisfaction: renderSatisfaction, feedback: renderFeedback, adminlab: renderAdminLab, settings: renderSettings };
+    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, emails: renderEmailCenter, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, approvals: renderApprovals, satisfaction: renderSatisfaction, feedback: renderFeedback, copycenter: renderCopyCenter, adminlab: renderAdminLab, settings: renderSettings };
     (views[activeTab] || renderOverview)();
 };
 
@@ -2225,6 +2225,180 @@ window.removeGalleryImage = (idx) => {
     gallery.splice(idx, 1);
     document.getElementById('cmsGalleryImages').value = JSON.stringify(gallery);
     renderGalleryPreview(gallery, 'cmsGalleryZone');
+};
+
+// ============================================
+// ============================================
+// COPY CENTER — One-click copy for AI handoff
+// ============================================
+let ccTab = 'feedback';
+
+const ccBox = (title, content) => `
+    <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <strong style="font-size:.88rem">${title}</strong>
+            <button class="btn btn-sm btn-primary" onclick="ccCopy(this)" style="font-size:.78rem">📋 Copy</button>
+        </div>
+        <pre style="background:#1a1a2e;color:#eee;padding:14px;border-radius:10px;font-size:.8rem;white-space:pre-wrap;word-break:break-word;max-height:400px;overflow-y:auto;font-family:'Consolas','Monaco',monospace;line-height:1.5;scrollbar-color:var(--primary) #1a1a2e">${escHTML(content)}</pre>
+    </div>`;
+
+const ccCopy = (btn) => {
+    const pre = btn.closest('div').nextElementSibling;
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+        btn.textContent = '✅ Copied!';
+        btn.style.background = 'var(--success)';
+        setTimeout(() => { btn.textContent = '📋 Copy'; btn.style.background = ''; }, 1500);
+    });
+};
+
+const renderCopyCenter = () => {
+    const fb = load('feedback', []);
+    const editReqs = load('edit_requests', []);
+    const surveys = load('satisfaction_surveys', []);
+    const invoices = load('invoices', []);
+    const allPayments = load('payments', []);
+
+    const tabs = [
+        { id: 'feedback', label: '📬 Feedback', count: fb.filter(f => ['new','reviewed','in_progress'].includes(f.status)).length },
+        { id: 'bookings', label: '📅 Bookings' },
+        { id: 'clients', label: '👤 Clients' },
+        { id: 'pets', label: '🐕 Pets' },
+        { id: 'revenue', label: '💰 Revenue' },
+        { id: 'reviews', label: '⭐ Reviews' },
+        { id: 'surveys', label: '📊 Surveys' },
+        { id: 'editreqs', label: '✏️ Edit Requests', count: editReqs.filter(r => r.status === 'pending').length },
+        { id: 'config', label: '⚙️ Site Config' },
+        { id: 'fullreport', label: '🤖 Full AI Report' }
+    ];
+
+    // Generate content for active tab
+    let content = '';
+    if (ccTab === 'feedback') {
+        const open = fb.filter(f => ['new','reviewed','in_progress'].includes(f.status));
+        content = ccBox('Open Feedback (' + open.length + ')', open.length === 0 ? 'No open feedback items.' :
+            open.map((f, i) => `${i+1}. [${(f.priority||'medium').toUpperCase()}] [${f.category||'suggestion'}] ${f.summary}\n   Page: ${f.affects||f.pageUrl||'General'}\n   Client: ${f.clientName||'Anonymous'}\n   Date: ${f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '—'}${f.details ? '\n   Details: '+f.details : ''}${f.screenshots?.length ? '\n   ['+f.screenshots.length+' screenshot(s)]' : ''}${f.screenSize ? '\n   Screen: '+f.screenSize : ''}`).join('\n\n'));
+        content += ccBox('All Feedback (' + fb.length + ')', fb.length === 0 ? 'No feedback.' :
+            fb.map((f, i) => `${i+1}. [${f.status}] [${(f.priority||'medium').toUpperCase()}] [${f.category}] ${f.summary}${f.details ? ' — '+f.details.substring(0,80) : ''}`).join('\n'));
+    } else if (ccTab === 'bookings') {
+        const upcoming = bookings.filter(b => b.date >= todayStr() && b.status !== 'cancelled').sort((a,b) => a.date.localeCompare(b.date));
+        const today = getBookingsForDate(todayStr());
+        content = ccBox("Today's Bookings (" + today.length + ')', today.length === 0 ? 'No bookings today.' :
+            today.map(b => `${b.time||'—'} | ${b.clientName} | ${b.petName} | ${b.service} | ${b.status} | ${fmt(calcBookingTotal(b))}${b.sitter ? ' | Sitter: '+b.sitter : ''}`).join('\n'));
+        content += ccBox('Upcoming 14 Days (' + upcoming.slice(0,30).length + ')',
+            upcoming.slice(0,30).map(b => `${b.date} ${b.time||''} | ${b.clientName} | ${b.petName} | ${b.service} | ${b.status} | ${fmt(calcBookingTotal(b))}`).join('\n') || 'None');
+        content += ccBox('All Bookings (' + bookings.length + ')',
+            bookings.slice(0,50).map(b => `${b.date} | ${b.clientName} | ${b.petName} | ${b.service} | ${b.status} | ${fmt(calcBookingTotal(b))}`).join('\n'));
+    } else if (ccTab === 'clients') {
+        content = ccBox('All Clients (' + clients.length + ')',
+            clients.map(c => {
+                const cPets = pets.filter(p => p.clientId === c.id);
+                const cBookings = bookings.filter(b => b.clientId === c.id);
+                const spent = cBookings.filter(b => b.status !== 'cancelled').reduce((s,b) => s + calcBookingTotal(b), 0);
+                return `${c.name} | ${c.email||'—'} | ${c.phone||'—'} | ${cPets.map(p=>p.name).join(', ')||'No pets'} | ${cBookings.length} bookings | Spent: ${fmt(spent)}`;
+            }).join('\n') || 'No clients.');
+        const inactive30 = clients.filter(c => {
+            const last = bookings.filter(b => b.clientId === c.id).sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
+            return !last || last.date < new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+        });
+        content += ccBox('Inactive 30+ Days (' + inactive30.length + ')',
+            inactive30.map(c => { const last = bookings.filter(b => b.clientId === c.id).sort((a,b) => (b.date||'').localeCompare(a.date||''))[0]; return `${c.name} | ${c.email||'—'} | Last: ${last?.date||'Never'}`; }).join('\n') || 'None');
+    } else if (ccTab === 'pets') {
+        content = ccBox('All Pets (' + pets.length + ')',
+            pets.map(p => {
+                const owner = clients.find(c => c.id === p.clientId);
+                return `${p.name} | ${p.breed||'—'} | ${p.age||'—'} | ${p.weight||'—'} | Owner: ${owner?.name||'Unknown'} | ${p.allergies ? 'Allergies: '+p.allergies : ''}${p.medications ? ' Meds: '+p.medications : ''}${p.notes ? ' Notes: '+p.notes : ''}`;
+            }).join('\n') || 'No pets.');
+    } else if (ccTab === 'revenue') {
+        const thisMonth = todayStr().substring(0,7);
+        const monthRev = bookings.filter(b => (b.date||'').startsWith(thisMonth) && b.status !== 'cancelled').reduce((s,b) => s + calcBookingTotal(b), 0);
+        const totalRev = bookings.filter(b => b.status !== 'cancelled').reduce((s,b) => s + calcBookingTotal(b), 0);
+        const paid = allPayments.filter(p => p.status === 'paid');
+        const totalPaid = paid.reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
+        const totalTips = paid.reduce((s,p) => s + (parseFloat(p.tip)||0), 0);
+        const unpaid = bookings.filter(b => b.status === 'completed' && b.paymentStatus !== 'paid');
+        content = ccBox('Revenue Summary',
+            `Month Revenue: ${fmt(monthRev)}\nTotal Revenue (all time): ${fmt(totalRev)}\nTotal Paid: ${fmt(totalPaid)}\nTotal Tips: ${fmt(totalTips)}\nUnpaid Visits: ${unpaid.length} (${fmt(unpaid.reduce((s,b) => s + calcBookingTotal(b), 0))})\nTotal Bookings: ${bookings.length}\nCompleted: ${bookings.filter(b=>b.status==='completed').length}\nCancelled: ${bookings.filter(b=>b.status==='cancelled').length}`);
+        content += ccBox('Unpaid Visits (' + unpaid.length + ')',
+            unpaid.map(b => `${b.date} | ${b.clientName} | ${b.petName} | ${b.service} | ${fmt(calcBookingTotal(b))}`).join('\n') || 'All paid!');
+    } else if (ccTab === 'reviews') {
+        content = ccBox('All Reviews (' + reviews.length + ')',
+            reviews.map(r => `${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)} | ${r.name} | ${r.pet||'—'} | ${r.service||'—'} | "${r.text}" | ${r.date||'—'}`).join('\n') || 'No reviews.');
+    } else if (ccTab === 'surveys') {
+        content = ccBox('Satisfaction Surveys (' + surveys.length + ')',
+            surveys.length === 0 ? 'No surveys yet.' :
+            surveys.map(sv => {
+                const b = bookings.find(x => x.id === sv.bookingId);
+                return `${sv.clientName} | ${'★'.repeat(sv.rating||0)} | Pet mood: ${sv.petMood||'—'} | Book again: ${sv.bookAgain||'—'}${sv.whatWentWell ? '\n  Good: '+sv.whatWentWell : ''}${sv.whatToImprove ? '\n  Improve: '+sv.whatToImprove : ''}${sv.subRatings ? '\n  Ratings: '+Object.entries(sv.subRatings).map(([a,v])=>a+'='+v).join(', ') : ''}`;
+            }).join('\n\n'));
+    } else if (ccTab === 'editreqs') {
+        const pending2 = editReqs.filter(r => r.status === 'pending');
+        content = ccBox('Pending Edit Requests (' + pending2.length + ')',
+            pending2.length === 0 ? 'No pending requests.' :
+            pending2.map(r => {
+                const b = bookings.find(x => x.id === r.bookingId);
+                const ch = r.requestedChanges || {};
+                return `${r.clientName} | Booking: ${b ? b.service+' for '+b.petName+' on '+b.date : 'N/A'}\n  Wants: ${[ch.service ? 'Service: '+ch.service : '', ch.date ? 'Date: '+ch.date : '', ch.addons?.length ? 'Addons: '+ch.addons.join(', ') : ''].filter(Boolean).join(', ') || 'See details'}\n  Reason: ${r.reason}`;
+            }).join('\n\n'));
+        content += ccBox('All Edit Requests (' + editReqs.length + ')',
+            editReqs.map(r => `${r.clientName} | ${r.status} | ${r.reason?.substring(0,60)||'—'}`).join('\n') || 'None');
+    } else if (ccTab === 'config') {
+        const cfg = load('site_config', {});
+        content = ccBox('Site Config (JSON)', JSON.stringify(cfg, null, 2));
+        content += ccBox('Business Settings (JSON)', JSON.stringify(businessSettings, null, 2));
+        content += ccBox('Site Content (JSON)', JSON.stringify(load('site_content', {}), null, 2));
+    } else if (ccTab === 'fullreport') {
+        // Reuse the exportSiteSnapshot logic but display it
+        const open = fb.filter(f => ['new','reviewed','in_progress'].includes(f.status));
+        const report = [
+            `# GenusPupClub — Full Site Report`,
+            `Generated: ${new Date().toLocaleString()}`,
+            `Project: ~/Desktop/GenusPupClub/`,
+            ``,
+            `## Stats`,
+            `Clients: ${clients.length} | Pets: ${pets.length} | Bookings: ${bookings.length}`,
+            `Today: ${getBookingsForDate(todayStr()).length} bookings | Pending: ${bookings.filter(b=>b.status==='pending').length}`,
+            `Month Revenue: ${fmt(bookings.filter(b => (b.date||'').startsWith(todayStr().substring(0,7)) && b.status !== 'cancelled').reduce((s,b) => s + calcBookingTotal(b), 0))}`,
+            `Reviews: ${reviews.length} (avg ${reviews.length ? (reviews.reduce((s,r)=>s+r.stars,0)/reviews.length).toFixed(1) : '0'})`,
+            `Unpaid: ${bookings.filter(b=>b.status==='completed'&&b.paymentStatus!=='paid').length}`,
+            ``,
+            `## Open Feedback (${open.length})`,
+            ...open.map((f,i) => `${i+1}. [${(f.priority||'medium').toUpperCase()}] [${f.category}] ${f.summary}${f.details ? ' — '+f.details.substring(0,100) : ''}`),
+            ``,
+            `## Upcoming (7 days)`,
+            ...bookings.filter(b => b.date >= todayStr() && b.date <= new Date(Date.now()+7*86400000).toISOString().split('T')[0]).sort((a,b)=>a.date.localeCompare(b.date)).map(b => `${b.date} ${b.time||''}: ${b.clientName} — ${b.petName} (${b.service}) [${b.status}]`),
+            ``,
+            `## Pending Edit Requests (${editReqs.filter(r=>r.status==='pending').length})`,
+            ...editReqs.filter(r=>r.status==='pending').map(r => `${r.clientName}: ${r.reason}`),
+            ``,
+            `Paste into Claude: "Here's my GenusPupClub report. What should I do next?"`
+        ].join('\n');
+        content = ccBox('Full AI Report', report);
+    }
+
+    el.innerHTML = `
+        <div style="margin-bottom:16px;padding:16px 20px;background:linear-gradient(135deg,rgba(108,92,231,.06),rgba(0,184,148,.04));border-radius:var(--radius);border-left:4px solid #6C5CE7">
+            <strong style="font-size:1.1rem;font-family:var(--font-display)">📋 Copy Center</strong>
+            <div style="font-size:.85rem;color:var(--text-muted);margin-top:2px">Click any Copy button → paste into Claude. Everything pre-formatted and ready to go.</div>
+        </div>
+        <div style="display:flex;gap:4px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px">
+            ${tabs.map(t => `<button class="btn btn-sm ${ccTab === t.id ? 'btn-primary' : 'btn-ghost'}" onclick="ccTab='${t.id}';renderCopyCenter()" style="white-space:nowrap">${t.label}${t.count ? ' <span style="background:var(--danger);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px">'+t.count+'</span>' : ''}</button>`).join('')}
+        </div>
+        <div>${content}</div>
+        <div style="position:sticky;bottom:16px;background:var(--card-bg);padding:12px;border-radius:12px;box-shadow:0 -4px 20px rgba(0,0,0,.1);display:flex;gap:8px;align-items:center;z-index:10">
+            <button class="btn btn-sm btn-primary" style="background:#6C5CE7" onclick="ccCopyAll()">📋 Copy Everything on This Tab</button>
+            <button class="btn btn-sm btn-primary" style="background:#EA4335" onclick="emailFeedbackToWesley()">📧 Email Feedback to Wesley</button>
+            <button class="btn btn-sm btn-ghost" onclick="exportSiteSnapshot()">🤖 Full AI Report to Clipboard</button>
+        </div>
+    `;
+};
+
+const ccCopyAll = () => {
+    const pres = document.querySelectorAll('#content pre');
+    const all = Array.from(pres).map(p => p.textContent).join('\n\n---\n\n');
+    navigator.clipboard.writeText(all).then(() => {
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Copied!', 'All content on this tab copied to clipboard', 'success');
+    });
 };
 
 // ============================================
