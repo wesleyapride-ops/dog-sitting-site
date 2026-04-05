@@ -47,7 +47,12 @@ const handleSignup = (e) => {
     if (pass.length < 6) { showError('Password must be at least 6 characters'); return; }
 
     const users = loadGPC('users', []);
-    if (users.find(u => u.email === email)) { showError('An account with this email already exists'); return; }
+    if (users.find(u => u.email === email)) {
+        showError('An account with this email already exists. Please log in instead.');
+        switchTab('login');
+        document.getElementById('loginEmail').value = email;
+        return;
+    }
 
     const userId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     users.push({
@@ -77,9 +82,12 @@ const handleSignup = (e) => {
         GPC_NOTIFY.sendEmail('welcome', { name, email, clientEmail: email });
     }
 
-    showSuccess('Account created! You can now log in.');
-    switchTab('login');
-    document.getElementById('loginEmail').value = email;
+    // Redirect to waiver with pre-filled info
+    const waiverUrl = `waiver.html?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone || '')}&fromSignup=true`;
+    showSuccess('Account created! Redirecting to service agreement...');
+    setTimeout(() => {
+        window.location.href = waiverUrl;
+    }, 1000);
 };
 
 const handleLogin = (e) => {
@@ -88,7 +96,19 @@ const handleLogin = (e) => {
     const pass = document.getElementById('loginPass').value;
 
     const users = loadGPC('users', []);
-    const user = users.find(u => u.email === email && u.passwordHash === simpleHash(pass));
+    const passHash = simpleHash(pass);
+    let user = users.find(u => u.email === email && u.passwordHash === passHash);
+
+    // Fallback: match against plainPassword for accounts created before passwordHash fix
+    if (!user) {
+        user = users.find(u => u.email === email && u.plainPassword === pass);
+        // Migrate: store passwordHash so future logins use the hash
+        if (user) {
+            user.passwordHash = passHash;
+            delete user.plainPassword;
+            saveGPC('users', users);
+        }
+    }
 
     if (!user) { showError('Invalid email or password'); return; }
 

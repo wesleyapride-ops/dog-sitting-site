@@ -139,14 +139,99 @@ const renderMyPets = () => {
     el.innerHTML = `
         <div class="card" style="margin-bottom:16px"><div class="card-header"><span class="card-title">My Pets (${myPets.length})</span><button class="btn btn-primary btn-sm" onclick="showAddPet()">+ Add Pet</button></div></div>
         <div class="stats-grid">${myPets.length ? myPets.map(p => `
-            <div class="pet-card"><div class="pet-avatar">${p.photo ? `<img src="${p.photo}" style="width:48px;height:48px;object-fit:cover;border-radius:50%">` : '🐕'}</div><div class="pet-info" style="flex:1">
-                <h4>${esc(p.name)}</h4>
+            <div class="pet-card" style="cursor:pointer" onclick="showPetDetail('${p.id}')"><div class="pet-avatar">${p.photo ? `<img src="${p.photo}" style="width:48px;height:48px;object-fit:cover;border-radius:50%">` : '🐕'}</div><div class="pet-info" style="flex:1">
+                <h4 style="cursor:pointer;text-decoration:underline dotted">${esc(p.name)}</h4>
                 <p>${esc(p.breed || '?')} · ${esc(p.age || '?')} · ${esc(p.weight || '?')} · ${p.gender === 'Female' ? '♀' : '♂'} ${esc(p.gender || '?')} · ${p.fixed === 'Yes' ? '✓ Fixed' : '✗ Intact'}</p>
                 ${p.allergies ? `<p style="font-size:.78rem;color:var(--danger)">Allergies: ${esc(p.allergies)}</p>` : ''}
                 ${p.medications ? `<p style="font-size:.78rem;color:var(--info)">Meds: ${esc(p.medications)}</p>` : ''}
                 ${p.notes ? `<p style="font-size:.78rem;color:var(--text-muted)">${esc(p.notes)}</p>` : ''}
             </div></div>
         `).join('') : '<div class="card"><div class="empty"><p>Add your pup to get started</p></div></div>'}</div>
+    `;
+};
+
+const showPetDetail = (petId) => {
+    const pet = myPets.find(p => p.id === petId);
+    if (!pet) return;
+    const petBookings = myBookings.filter(b => b.petName === pet.name || (b.petName && b.petName.includes(pet.name))).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const allCheckins = load('checkins', []);
+    const petCheckins = allCheckins.filter(c => c.petName === pet.name).sort((a, b) => (b.checkInDate || '').localeCompare(a.checkInDate || ''));
+
+    el.innerHTML = `
+        <div style="text-align:center;padding:20px;background:var(--bg);border-radius:8px;margin-bottom:16px">
+            ${pet.photo ? `<img src="${pet.photo}" style="width:160px;height:160px;object-fit:cover;border-radius:50%;border:4px solid var(--primary);margin-bottom:14px">` : '<div style="font-size:90px;margin-bottom:14px">🐕</div>'}
+            <h2 style="margin:0 0 8px">${esc(pet.name)}</h2>
+            <p style="margin:0;color:var(--text-muted);font-size:.95rem">${esc(pet.breed || '?')} · ${esc(pet.age || '?')} old · ${esc(pet.weight || '?')} · ${pet.gender === 'Female' ? '♀' : '♂'} · ${pet.fixed === 'Yes' ? '✓ Fixed' : '✗ Intact'}</p>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title" style="margin-bottom:12px">Overview</div>
+                <div style="font-size:.85rem">
+                    <div style="margin-bottom:10px"><strong>Breed:</strong> ${esc(pet.breed || '—')}</div>
+                    <div style="margin-bottom:10px"><strong>Age:</strong> ${esc(pet.age || '—')}</div>
+                    <div style="margin-bottom:10px"><strong>Weight:</strong> ${esc(pet.weight || '—')}</div>
+                    <div style="margin-bottom:10px"><strong>Gender:</strong> ${pet.gender === 'Female' ? '♀' : '♂'} ${esc(pet.gender || '—')}</div>
+                    <div style="margin-bottom:10px"><strong>Spayed/Neutered:</strong> ${pet.fixed === 'Yes' ? 'Yes' : 'No'}</div>
+                    ${pet.allergies ? `<div style="margin-bottom:10px;color:var(--danger)"><strong>Allergies:</strong> ${esc(pet.allergies)}</div>` : ''}
+                    ${pet.medications ? `<div style="margin-bottom:10px;color:var(--info)"><strong>Medications:</strong> ${esc(pet.medications)}</div>` : ''}
+                    ${pet.notes ? `<div style="margin-bottom:10px"><strong>Notes:</strong> ${esc(pet.notes)}</div>` : ''}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="margin-bottom:12px">Activity Summary</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                    <div style="text-align:center;padding:10px;background:var(--bg);border-radius:6px">
+                        <div style="font-size:1.4rem;font-weight:700;color:var(--primary)">${petBookings.length}</div>
+                        <div style="font-size:.75rem;color:var(--text-muted)">Bookings</div>
+                    </div>
+                    <div style="text-align:center;padding:10px;background:var(--bg);border-radius:6px">
+                        <div style="font-size:1.4rem;font-weight:700;color:var(--success)">${petCheckins.length}</div>
+                        <div style="font-size:.75rem;color:var(--text-muted)">Check-Ins</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        ${petBookings.length ? `
+            <div class="card" style="margin-bottom:16px">
+                <div class="card-title" style="margin-bottom:12px">Booking History (${petBookings.length})</div>
+                <div style="max-height:300px;overflow-y:auto">
+                    ${petBookings.map(b => `
+                        <div style="padding:10px;border-bottom:1px solid var(--border);font-size:.85rem">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                                <strong>${b.date} ${b.time || ''}</strong>
+                                <span class="badge badge-${b.status}">${b.status === 'pending' ? 'Awaiting Approval' : b.status}</span>
+                            </div>
+                            <div style="margin-bottom:4px">${esc(b.service)}</div>
+                            <div style="color:var(--text-muted);font-size:.8rem">${fmt(b.amount)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+
+        ${petCheckins.length ? `
+            <div class="card" style="margin-bottom:16px">
+                <div class="card-title" style="margin-bottom:12px">Check-In History (${petCheckins.length})</div>
+                <div style="max-height:300px;overflow-y:auto">
+                    ${petCheckins.slice(0, 15).map(c => `
+                        <div style="padding:10px;border-bottom:1px solid var(--border);font-size:.85rem">
+                            <div style="margin-bottom:4px"><strong>${c.checkInDate} ${c.checkInTime || ''}</strong></div>
+                            <div style="margin-bottom:4px">${esc(c.service)} at ${esc(c.property || '—')}</div>
+                            <div style="color:var(--text-muted);font-size:.8rem">
+                                ${c.checkedOut ? `Checked out: ${c.checkOutDate} ${c.checkOutTime || ''}` : '<span style="color:var(--primary)">Still checked in</span>'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+
+        <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-primary" onclick="renderTab()">Back to Pets</button>
+        </div>
     `;
 };
 

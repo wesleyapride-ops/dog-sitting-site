@@ -116,6 +116,18 @@
         </div>
     </section>
 
+    <!-- MEET THE SITTERS -->
+    <section class="section" id="sitters">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Our Team</span>
+                <h2>Meet the Sitters</h2>
+                <p>Every sitter is background-checked, pet first-aid certified, and genuinely loves dogs.</p>
+            </div>
+            <div class="pricing-grid" id="sittersGrid" style="justify-content:center"></div>
+        </div>
+    </section>
+
     <!-- PRICING -->
     <section class="section" id="pricing">
         <div class="container">
@@ -291,7 +303,10 @@
                     </div>
                     <div class="form-row">
                         <input type="text" id="bookingPetName" placeholder="Dog's Name & Breed">
-                        <input type="date" id="bookingStartDate">
+                        <div style="display:flex;align-items:center;gap:8px;flex:1">
+                            <label style="color:rgba(255,255,255,.5);font-size:.85rem;white-space:nowrap">Start Date</label>
+                            <input type="date" id="bookingStartDate" style="flex:1">
+                        </div>
                     </div>
                     <div class="form-row">
                         <div style="display:flex;align-items:center;gap:8px;flex:1">

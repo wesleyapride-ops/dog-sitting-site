@@ -174,7 +174,7 @@ const renderOverview = () => {
     const monthBookings = bookings.filter(b => (b.date || '').startsWith(thisMonth));
     const revenue = monthBookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + calcBookingTotal(b), 0);
     const pending = bookings.filter(b => b.status === 'pending').length;
-    const todayBookings = getBookingsForDate(todayStr());
+    const todayBookings = bookings.filter(b => b.date === todayStr()).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
     const activeClients = new Set(bookings.filter(b => (b.date || '') >= new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]).map(b => b.clientId)).size;
 
     el.innerHTML = `
@@ -188,9 +188,9 @@ const renderOverview = () => {
             <div class="card">
                 <div class="card-header"><span class="card-title">Today's Schedule</span></div>
                 ${todayBookings.length ? todayBookings.map(b => `
-                    <div class="schedule-item" style="cursor:pointer" onclick="editBooking('${b.id}')">
+                    <div class="schedule-item">
                         <div class="schedule-time">${b.time || '—'}</div>
-                        <div class="schedule-info"><h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4><p>${escHTML(b.service)} ${b.sitter ? `<span style="font-size:.78rem;color:#8B5CF6">🧑 ${escHTML(b.sitter)}</span>` : ''} ${b.dropoffTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Drop: ${b.dropoffTime}</span>` : ''} ${b.pickupTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Pick: ${b.pickupTime}</span>` : ''} ${b.addons?.length ? `+ ${b.addons.length} add-on${b.addons.length > 1 ? 's' : ''}` : ''} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p></div>
+                        <div class="schedule-info"><h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4><p>${escHTML(b.service)} ${b.dropoffTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Drop: ${b.dropoffTime}</span>` : ''} ${b.pickupTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Pick: ${b.pickupTime}</span>` : ''} ${b.addons?.length ? `+ ${b.addons.length} add-on${b.addons.length > 1 ? 's' : ''}` : ''} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p></div>
                     </div>
                 `).join('') : '<div class="empty"><div class="empty-icon">📅</div><p>No bookings today</p></div>'}
             </div>
@@ -228,13 +228,12 @@ const renderBookings = () => {
     else if (filter === 'upcoming') filtered = filtered.filter(b => b.date >= todayStr());
     else if (filter === 'pending') filtered = filtered.filter(b => b.status === 'pending');
     else if (filter === 'completed') filtered = filtered.filter(b => b.status === 'completed');
-    else if (filter === 'unpaid') filtered = filtered.filter(b => b.status === 'completed' && b.paymentStatus !== 'paid');
     filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     el.innerHTML = `
         <div class="card" style="margin-bottom:16px;padding:12px 20px;display:flex;justify-content:space-between;align-items:center">
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-                ${['all', 'today', 'upcoming', 'pending', 'completed', 'unpaid'].map(f => `<button class="btn btn-sm ${f === 'all' ? 'btn-primary' : 'btn-ghost'}" onclick="this.parentElement.querySelectorAll('.btn').forEach(b=>{b.className='btn btn-sm btn-ghost'});this.className='btn btn-sm btn-primary';document.querySelector('.booking-filter-active')?.classList.remove('booking-filter-active');this.classList.add('booking-filter-active');this.dataset.filter='${f}';renderTab()">${f.charAt(0).toUpperCase() + f.slice(1)}</button>`).join('')}
+                ${['all', 'today', 'upcoming', 'pending', 'completed'].map(f => `<button class="btn btn-sm ${f === 'all' ? 'btn-primary' : 'btn-ghost'}" onclick="this.parentElement.querySelectorAll('.btn').forEach(b=>{b.className='btn btn-sm btn-ghost'});this.className='btn btn-sm btn-primary';document.querySelector('.booking-filter-active')?.classList.remove('booking-filter-active');this.classList.add('booking-filter-active');this.dataset.filter='${f}';renderTab()">${f.charAt(0).toUpperCase() + f.slice(1)}</button>`).join('')}
             </div>
             <button class="btn btn-primary btn-sm" onclick="showModal('booking')">+ New Booking</button>
         </div>
@@ -257,11 +256,10 @@ const renderBookingTable = (items) => `
             <td>${escHTML(b.service)}${b.pickupAddr ? `<br><span style="font-size:.72rem;color:var(--text-muted)">From: ${escHTML(b.pickupAddr)}</span>` : ''}</td>
             <td>${b.addons?.length ? b.addons.map(a => `<span class="badge badge-completed">${escHTML(a)}</span>`).join(' ') : '—'}</td>
             <td><strong>${fmt(calcBookingTotal(b))}</strong></td>
-            <td><span class="badge badge-${b.status}">${b.status}</span>${b.status === 'completed' ? ` <span class="badge badge-${b.paymentStatus === 'paid' ? 'confirmed' : 'pending'}" style="font-size:.68rem">${b.paymentStatus === 'paid' ? 'paid' : 'unpaid'}</span>` : ''}</td>
+            <td><span class="badge badge-${b.status}">${b.status}</span></td>
             <td style="white-space:nowrap">
                 ${b.status === 'pending' ? `<button class="btn btn-ghost btn-sm" onclick="updateBooking('${b.id}','confirmed')">✓</button>` : ''}
                 ${b.status === 'confirmed' ? `<button class="btn btn-ghost btn-sm" onclick="updateBooking('${b.id}','completed')">Done</button>` : ''}
-                ${b.status === 'completed' && b.paymentStatus !== 'paid' ? `<button class="btn btn-ghost btn-sm" style="color:var(--primary);font-weight:600" onclick="showPaymentFlow('${b.id}')">Pay</button>` : ''}
                 <button class="btn btn-ghost btn-sm" onclick="editBooking('${b.id}')">✎</button>
                 <button class="btn btn-ghost btn-sm" onclick="deleteItem('bookings','${b.id}')">✕</button>
             </td>
@@ -334,9 +332,9 @@ const renderPets = () => {
         <div class="stats-grid">${pets.length ? pets.map(p => {
             const owner = clients.find(c => c.id === p.clientId);
             return `<div class="pet-card">
-                <div class="pet-avatar" style="cursor:pointer" onclick="showPetHistory('${p.id}')">${p.photo ? `<img src="${p.photo}" style="width:48px;height:48px;object-fit:cover;border-radius:50%">` : '🐕'}</div>
+                <div class="pet-avatar">${p.photo ? `<img src="${p.photo}" style="width:48px;height:48px;object-fit:cover;border-radius:50%">` : '🐕'}</div>
                 <div class="pet-info" style="flex:1">
-                    <h4><span style="cursor:pointer;text-decoration:underline dotted" onclick="showPetHistory('${p.id}')">${escHTML(p.name)}</span> <span style="float:right"><button class="btn btn-ghost btn-sm" onclick="showPetHistory('${p.id}')">📋</button> <button class="btn btn-ghost btn-sm" onclick="editPet('${p.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('pets','${p.id}')">✕</button></span></h4>
+                    <h4>${escHTML(p.name)} <span style="float:right"><button class="btn btn-ghost btn-sm" onclick="editPet('${p.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteItem('pets','${p.id}')">✕</button></span></h4>
                     <p>${escHTML(p.breed || '?')} · ${escHTML(p.age || '?')} · ${escHTML(p.weight || '?')} · ${p.gender === 'Female' ? '♀' : '♂'} ${escHTML(p.gender || '?')} · ${p.fixed === 'Yes' ? '✓ Fixed' : '✗ Intact'}</p>
                     <p style="font-size:.8rem">Owner: <strong>${escHTML(owner?.name || '—')}</strong></p>
                     ${p.vet ? `<p style="font-size:.78rem;color:var(--text-muted)">Vet: ${escHTML(p.vet)}</p>` : ''}
@@ -351,360 +349,36 @@ const renderPets = () => {
     `;
 };
 
-// ---- Pet History Modal (Enhanced Full Profile) ----
-const showPetHistory = (petId) => {
-    const pet = pets.find(p => p.id === petId);
-    if (!pet) return;
-    const owner = clients.find(c => c.id === pet.clientId);
-    const petBookings = bookings.filter(b => b.petName === pet.name || (b.petName && b.petName.includes(pet.name))).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    const petCheckins = (load('checkins', []) || []).filter(c => c.petName === pet.name).sort((a, b) => (b.checkInDate || '').localeCompare(a.checkInDate || ''));
-    const petInfamy = (load('infamy', []) || []).filter(i => i.dogName === pet.name);
-    const totalSpent = petBookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + calcBookingTotal(b), 0);
-
-    let overlay = document.getElementById('modalOverlay');
-    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
-    overlay.innerHTML = `<div class="modal" style="max-width:800px;max-height:90vh;overflow-y:auto">
-        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:8px;margin-bottom:16px">
-            ${pet.photo ? `<img src="${pet.photo}" style="width:140px;height:140px;object-fit:cover;border-radius:50%;border:3px solid var(--primary);margin-bottom:12px">` : '<div style="font-size:80px;margin-bottom:12px">🐕</div>'}
-            <div class="modal-title" style="margin:0;font-size:1.6rem">${escHTML(pet.name)}</div>
-            <div style="font-size:.95rem;color:var(--text-muted);margin-top:4px">${escHTML(pet.breed || '?')} · ${escHTML(pet.age || '?')} old · ${escHTML(pet.weight || '?')} · ${pet.gender === 'Female' ? '♀' : '♂'} · ${pet.fixed === 'Yes' ? '✓ Fixed' : '✗ Intact'}</div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-            <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px">
-                <div style="font-size:1.3rem;font-weight:700;color:var(--primary)">${petBookings.length}</div>
-                <div style="font-size:.75rem;color:var(--text-muted)">Bookings</div>
-            </div>
-            <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px">
-                <div style="font-size:1.3rem;font-weight:700;color:var(--success)">${petCheckins.length}</div>
-                <div style="font-size:.75rem;color:var(--text-muted)">Check-Ins</div>
-            </div>
-            <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px">
-                <div style="font-size:1.3rem;font-weight:700;color:var(--info)">${fmt(totalSpent)}</div>
-                <div style="font-size:.75rem;color:var(--text-muted)">Total Spent</div>
-            </div>
-            <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px">
-                <div style="font-size:1.3rem;font-weight:700">${petInfamy.length}</div>
-                <div style="font-size:.75rem;color:var(--text-muted)">Infamy Flags</div>
-            </div>
-        </div>
-
-        <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:14px">
-            <div style="font-weight:600;margin-bottom:8px;font-size:.9rem">Owner Information</div>
-            <div style="font-size:.85rem;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div><strong>Name:</strong> ${escHTML(owner?.name || '—')}</div>
-                <div><strong>Phone:</strong> ${escHTML(owner?.phone || '—')}</div>
-                <div style="grid-column:1/-1"><strong>Email:</strong> ${escHTML(owner?.email || '—')}</div>
-            </div>
-        </div>
-
-        <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:14px">
-            <div style="font-weight:600;margin-bottom:8px;font-size:.9rem">Medical & Care Info</div>
-            <div style="font-size:.85rem;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div><strong>Vet:</strong> ${escHTML(pet.vet || '—')}</div>
-                <div><strong>Feeding Schedule:</strong> ${escHTML(pet.feedingSchedule || '—')}</div>
-                ${pet.allergies ? `<div style="grid-column:1/-1;color:var(--danger)"><strong>Allergies:</strong> ${escHTML(pet.allergies)}</div>` : '<div style="grid-column:1/-1"><strong>Allergies:</strong> None</div>'}
-                ${pet.medications ? `<div style="grid-column:1/-1;color:var(--info)"><strong>Medications:</strong> ${escHTML(pet.medications)}</div>` : '<div style="grid-column:1/-1"><strong>Medications:</strong> None</div>'}
-            </div>
-        </div>
-
-        <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:14px">
-            <div style="font-weight:600;margin-bottom:8px;font-size:.9rem">Temperament & Preferences</div>
-            <div style="font-size:.85rem;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div><strong>Preferred Sitter:</strong> ${escHTML(pet.preferredSitter || '—')}</div>
-                <div><strong>Coat Type:</strong> ${escHTML(pet.coatType || '—')}</div>
-                <div><strong>Groom Frequency:</strong> ${escHTML(pet.groomFrequency || '—')}</div>
-                <div><strong>Shampoo:</strong> ${escHTML(pet.shampoo || '—')}</div>
-            </div>
-            ${pet.tags ? `<div style="margin-top:8px"><strong>Tags:</strong> ${(pet.tags || '').split(',').filter(t => t.trim()).map(t => `<span class="pet-tag">${escHTML(t.trim())}</span>`).join('')}</div>` : ''}
-            ${pet.groomNotes ? `<div style="margin-top:8px"><strong>Grooming Notes:</strong> ${escHTML(pet.groomNotes)}</div>` : ''}
-        </div>
-
-        ${pet.notes ? `<div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:14px">
-            <div style="font-weight:600;margin-bottom:8px;font-size:.9rem">Special Notes</div>
-            <div style="font-size:.85rem">${escHTML(pet.notes)}</div>
-        </div>` : ''}
-
-        ${petInfamy.length ? `<div style="padding:10px;background:rgba(225,112,85,.1);border-left:3px solid var(--danger);border-radius:4px;margin-bottom:14px;font-size:.85rem">
-            <strong>⚠️ Infamy Flags:</strong>
-            <div style="margin-top:6px">${petInfamy.map(i => `<div>• ${escHTML(i.issueType)} (${i.severity}): ${escHTML(i.notes || '')}</div>`).join('')}</div>
-        </div>` : ''}
-
-        <div style="font-weight:600;margin-bottom:8px;font-size:.9rem">Booking History (${petBookings.length})</div>
-        <div style="max-height:250px;overflow-y:auto;margin-bottom:14px;border:1px solid var(--border);border-radius:6px">
-            ${petBookings.length ? petBookings.slice(0, 20).map(b => `<div style="padding:10px;border-bottom:1px solid var(--border);font-size:.83rem;display:flex;justify-content:space-between">
-                <div><strong>${b.date || '—'}</strong> ${b.time || ''} · ${escHTML(b.service)} <span class="badge badge-${b.status}" style="font-size:.7rem">${b.status}</span></div>
-                <div style="text-align:right"><strong>${fmt(calcBookingTotal(b))}</strong>${b.sitter ? '<br><span style="font-size:.7rem;color:var(--text-muted)">Sitter: ' + escHTML(b.sitter) + '</span>' : ''}</div>
-            </div>`).join('') : '<div style="padding:10px;font-size:.83rem;color:var(--text-muted);text-align:center">No bookings yet</div>'}
-        </div>
-
-        ${petCheckins.length ? `<div>
-            <div style="font-weight:600;margin-bottom:8px;font-size:.9rem">Check-In History (${petCheckins.length})</div>
-            <div style="max-height:200px;overflow-y:auto;margin-bottom:14px;border:1px solid var(--border);border-radius:6px">
-                ${petCheckins.slice(0, 20).map(c => `<div style="padding:10px;border-bottom:1px solid var(--border);font-size:.82rem">
-                    ${c.checkInDate} ${c.checkInTime || ''} → ${c.checkedOut ? c.checkOutDate + ' ' + (c.checkOutTime || '') : '<span style="color:var(--primary)">Still checked in</span>'} · ${escHTML(c.service)} · ${escHTML(c.property || '')}
-                </div>`).join('')}
-            </div>
-        </div>` : ''}
-
-        <div class="modal-footer" style="display:flex;gap:8px;justify-content:space-between">
-            <div style="display:flex;gap:6px">
-                <button class="btn btn-primary btn-sm" onclick="editPet('${petId}')">Edit Pet</button>
-                <button class="btn btn-secondary btn-sm" onclick="addQuickBooking('${petId}')">Add Booking</button>
-                ${petInfamy.length ? `<button class="btn btn-ghost btn-sm" onclick="viewPetInfamy('${petId}')">View Infamy</button>` : `<button class="btn btn-ghost btn-sm" onclick="sendToInfamy('${petId}')">Report Issue</button>`}
-            </div>
-            <button class="btn btn-secondary" onclick="closeModal()">Close</button>
-        </div>
-    </div>`;
-    overlay.classList.add('open');
-};
-
-// Quick action functions for pet profile
-const addQuickBooking = (petId) => {
-    const pet = pets.find(p => p.id === petId);
-    if (pet) {
-        closeModal();
-        activeTab = 'bookings';
-        renderTab();
-        setTimeout(() => {
-            document.getElementById('addBookingForm')?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-    }
-};
-
-const sendToInfamy = (petId) => {
-    const pet = pets.find(p => p.id === petId);
-    if (!pet) return;
-    const severity = prompt('Issue severity (low/medium/high):');
-    if (!severity) return;
-    const issueType = prompt('Issue type (e.g., Aggression, Anxiety, Biting):');
-    if (!issueType) return;
-    const notes = prompt('Brief notes:');
-    const infamy = load('infamy', []);
-    infamy.push({ id: uid(), dogName: pet.name, severity: severity.toLowerCase(), issueType: issueType, notes: notes || '', dateReported: todayStr() });
-    save('infamy', infamy);
-    alert('Issue reported to infamy list');
-    showPetHistory(petId);
-};
-
-const viewPetInfamy = (petId) => {
-    const pet = pets.find(p => p.id === petId);
-    if (!pet) return;
-    const infamy = load('infamy', []);
-    const petInfamy = infamy.filter(i => i.dogName === pet.name);
-    if (petInfamy.length === 0) { alert('No infamy records'); return; }
-    let overlay = document.getElementById('modalOverlay');
-    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
-    overlay.innerHTML = `<div class="modal">
-        <div class="modal-title">Infamy Records — ${escHTML(pet.name)}</div>
-        ${petInfamy.map((inf, idx) => `
-            <div style="padding:10px;background:var(--bg);border-radius:6px;margin-bottom:10px">
-                <div><strong>${escHTML(inf.issueType)}</strong> <span style="color:var(--danger);font-weight:600">${inf.severity.toUpperCase()}</span></div>
-                <div style="font-size:.85rem;margin-top:4px">${escHTML(inf.notes || inf.description || '')}</div>
-                <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">Reported: ${inf.dateReported || 'N/A'}</div>
-                <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="editInfamy('${inf.id}')">Edit</button>
-            </div>
-        `).join('')}
-        <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal()">Close</button></div>
-    </div>`;
-    overlay.classList.add('open');
-};
-
 // ============================================
 // SCHEDULE
 // ============================================
-// ---- Calendar State ----
-let calView = 'month'; // 'month' or 'week'
-let calDate = new Date(); // Current viewed month/week anchor
-
-const getBookingsForDate = (dateStr) => bookings.filter(b => {
-    if (b.status === 'cancelled') return false;
-    if (b.date === dateStr) return true;
-    if (b.date && b.endDate && b.date <= dateStr && b.endDate >= dateStr) return true;
-    return false;
-}).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-
-const calNav = (dir) => {
-    if (calView === 'month') calDate.setMonth(calDate.getMonth() + dir);
-    else calDate.setDate(calDate.getDate() + (dir * 7));
-    renderSchedule();
-};
-const calToday = () => { calDate = new Date(); renderSchedule(); };
-const calSetView = (v) => { calView = v; renderSchedule(); };
-const calShowDay = (dateStr) => {
-    const dayBkgs = getBookingsForDate(dateStr);
-    const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-    const dayRev = dayBkgs.reduce((s, b) => s + calcBookingTotal(b), 0);
-    const checkins = load('checkins', []).filter(c => c.checkInDate === dateStr);
-
-    let overlay = document.getElementById('modalOverlay');
-    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
-    overlay.innerHTML = `<div class="modal" style="max-width:600px">
-        <div class="modal-title">${label}</div>
-        <div style="display:flex;gap:12px;margin-bottom:12px">
-            <div style="flex:1;padding:10px;background:var(--bg-alt);border-radius:8px;text-align:center"><div style="font-size:1.2rem;font-weight:700">${dayBkgs.length}</div><div style="font-size:.75rem;color:var(--text-muted)">Bookings</div></div>
-            <div style="flex:1;padding:10px;background:var(--bg-alt);border-radius:8px;text-align:center"><div style="font-size:1.2rem;font-weight:700">${checkins.length}</div><div style="font-size:.75rem;color:var(--text-muted)">Check-ins</div></div>
-            <div style="flex:1;padding:10px;background:var(--bg-alt);border-radius:8px;text-align:center"><div style="font-size:1.2rem;font-weight:700;color:var(--primary)">${fmt(dayRev)}</div><div style="font-size:.75rem;color:var(--text-muted)">Revenue</div></div>
-        </div>
-        ${dayBkgs.length ? `<div style="max-height:350px;overflow-y:auto">${dayBkgs.map(b => `
-            <div style="padding:10px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;cursor:pointer" onclick="closeModal();editBooking('${b.id}')">
-                <div style="min-width:50px;font-weight:600;color:var(--primary);font-size:.9rem">${b.time || '—'}</div>
-                <div style="flex:1">
-                    <div style="font-weight:600;font-size:.9rem">${escHTML(b.clientName)} — ${escHTML(b.petName)}</div>
-                    <div style="font-size:.82rem;color:var(--text-muted)">${escHTML(b.service)} ${b.sitter ? '· 🧑 ' + escHTML(b.sitter) : ''}</div>
-                    <div style="margin-top:4px"><span class="badge badge-${b.status}">${b.status}</span> <strong style="font-size:.85rem">${fmt(calcBookingTotal(b))}</strong></div>
-                </div>
-            </div>
-        `).join('')}</div>` : '<div class="empty" style="padding:20px">No bookings this day</div>'}
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-            <button class="btn btn-primary" onclick="closeModal();showModal('booking')">+ New Booking</button>
-        </div>
-    </div>`;
-    overlay.classList.add('open');
-};
-
-// Make calendar nav functions global
-window.calNav = calNav;
-window.calToday = calToday;
-window.calSetView = calSetView;
-window.calShowDay = calShowDay;
-
 const renderSchedule = () => {
-    const today = todayStr();
-
-    // Stats for next 7 days
-    const upcoming7 = [];
+    const week = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(); d.setDate(d.getDate() + i);
         const key = d.toISOString().split('T')[0];
-        upcoming7.push({ date: key, count: getBookingsForDate(key).length, revenue: getBookingsForDate(key).reduce((s, b) => s + calcBookingTotal(b), 0) });
+        week.push({ date: key, label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), bookings: bookings.filter(b => b.date === key && b.status !== 'cancelled').sort((a, b) => (a.time || '').localeCompare(b.time || '')), isToday: i === 0 });
     }
-    const totalWeekBookings = upcoming7.reduce((s, d) => s + d.count, 0);
-    const totalWeekRevenue = upcoming7.reduce((s, d) => s + d.revenue, 0);
-    const todayBkgs = getBookingsForDate(today);
-    const pendingCount = bookings.filter(b => b.status === 'pending').length;
-
-    // Sitter workload for week
-    const sitterLoad = {};
-    upcoming7.forEach(d => getBookingsForDate(d.date).forEach(b => { if (b.sitter) sitterLoad[b.sitter] = (sitterLoad[b.sitter] || 0) + 1; }));
-
-    let calendarHTML = '';
-
-    if (calView === 'month') {
-        // ---- MONTH VIEW ----
-        const year = calDate.getFullYear(), month = calDate.getMonth();
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const monthLabel = calDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-        let cells = '';
-        // Empty cells for days before first
-        for (let i = 0; i < firstDay; i++) cells += '<div style="min-height:80px"></div>';
-
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const dayBkgs = getBookingsForDate(dateStr);
-            const isToday = dateStr === today;
-            const isPast = dateStr < today;
-            const statusColors = { pending: '#FDCB6E', confirmed: '#00B894', completed: '#6C5CE7' };
-
-            cells += `<div style="min-height:80px;padding:4px;border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;${isToday ? 'background:rgba(255,107,53,.06);border-color:var(--primary)' : isPast ? 'opacity:.6' : 'background:var(--card-bg)'}" onclick="calShowDay('${dateStr}')" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-                <div style="font-size:.78rem;font-weight:${isToday ? '700' : '600'};color:${isToday ? 'var(--primary)' : 'var(--text)'};margin-bottom:2px">${d}${isToday ? ' <span style="font-size:.65rem;background:var(--primary);color:#fff;padding:1px 5px;border-radius:4px;vertical-align:middle">TODAY</span>' : ''}</div>
-                ${dayBkgs.slice(0, 3).map(b => `<div style="font-size:.65rem;padding:2px 4px;margin-bottom:1px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:${statusColors[b.status] || '#ddd'}20;border-left:2px solid ${statusColors[b.status] || '#aaa'};color:var(--text)">${b.time ? b.time.substring(0, 5) + ' ' : ''}${escHTML(b.petName)}</div>`).join('')}
-                ${dayBkgs.length > 3 ? `<div style="font-size:.6rem;color:var(--text-muted);text-align:center">+${dayBkgs.length - 3} more</div>` : ''}
-                ${dayBkgs.length === 0 ? '' : `<div style="font-size:.6rem;color:var(--text-muted);text-align:right;margin-top:1px">${fmt(dayBkgs.reduce((s, b) => s + calcBookingTotal(b), 0))}</div>`}
-            </div>`;
-        }
-
-        calendarHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                <div style="display:flex;align-items:center;gap:8px">
-                    <button class="btn btn-ghost btn-sm" onclick="calNav(-1)" style="font-size:1.1rem;padding:4px 10px">←</button>
-                    <h3 style="margin:0;font-size:1.15rem;min-width:180px;text-align:center">${monthLabel}</h3>
-                    <button class="btn btn-ghost btn-sm" onclick="calNav(1)" style="font-size:1.1rem;padding:4px 10px">→</button>
-                    <button class="btn btn-ghost btn-sm" onclick="calToday()" style="font-size:.8rem">Today</button>
-                </div>
-                <div style="display:flex;gap:4px">
-                    <button class="btn btn-sm ${calView === 'month' ? 'btn-primary' : 'btn-ghost'}" onclick="calSetView('month')">Month</button>
-                    <button class="btn btn-sm ${calView === 'week' ? 'btn-primary' : 'btn-ghost'}" onclick="calSetView('week')">Week</button>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:4px">
-                ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div style="text-align:center;font-size:.75rem;font-weight:600;color:var(--text-muted);padding:6px 0">${d}</div>`).join('')}
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${cells}</div>
-        `;
-    } else {
-        // ---- WEEK VIEW ----
-        const startOfWeek = new Date(calDate);
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-        const weekLabel = startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' — ' + new Date(startOfWeek.getTime() + 6 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-        let weekDays = '';
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(startOfWeek); d.setDate(d.getDate() + i);
-            const dateStr = d.toISOString().split('T')[0];
-            const dayBkgs = getBookingsForDate(dateStr);
-            const isToday = dateStr === today;
-            const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-            const dayRevenue = dayBkgs.reduce((s, b) => s + calcBookingTotal(b), 0);
-
-            weekDays += `
-                <div style="margin-bottom:16px;${isToday ? 'background:rgba(255,107,53,.04);padding:12px;border-radius:8px;border-left:3px solid var(--primary)' : 'padding:12px 0;border-bottom:1px solid var(--border)'}">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                        <div style="font-weight:600;font-size:.95rem;${isToday ? 'color:var(--primary)' : ''}">${dayLabel}${isToday ? ' (Today)' : ''}</div>
-                        <div style="font-size:.82rem;color:var(--text-muted)">${dayBkgs.length} bookings · ${fmt(dayRevenue)}</div>
-                    </div>
-                    ${dayBkgs.length ? dayBkgs.map(b => `
-                        <div class="schedule-item" style="cursor:pointer" onclick="editBooking('${b.id}')">
-                            <div class="schedule-time">${b.time || '—'}</div>
-                            <div class="schedule-info">
-                                <h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4>
-                                <p>${escHTML(b.service)} ${b.sitter ? `<span style="font-size:.78rem;color:#8B5CF6">🧑 ${escHTML(b.sitter)}</span>` : ''} ${b.dropoffTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Drop: ${b.dropoffTime}</span>` : ''} ${b.pickupTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Pick: ${b.pickupTime}</span>` : ''} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p>
-                            </div>
-                        </div>
-                    `).join('') : '<div style="font-size:.85rem;color:var(--text-muted);padding:4px 0">No bookings</div>'}
-                </div>`;
-        }
-
-        calendarHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                <div style="display:flex;align-items:center;gap:8px">
-                    <button class="btn btn-ghost btn-sm" onclick="calNav(-1)" style="font-size:1.1rem;padding:4px 10px">←</button>
-                    <h3 style="margin:0;font-size:1.05rem;min-width:220px;text-align:center">${weekLabel}</h3>
-                    <button class="btn btn-ghost btn-sm" onclick="calNav(1)" style="font-size:1.1rem;padding:4px 10px">→</button>
-                    <button class="btn btn-ghost btn-sm" onclick="calToday()" style="font-size:.8rem">Today</button>
-                </div>
-                <div style="display:flex;gap:4px">
-                    <button class="btn btn-sm ${calView === 'month' ? 'btn-primary' : 'btn-ghost'}" onclick="calSetView('month')">Month</button>
-                    <button class="btn btn-sm ${calView === 'week' ? 'btn-primary' : 'btn-ghost'}" onclick="calSetView('week')">Week</button>
-                </div>
-            </div>
-            ${weekDays}
-        `;
-    }
+    const dailyRevenue = week.map(d => d.bookings.reduce((s, b) => s + calcBookingTotal(b), 0));
 
     el.innerHTML = `
         <div class="stats-grid" style="margin-bottom:16px">
-            <div class="stat-card"><div class="stat-label">Today</div><div class="stat-value">${todayBkgs.length}</div><div class="stat-sub">${fmt(todayBkgs.reduce((s, b) => s + calcBookingTotal(b), 0))}</div></div>
-            <div class="stat-card blue"><div class="stat-label">This Week</div><div class="stat-value">${totalWeekBookings}</div><div class="stat-sub">${fmt(totalWeekRevenue)}</div></div>
-            <div class="stat-card yellow"><div class="stat-label">Pending</div><div class="stat-value">${pendingCount}</div><div class="stat-sub">need confirmation</div></div>
-            <div class="stat-card green"><div class="stat-label">Active Sitters</div><div class="stat-value">${Object.keys(sitterLoad).length}</div><div class="stat-sub">${Object.entries(sitterLoad).map(([n, c]) => escHTML(n) + ': ' + c).join(', ') || 'none assigned'}</div></div>
+            ${week.slice(0, 4).map((d, i) => `<div class="stat-card ${d.isToday ? '' : i === 1 ? 'blue' : i === 2 ? 'green' : 'yellow'}">
+                <div class="stat-label">${d.label}</div><div class="stat-value">${d.bookings.length}</div><div class="stat-sub">${fmt(dailyRevenue[i])} revenue</div>
+            </div>`).join('')}
         </div>
-
-        <div class="card" style="padding:16px">${calendarHTML}</div>
-
-        ${todayBkgs.length ? `
-        <div class="card" style="margin-top:16px">
-            <div class="card-header"><span class="card-title">Today's Schedule (${todayBkgs.length})</span></div>
-            ${todayBkgs.map(b => `
-                <div class="schedule-item" style="cursor:pointer" onclick="editBooking('${b.id}')">
-                    <div class="schedule-time">${b.time || '—'}</div>
-                    <div class="schedule-info"><h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4><p>${escHTML(b.service)} ${b.sitter ? `<span style="font-size:.78rem;color:#8B5CF6">🧑 ${escHTML(b.sitter)}</span>` : ''} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p></div>
+        <div class="card">${week.map(d => `
+            <div style="margin-bottom:20px;${d.isToday ? 'background:rgba(255,107,53,0.03);padding:14px;border-radius:8px;border-left:3px solid var(--primary)' : ''}">
+                <div style="font-weight:600;font-size:.95rem;margin-bottom:8px;display:flex;justify-content:space-between;${d.isToday ? 'color:var(--primary)' : ''}">
+                    <span>${d.label}${d.isToday ? ' (Today)' : ''}</span>
+                    <span style="font-size:.82rem;color:var(--text-muted)">${d.bookings.length} bookings · ${fmt(d.bookings.reduce((s, b) => s + calcBookingTotal(b), 0))}</span>
                 </div>
-            `).join('')}
-        </div>` : ''}
+                ${d.bookings.length ? d.bookings.map(b => `
+                    <div class="schedule-item"><div class="schedule-time">${b.time || '—'}</div>
+                    <div class="schedule-info"><h4>${escHTML(b.clientName)} — ${escHTML(b.petName)}</h4><p>${escHTML(b.service)} ${b.dropoffTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Drop: ${b.dropoffTime}</span>` : ''} ${b.pickupTime ? `<span style="font-size:.78rem;color:var(--text-muted)">Pick: ${b.pickupTime}</span>` : ''} <span class="badge badge-${b.status}">${b.status}</span> <strong>${fmt(calcBookingTotal(b))}</strong></p></div></div>
+                `).join('') : '<div style="font-size:.85rem;color:var(--text-muted);padding:4px 0">No bookings</div>'}
+            </div>
+        `).join('')}</div>
     `;
 };
 
@@ -1024,7 +698,7 @@ const renderSitters = () => {
         ${sitterStats.map(s => `
             <div class="card" style="margin-bottom:12px">
                 <div style="display:flex;gap:16px;align-items:flex-start">
-                    ${s.photo ? `<img src="${s.photo}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;flex-shrink:0">` : `<div style="width:56px;height:56px;border-radius:50%;background:${s.status === 'active' ? 'var(--primary)' : '#6B7280'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;flex-shrink:0">${s.name.split(' ').map(n => n[0]).join('')}</div>`}
+                    <div style="width:56px;height:56px;border-radius:50%;background:${s.status === 'active' ? 'var(--primary)' : '#6B7280'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;flex-shrink:0">${s.name.split(' ').map(n => n[0]).join('')}</div>
                     <div style="flex:1">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
@@ -1078,25 +752,6 @@ const toggleSitterStatus = (id) => {
     if (s) { s.status = s.status === 'active' ? 'inactive' : 'active'; save('sitters', sitters); renderTab(); }
 };
 
-window.previewSitterPhoto = (input, targetId) => {
-    if (!input.files[0]) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const dataUrl = e.target.result;
-        document.getElementById(targetId).value = dataUrl;
-        // Show visual preview
-        let preview = input.parentElement.querySelector('.photo-preview');
-        if (!preview) {
-            preview = document.createElement('div');
-            preview.className = 'photo-preview';
-            preview.style.cssText = 'margin-top:8px;text-align:center';
-            input.parentElement.appendChild(preview);
-        }
-        preview.innerHTML = `<img src="${dataUrl}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--primary)">`;
-    };
-    reader.readAsDataURL(input.files[0]);
-};
-
 const editSitter = (id) => {
     const s = sitters.find(x => x.id === id);
     if (!s) return;
@@ -1104,8 +759,6 @@ const editSitter = (id) => {
     if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
     overlay.innerHTML = `<div class="modal">
         <div class="modal-title">Edit: ${escHTML(s.name)}</div>
-        ${s.photo ? `<div style="text-align:center;margin-bottom:12px"><img src="${s.photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover"></div>` : ''}
-        <div class="form-group"><label class="form-label">Photo</label><input type="file" accept="image/*" class="form-input" id="esSitterPhoto" onchange="previewSitterPhoto(this,'esSitterPhotoData')"><input type="hidden" id="esSitterPhotoData" value="${s.photo || ''}"></div>
         <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="esName" value="${escHTML(s.name)}"></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="esPhone" value="${escHTML(s.phone || '')}"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="esEmail" value="${escHTML(s.email || '')}"></div></div>
         <div class="form-row"><div class="form-group"><label class="form-label">Rate ($/hr)</label><input class="form-input" id="esRate" type="number" value="${s.rate || 25}"></div><div class="form-group"><label class="form-label">Max Dogs</label><input class="form-input" id="esMax" type="number" value="${s.maxDogs || 3}"></div></div>
@@ -1130,8 +783,6 @@ const saveEditSitter = (id) => {
     s.certifications = document.getElementById('esCerts')?.value?.trim() || '';
     s.availability = document.getElementById('esAvail')?.value?.trim() || '';
     s.bio = document.getElementById('esBio')?.value?.trim() || '';
-    const newPhoto = document.getElementById('esSitterPhotoData')?.value;
-    if (newPhoto) s.photo = newPhoto;
     save('sitters', sitters);
     closeModal(); renderTab();
 };
@@ -1139,24 +790,11 @@ const saveEditSitter = (id) => {
 const paySitter = (id, name, owed) => {
     let overlay = document.getElementById('modalOverlay');
     if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
-
-    // Build payment method options from configured handles
-    const paymentMethods = ['Cash', 'Direct Deposit'];
-    if (businessSettings.cashAppHandle) paymentMethods.push('CashApp');
-    if (businessSettings.venmoHandle) paymentMethods.push('Venmo');
-    if (businessSettings.zelleHandle) paymentMethods.push('Zelle');
-    if (businessSettings.checkPayable) paymentMethods.push('Check');
-    if (businessSettings.paypalHandle) paymentMethods.push('PayPal');
-    if (businessSettings.googlePayHandle) paymentMethods.push('Google Pay');
-    if (businessSettings.applePayHandle) paymentMethods.push('Apple Pay');
-    if (businessSettings.stripeHandle) paymentMethods.push('Stripe');
-    const methodOptions = paymentMethods.map(m => `<option>${m}</option>`).join('');
-
     overlay.innerHTML = `<div class="modal">
         <div class="modal-title">Pay: ${escHTML(name)}</div>
         ${owed > 0 ? `<div style="padding:12px;background:rgba(255,107,53,.05);border-radius:8px;margin-bottom:12px;font-size:.9rem"><strong>Owed:</strong> <span style="color:var(--primary);font-weight:700">${fmt(owed)}</span></div>` : '<div style="padding:12px;background:rgba(0,184,148,.05);border-radius:8px;margin-bottom:12px;font-size:.9rem;color:var(--success)">All settled up!</div>'}
         <div class="form-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="spAmount" type="number" step="0.01" value="${owed > 0 ? owed.toFixed(2) : ''}"></div><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="spDate" type="date" value="${todayStr()}"></div></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Method</label><select class="form-select" id="spMethod">${methodOptions}</select></div><div class="form-group"><label class="form-label">Period</label><input class="form-input" id="spPeriod" placeholder="e.g. Week of Mar 28"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Method</label><select class="form-select" id="spMethod"><option>Cash</option><option>CashApp</option><option>Venmo</option><option>Zelle</option><option>Check</option><option>Direct Deposit</option></select></div><div class="form-group"><label class="form-label">Period</label><input class="form-input" id="spPeriod" placeholder="e.g. Week of Mar 28"></div></div>
         <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="spNotes" placeholder="e.g. Includes bonus for holiday shifts"></div>
         <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSitterPay('${id}')">Record Payment</button></div>
     </div>`;
@@ -1425,7 +1063,7 @@ const sendPhotoToOwner = (photoId, method) => {
         const email = client?.email || prompt('Enter email address:');
         if (!email) return;
         if (typeof GPC_NOTIFY !== 'undefined') {
-            GPC_NOTIFY.sendDirectEmail(email, client?.name || '', `📸 Photo of ${photo.petName} — GenusPupClub`, `Here's a photo of ${photo.petName} from their visit!\n\n${caption}\n\nView all photos in your portal: genuspupclub.com/portal.html`);
+            GPC_NOTIFY.sendDirectEmail(email, client?.name || '', `📸 Photo of ${photo.petName} — GenusPupClub`, `Hi!\n\nHere's a photo of ${photo.petName} from their visit!\n\n${caption}\n\nView all photos in your portal: genuspupclub.com/portal.html\n\n— GenusPupClub`);
         }
     }
     if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Sent!', `Photo sent via ${method.toUpperCase()}`, 'success');
@@ -1472,6 +1110,8 @@ const renderEmailCenter = () => {
         onReminder: false, onReportCard: false
     });
     const clientOptions = clients.map(c => `<option value="${c.id}" data-email="${escHTML(c.email || '')}">${escHTML(c.name)}${c.email ? ' (' + escHTML(c.email) + ')' : ''}</option>`).join('');
+    const clientNameOptions = clients.map(c => `<option value="${escHTML(c.name)}">${escHTML(c.name)}${c.email ? ' (' + escHTML(c.email) + ')' : ''}</option>`).join('');
+    const petOptions = pets.map(p => { const o = clients.find(c => c.id === p.clientId); return `<option value="${escHTML(p.name)}">${escHTML(p.name)}${o ? ' (' + escHTML(o.name) + ')' : ''}${p.breed ? ' — ' + escHTML(p.breed) : ''}</option>`; }).join('');
 
     // Default template names
     const templateNames = {
@@ -1569,12 +1209,12 @@ const renderEmailCenter = () => {
 // Compose email quick templates
 const fillEmailTemplate = (type) => {
     const templates = {
-        visit_update: { subject: 'Visit Update — Your Pup is Having a Great Time!', body: 'Just wanted to send a quick update — your pup is having a wonderful time! They ate well, got plenty of exercise, and are in great spirits.\n\nWe\'ll send photos shortly!' },
-        booking_reminder: { subject: 'Reminder: Your Booking is Tomorrow!', body: 'Just a friendly reminder — your booking is tomorrow!\n\nPlease have your pup ready with their leash, food, and any medications.\n\nSee you soon!' },
-        checkout_ready: { subject: 'Your Pup is Ready for Pickup!', body: 'Your pup is all checked out and ready for pickup! Everything went great today.\n\nSee you next time!' },
-        payment_request: { subject: 'Payment Request — GenusPupClub', body: 'This is a friendly reminder about your outstanding balance.\n\nYou can pay via:\n• Venmo: @GenusPupClub\n• Zelle: Genuspupclub@gmail.com\n• CashApp: $m3lop3z\n• Apple Pay: (804) 258-3830' },
-        thank_you: { subject: 'Thank You for Choosing GenusPupClub!', body: 'Thank you for trusting us with your pup! We loved every minute.\n\nIf you had a great experience, we\'d love a review — it helps other dog parents find us.\n\nSee you next time!' },
-        promo: { subject: 'Special Offer from GenusPupClub!', body: 'We have a special offer just for you:\n\n[DESCRIBE YOUR OFFER HERE]\n\nBook now through your portal or call us at (804) 258-3830.\n\nLimited spots available!' }
+        visit_update: { subject: 'Visit Update — Your Pup is Having a Great Time!', body: 'Hi!\n\nJust wanted to send a quick update — your pup is having a wonderful time! They ate well, got plenty of exercise, and are in great spirits.\n\nWe\'ll send photos shortly!\n\n— GenusPupClub' },
+        booking_reminder: { subject: 'Reminder: Your Booking is Tomorrow!', body: 'Hi!\n\nJust a friendly reminder — your booking is tomorrow!\n\nPlease have your pup ready with their leash, food, and any medications.\n\nSee you soon!\n— GenusPupClub' },
+        checkout_ready: { subject: 'Your Pup is Ready for Pickup!', body: 'Hi!\n\nYour pup is all checked out and ready for pickup! Everything went great today.\n\nSee you next time!\n— GenusPupClub' },
+        payment_request: { subject: 'Payment Request — GenusPupClub', body: 'Hi!\n\nThis is a friendly reminder about your outstanding balance.\n\nYou can pay via:\n• Venmo: @GenusPupClub\n• Zelle: Genuspupclub@gmail.com\n• CashApp: $m3lop3z\n• Apple Pay: (804) 258-3830\n\nThank you!\n— GenusPupClub' },
+        thank_you: { subject: 'Thank You for Choosing GenusPupClub!', body: 'Hi!\n\nThank you for trusting us with your pup! We loved every minute.\n\nIf you had a great experience, we\'d love a review — it helps other dog parents find us.\n\nSee you next time!\n— GenusPupClub' },
+        promo: { subject: 'Special Offer from GenusPupClub!', body: 'Hi!\n\nWe have a special offer just for you:\n\n[DESCRIBE YOUR OFFER HERE]\n\nBook now through your portal or call us at (804) 258-3830.\n\nLimited spots available!\n— GenusPupClub' }
     };
     const t = templates[type];
     if (t) {
@@ -1823,20 +1463,6 @@ const renderInfamy = () => {
 
 const deleteInfamy = (id) => { if (!confirm('Remove from infamy hall?')) return; let infamy = load('infamy', []); infamy = infamy.filter(x => x.id !== id); save('infamy', infamy); renderTab(); };
 
-window.fillInfamyFromPet = (petId) => {
-    if (!petId) return;
-    const pet = pets.find(p => p.id === petId);
-    if (!pet) return;
-    const owner = clients.find(c => c.id === pet.clientId);
-    // Set dropdowns if the value exists as an option, otherwise show custom input
-    const dogNameEl = document.getElementById('mDogName');
-    const ownerNameEl = document.getElementById('mOwnerName');
-    const breedEl = document.getElementById('mBreed');
-    if (dogNameEl) { dogNameEl.value = pet.name || ''; if (!dogNameEl.value && pet.name) { dogNameEl.value = '__custom'; const c = document.getElementById('mDogNameCustom'); if (c) { c.style.display = 'block'; c.value = pet.name; } } }
-    if (ownerNameEl && owner) { ownerNameEl.value = owner.name || ''; if (!ownerNameEl.value && owner.name) { ownerNameEl.value = '__custom'; const c = document.getElementById('mOwnerNameCustom'); if (c) { c.style.display = 'block'; c.value = owner.name; } } }
-    if (breedEl && pet.breed) { breedEl.value = pet.breed || ''; if (!breedEl.value) { breedEl.value = '__custom'; const c = document.getElementById('mBreedCustom'); if (c) { c.style.display = 'block'; c.value = pet.breed; } } }
-};
-
 const addIncident = (id) => {
     const note = prompt('Describe the incident:');
     if (!note) return;
@@ -1912,95 +1538,6 @@ let siteContent = load('site_content', {
 });
 if (!localStorage.getItem(DB_KEY + 'site_content')) save('site_content', siteContent);
 
-// ============================================
-// PHOTO UPLOAD HANDLERS — Drag-and-Drop Support
-// ============================================
-window.handlePhotoDrop = (event, inputId, zoneId) => {
-    const file = event.dataTransfer.files[0];
-    if (!file || !file.type.startsWith('image/')) return;
-    processPhotoFile(file, inputId, zoneId);
-};
-
-window.handlePhotoSelect = (input, inputId, zoneId) => {
-    const file = input.files[0];
-    if (!file) return;
-    processPhotoFile(file, inputId, zoneId);
-};
-
-const processPhotoFile = (file, inputId, zoneId) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const dataUrl = e.target.result;
-        document.getElementById(inputId).value = dataUrl;
-        const zone = document.getElementById(zoneId);
-        if (zone) {
-            zone.innerHTML = '<img src="' + dataUrl + '" style="width:120px;height:120px;object-fit:cover;border-radius:12px"><div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">Click or drag to replace</div>';
-        }
-    };
-    reader.readAsDataURL(file);
-};
-
-window.clearPhoto = (inputId, zoneId) => {
-    document.getElementById(inputId).value = '';
-    const zone = document.getElementById(zoneId);
-    if (zone) {
-        zone.innerHTML = '<div style="font-size:2rem">📸</div><div style="font-size:.88rem;color:var(--text-muted)">Drag & drop image here or click to upload</div>';
-    }
-};
-
-// Gallery handlers for multiple images
-window.handleGalleryDrop = (event, zoneId) => {
-    event.preventDefault();
-    event.currentTarget.style.borderColor = 'var(--border)';
-    event.currentTarget.style.background = 'var(--bg-alt)';
-    const files = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-    processGalleryFiles(files, zoneId);
-};
-
-window.handleGallerySelect = (input, zoneId) => {
-    const files = Array.from(input.files).filter(f => f.type.startsWith('image/'));
-    processGalleryFiles(files, zoneId);
-};
-
-const processGalleryFiles = (files, zoneId) => {
-    const currentValue = document.getElementById('cmsGalleryImages')?.value || '';
-    let gallery = currentValue ? JSON.parse(currentValue) : [];
-    let processed = 0;
-
-    files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            gallery.push(e.target.result);
-            processed++;
-            if (processed === files.length) {
-                document.getElementById('cmsGalleryImages').value = JSON.stringify(gallery);
-                renderGalleryPreview(gallery, zoneId);
-            }
-        };
-        reader.readAsDataURL(file);
-    });
-};
-
-const renderGalleryPreview = (gallery, zoneId) => {
-    const zone = document.getElementById(zoneId);
-    if (!zone) return;
-    const previews = gallery.map((img, idx) => `
-        <div style="position:relative;display:inline-block;margin:4px">
-            <img src="${img}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
-            <button type="button" onclick="removeGalleryImage(${idx})" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;padding:0;border-radius:50%;background:var(--danger);color:white;border:none;cursor:pointer;font-size:.75rem">✕</button>
-        </div>
-    `).join('');
-    zone.innerHTML = `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">${previews}</div>`;
-};
-
-window.removeGalleryImage = (idx) => {
-    const currentValue = document.getElementById('cmsGalleryImages')?.value || '';
-    let gallery = currentValue ? JSON.parse(currentValue) : [];
-    gallery.splice(idx, 1);
-    document.getElementById('cmsGalleryImages').value = JSON.stringify(gallery);
-    renderGalleryPreview(gallery, 'cmsGalleryZone');
-};
-
 const renderWebsiteEditor = () => {
     siteContent = load('site_content', siteContent);
     const sc = siteContent;
@@ -2020,19 +1557,8 @@ const renderWebsiteEditor = () => {
                 <div class="form-group"><label class="form-label">Hero Title (highlight)</label><input class="form-input" id="cmsHeroHighlight" value="${escHTML(sc.heroTitleHighlight)}" style="color:var(--primary);font-weight:700"></div>
             </div>
             <div class="form-group"><label class="form-label">Subtitle</label><textarea class="form-textarea" id="cmsHeroSub" rows="2">${escHTML(sc.heroSubtitle)}</textarea></div>
-            <div class="form-group">
-                <label class="form-label">Hero Image</label>
-                <div id="cmsHeroImgZone" class="photo-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--bg-alt)"
-                     ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='rgba(255,107,53,.05)'"
-                     ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)'"
-                     ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)';handlePhotoDrop(event,'cmsHeroImg','cmsHeroImgZone')"
-                     onclick="document.getElementById('cmsHeroImgFile').click()">
-                    ${sc.heroImage ? '<img src="' + escHTML(sc.heroImage) + '" style="width:120px;height:120px;object-fit:cover;border-radius:12px"><div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">Click or drag to replace</div>' : '<div style="font-size:2rem">📸</div><div style="font-size:.88rem;color:var(--text-muted)">Drag & drop image here or click to upload</div>'}
-                </div>
-                <input type="file" id="cmsHeroImgFile" accept="image/*" style="display:none" onchange="handlePhotoSelect(this,'cmsHeroImg','cmsHeroImgZone')">
-                <input type="hidden" id="cmsHeroImg" value="${escHTML(sc.heroImage)}">
-                ${sc.heroImage ? '<button type="button" class="btn btn-sm btn-ghost" style="margin-top:8px;color:var(--danger)" onclick="clearPhoto(\'cmsHeroImg\',\'cmsHeroImgZone\')">✕ Remove image</button>' : ''}
-            </div>
+            <div class="form-group"><label class="form-label">Hero Image URL</label><input class="form-input" id="cmsHeroImg" value="${escHTML(sc.heroImage)}"><div style="margin-top:4px;font-size:.75rem;color:var(--text-muted)">Use: images/dogs-car.jpg, images/dogs-hiking.jpg, images/dogs-pair.jpg, images/dogs-cozy.jpg, images/dog-poodle.jpg — or paste any URL</div></div>
+            ${sc.heroImage ? `<img src="${escHTML(sc.heroImage)}" style="width:120px;height:120px;object-fit:cover;border-radius:50%;margin-top:8px" onerror="this.style.display='none'">` : ''}
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
                 <div class="form-group"><label class="form-label">Stat 1 Number</label><input class="form-input" id="cmsStat1" value="${escHTML(sc.trustStat1)}"></div>
                 <div class="form-group"><label class="form-label">Stat 2 Number</label><input class="form-input" id="cmsStat2" value="${escHTML(sc.trustStat2)}"></div>
@@ -2064,48 +1590,9 @@ const renderWebsiteEditor = () => {
             </div>
             <div class="form-group"><label class="form-label">Paragraph 1</label><textarea class="form-textarea" id="cmsAbout1" rows="2">${escHTML(sc.aboutText1)}</textarea></div>
             <div class="form-group"><label class="form-label">Paragraph 2</label><textarea class="form-textarea" id="cmsAbout2" rows="2">${escHTML(sc.aboutText2)}</textarea></div>
-            <div class="form-group">
-                <label class="form-label">About Image</label>
-                <div id="cmsAboutImgZone" class="photo-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--bg-alt)"
-                     ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='rgba(255,107,53,.05)'"
-                     ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)'"
-                     ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)';handlePhotoDrop(event,'cmsAboutImg','cmsAboutImgZone')"
-                     onclick="document.getElementById('cmsAboutImgFile').click()">
-                    ${sc.aboutImage ? '<img src="' + escHTML(sc.aboutImage) + '" style="width:120px;height:120px;object-fit:cover;border-radius:12px"><div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">Click or drag to replace</div>' : '<div style="font-size:2rem">📸</div><div style="font-size:.88rem;color:var(--text-muted)">Drag & drop image here or click to upload</div>'}
-                </div>
-                <input type="file" id="cmsAboutImgFile" accept="image/*" style="display:none" onchange="handlePhotoSelect(this,'cmsAboutImg','cmsAboutImgZone')">
-                <input type="hidden" id="cmsAboutImg" value="${escHTML(sc.aboutImage)}">
-                ${sc.aboutImage ? '<button type="button" class="btn btn-sm btn-ghost" style="margin-top:8px;color:var(--danger)" onclick="clearPhoto(\'cmsAboutImg\',\'cmsAboutImgZone\')">✕ Remove image</button>' : ''}
-            </div>
-            <div class="form-group"><label class="form-label">Quote</label><input class="form-input" id="cmsAboutQuote" value="${escHTML(sc.aboutQuote)}"></div>
-        </div>
-
-        <!-- GALLERY SECTION -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Photo Gallery</div>
-            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Manage your photo gallery. Drag and drop multiple images at once, or click to select.</p>
-            <div id="cmsGalleryZone" class="photo-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;cursor:pointer;transition:all .2s;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--bg-alt)"
-                 ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='rgba(255,107,53,.05)'"
-                 ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg-alt)'"
-                 ondrop="handleGalleryDrop(event,'cmsGalleryZone')"
-                 onclick="document.getElementById('cmsGalleryFile').click()">
-                <div style="font-size:2.5rem">🖼️</div>
-                <div style="font-size:.95rem;font-weight:500">Drop images or click to upload</div>
-                <div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">Upload multiple images at once</div>
-            </div>
-            <input type="file" id="cmsGalleryFile" accept="image/*" multiple style="display:none" onchange="handleGallerySelect(this,'cmsGalleryZone')">
-            <input type="hidden" id="cmsGalleryImages" value="${escHTML(JSON.stringify(sc.galleryImages || []))}">
-            <div id="cmsGalleryPreview" style="margin-top:16px">
-                ${sc.galleryImages && sc.galleryImages.length > 0 ? `
-                    <div style="display:flex;gap:12px;flex-wrap:wrap">
-                        ${sc.galleryImages.map((img, idx) => `
-                            <div style="position:relative;display:inline-block">
-                                <img src="${img}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
-                                <button type="button" onclick="removeGalleryImage(${idx})" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;padding:0;border-radius:50%;background:var(--danger);color:white;border:none;cursor:pointer;font-size:.75rem">✕</button>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">About Image</label><input class="form-input" id="cmsAboutImg" value="${escHTML(sc.aboutImage)}"></div>
+                <div class="form-group"><label class="form-label">Quote</label><input class="form-input" id="cmsAboutQuote" value="${escHTML(sc.aboutQuote)}"></div>
             </div>
         </div>
 
@@ -2157,14 +1644,6 @@ const renderWebsiteEditor = () => {
 
 const saveSiteContent = () => {
     const v = (id) => document.getElementById(id)?.value || '';
-    const getGalleryImages = () => {
-        try {
-            const val = document.getElementById('cmsGalleryImages')?.value || '[]';
-            return JSON.parse(val);
-        } catch {
-            return [];
-        }
-    };
     siteContent = {
         heroBadge: v('cmsBadge'), heroTitle: v('cmsHeroTitle'), heroTitleHighlight: v('cmsHeroHighlight'),
         heroSubtitle: v('cmsHeroSub'), heroImage: v('cmsHeroImg'),
@@ -2179,8 +1658,7 @@ const saveSiteContent = () => {
         ctaTitle: v('cmsCtaTitle'), ctaHighlight: v('cmsCtaHL'), ctaSubtitle: v('cmsCtaSub'),
         primaryColor: v('cmsColor1'), secondaryColor: v('cmsColor2'),
         accentColor: v('cmsColor3'), bgColor: v('cmsColor4'),
-        footerText: v('cmsFooter'),
-        galleryImages: getGalleryImages()
+        footerText: v('cmsFooter')
     };
     save('site_content', siteContent);
     if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Website Updated', 'Changes saved! Visit the homepage to see them.', 'success');
@@ -2252,14 +1730,6 @@ const renderSettings = () => {
             <div class="form-row">
                 <div class="form-group"><label class="form-label">Zelle (email or phone)</label><input class="form-input" id="sPayZelle" value="${escHTML(businessSettings.zelleHandle || 'Genuspupclub@gmail.com')}"></div>
                 <div class="form-group"><label class="form-label">Apple Pay (phone)</label><input class="form-input" id="sPayApple" value="${escHTML(businessSettings.applePayHandle || '(804) 258-3830')}"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">PayPal (email or username)</label><input class="form-input" id="sPayPayPal" value="${escHTML(businessSettings.paypalHandle || '')}"></div>
-                <div class="form-group"><label class="form-label">Google Pay (email or phone)</label><input class="form-input" id="sPayGooglePay" value="${escHTML(businessSettings.googlePayHandle || '')}"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Stripe Link</label><input class="form-input" id="sPayStripe" value="${escHTML(businessSettings.stripeHandle || '')}"></div>
-                <div class="form-group"><label class="form-label">Check (Payable to)</label><input class="form-input" id="sPayCheck" value="${escHTML(businessSettings.checkPayable || '')}"></div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="savePaymentHandles()">Save Payment Handles</button>
         </div>
@@ -2470,13 +1940,12 @@ const renderSettings = () => {
         <div class="card">
             <div class="card-header"><span class="card-title">Packages (${packages.length})</span><button class="btn btn-primary btn-sm" onclick="showModal('package')">+ Add Package</button></div>
             ${packages.map(p => {
-                const baseService = services.find(s => (p.services || []).includes(s.name) || s.id === p.services?.[0]);
-                const perVisit = p.price > 0 ? p.price / p.visits : (baseService?.price || 0);
-                const basePrice = perVisit * (p.visits || 1);
-                const discounted = p.price > 0 ? p.price : basePrice * (1 - (p.discount || 0) / 100);
+                const baseService = services.find(s => s.id === p.services?.[0] || p.services?.includes(s.id));
+                const basePrice = baseService ? baseService.price * p.visits : 0;
+                const discounted = basePrice * (1 - p.discount / 100);
                 return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
-                    <div><strong>${escHTML(p.name)}</strong>${baseService ? `<br><span style="font-size:.78rem;color:var(--text-muted)">Base: ${escHTML(baseService.name)}</span>` : ''}<br><span style="font-size:.82rem;color:var(--text-muted)">${escHTML(p.description || '')}</span></div>
-                    <div style="text-align:right"><div style="font-size:1.1rem;font-weight:700;color:var(--primary)">${fmt(discounted)}</div>${basePrice > discounted ? `<div style="font-size:.78rem;color:var(--text-muted);text-decoration:line-through">${fmt(basePrice)}</div>` : ''}<div style="font-size:.72rem;color:var(--accent)">${p.discount ? p.discount + '% off · ' : ''}${p.visits} visits</div></div>
+                    <div><strong>${escHTML(p.name)}</strong><br><span style="font-size:.82rem;color:var(--text-muted)">${escHTML(p.description)}</span></div>
+                    <div style="text-align:right"><div style="font-size:1.1rem;font-weight:700;color:var(--primary)">${fmt(discounted)}</div><div style="font-size:.78rem;color:var(--text-muted);text-decoration:line-through">${fmt(basePrice)}</div><div style="font-size:.72rem;color:var(--accent)">${p.discount}% off · ${p.visits} visits</div></div>
                     <button class="btn btn-ghost btn-sm" onclick="editPackage('${p.id}')">✎</button> <button class="btn btn-ghost btn-sm" onclick="deletePackage('${p.id}')">✕</button>
                 </div>`;
             }).join('') || '<div class="empty">No packages</div>'}
@@ -2516,10 +1985,6 @@ const savePaymentHandles = () => {
     businessSettings.venmoHandle = v('sPayVenmo');
     businessSettings.zelleHandle = v('sPayZelle');
     businessSettings.applePayHandle = v('sPayApple');
-    businessSettings.paypalHandle = v('sPayPayPal');
-    businessSettings.googlePayHandle = v('sPayGooglePay');
-    businessSettings.stripeHandle = v('sPayStripe');
-    businessSettings.checkPayable = v('sPayCheck');
     save('settings', businessSettings);
     // Also update the notification system handles
     if (typeof GPC_NOTIFY !== 'undefined') {
@@ -2808,7 +2273,7 @@ const emailClientCreds = (userId) => {
     if (typeof GPC_NOTIFY !== 'undefined') {
         GPC_NOTIFY.sendDirectEmail(u.email, u.name,
             'Your GenusPupClub Login Credentials',
-            `Here are your GenusPupClub login details:\n\nEmail: ${u.email}\nPassword: ${u.plainPassword}\n\nLog in at your client portal anytime.\n\nIf you have questions, call us at (804) 258-3830.`
+            `Hi ${u.name}!\n\nHere are your GenusPupClub login details:\n\nEmail: ${u.email}\nPassword: ${u.plainPassword}\n\nLog in at your client portal anytime.\n\nIf you have questions, call us at (804) 258-3830.\n\n— GenusPupClub`
         );
     }
 };
@@ -3071,7 +2536,6 @@ const editPackage = (id) => {
     overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Package: ${escHTML(p.name)}</div>
         <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="epkName" value="${escHTML(p.name)}"></div>
         <div class="form-row"><div class="form-group"><label class="form-label"># Visits</label><input class="form-input" id="epkVisits" type="number" value="${p.visits}"></div><div class="form-group"><label class="form-label">Discount (%)</label><input class="form-input" id="epkDiscount" type="number" value="${p.discount}"></div></div>
-        <div class="form-group"><label class="form-label">Fixed Price (optional — overrides discount calc)</label><input class="form-input" id="epkPrice" type="number" step="0.01" value="${p.price || ''}"></div>
         <div class="form-group"><label class="form-label">Base Service</label><select class="form-select" id="epkService">${svcOptions}</select></div>
         <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="epkDesc" value="${escHTML(p.description || '')}"></div>
         <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditPackage('${p.id}')">Save</button></div>
@@ -3083,7 +2547,6 @@ const saveEditPackage = (id) => {
     p.visits = parseInt(document.getElementById('epkVisits')?.value) || p.visits;
     p.discount = parseInt(document.getElementById('epkDiscount')?.value) ?? p.discount;
     p.services = [document.getElementById('epkService')?.value || p.services?.[0]];
-    p.price = parseFloat(document.getElementById('epkPrice')?.value) || 0;
     p.description = document.getElementById('epkDesc')?.value?.trim() || '';
     save('packages', packages); closeModal(); renderTab();
 };
@@ -3171,7 +2634,6 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Review</label><textarea class="form-textarea" id="mText" rows="3"></textarea></div>
         ` },
         sitter: { title: 'Add Sitter', body: `
-            <div class="form-group"><label class="form-label">Photo</label><input type="file" accept="image/*" class="form-input" id="mSitterPhoto" onchange="previewSitterPhoto(this,'mSitterPhotoData')"><input type="hidden" id="mSitterPhotoData"></div>
             <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="mName"></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="mPhone"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="mEmail"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Rate ($/hr)</label><input class="form-input" id="mRate" type="number" value="25"></div><div class="form-group"><label class="form-label">Max Dogs</label><input class="form-input" id="mMaxDogs" type="number" value="3"></div></div>
@@ -3193,9 +2655,8 @@ const showModal = (type) => {
         ` },
         package: { title: 'Add Package', body: `
             <div class="form-group"><label class="form-label">Package Name</label><input class="form-input" id="mName"></div>
-            <div class="form-group"><label class="form-label">Base Service</label><select class="form-select" id="mBaseService">${svcOptions}</select></div>
             <div class="form-row"><div class="form-group"><label class="form-label"># Visits</label><input class="form-input" id="mVisits" type="number" value="5"></div><div class="form-group"><label class="form-label">Discount (%)</label><input class="form-input" id="mDiscount" type="number" value="10"></div></div>
-            <div class="form-group"><label class="form-label">Fixed Price (optional — overrides discount calc)</label><input class="form-input" id="mPrice" type="number" step="0.01" placeholder="Leave blank to auto-calculate from discount"></div>
+            <div class="form-group"><label class="form-label">Base Service</label><select class="form-select" id="mBaseService">${svcOptions}</select></div>
             <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="mDesc"></div>
         ` },
         zone: { title: 'Add Zone', body: `
@@ -3204,9 +2665,8 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Surcharge ($)</label><input class="form-input" id="mSurcharge" type="number" step="0.01" value="0"></div>
         ` },
         infamy: { title: 'Add to Infamy Hall', body: `
-            <div class="form-group"><label class="form-label">Select Existing Pet (optional)</label><select class="form-select" id="mSelectPet" onchange="fillInfamyFromPet(this.value)"><option value="">— Type manually or pick a pet —</option>${pets.map(p => { const owner = clients.find(c => c.id === p.clientId); return '<option value=\x27' + p.id + '\x27>' + escHTML(p.name) + (owner ? ' (' + escHTML(owner.name) + ')' : '') + '</option>'; }).join('')}</select></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Dog Name</label><select class="form-select" id="mDogName" onchange="handleCustomSelect(this,'mDogNameCustom')"><option value="">— Select pet —</option>${petOptions}<option value="__custom">Other (type name)...</option></select><input class="form-input" id="mDogNameCustom" style="display:none;margin-top:4px" placeholder="Type dog name"></div><div class="form-group"><label class="form-label">Owner Name</label><select class="form-select" id="mOwnerName" onchange="handleCustomSelect(this,'mOwnerNameCustom')"><option value="">— Select client —</option>${clientNameOptions}<option value="__custom">Other (type name)...</option></select><input class="form-input" id="mOwnerNameCustom" style="display:none;margin-top:4px" placeholder="Type owner name"></div></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Breed</label><select class="form-select" id="mBreed" onchange="handleCustomSelect(this,'mBreedCustom')"><option value="">— Select —</option>${[...new Set(pets.map(p => p.breed).filter(Boolean))].sort().map(b => '<option>' + escHTML(b) + '</option>').join('')}<option value="__custom">Other...</option></select><input class="form-input" id="mBreedCustom" style="display:none;margin-top:4px" placeholder="Type breed"></div><div class="form-group"><label class="form-label">Severity</label><select class="form-select" id="mSeverity"><option value="low">Caution — minor issues</option><option value="medium">Problem — recurring issues</option><option value="high">Serious — safety risk</option><option value="banned">BANNED — do not accept</option></select></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Dog Name</label><select class="form-select" id="mDogName" onchange="if(this.value==='__custom'){this.style.display='none';document.getElementById('mDogNameCustom').style.display='block';document.getElementById('mDogNameCustom').focus();}"><option value="">— Select pet —</option>${petOptions}<option value="__custom">Other (type name)...</option></select><input class="form-input" id="mDogNameCustom" style="display:none;margin-top:4px" placeholder="Type pet name"></div><div class="form-group"><label class="form-label">Owner Name</label><select class="form-select" id="mOwnerName" onchange="if(this.value==='__custom'){this.style.display='none';document.getElementById('mOwnerNameCustom').style.display='block';document.getElementById('mOwnerNameCustom').focus();}"><option value="">— Select client —</option>${clientNameOptions}<option value="__custom">Other (type name)...</option></select><input class="form-input" id="mOwnerNameCustom" style="display:none;margin-top:4px" placeholder="Type client name"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="mBreed"></div><div class="form-group"><label class="form-label">Severity</label><select class="form-select" id="mSeverity"><option value="low">Caution — minor issues</option><option value="medium">Problem — recurring issues</option><option value="high">Serious — safety risk</option><option value="banned">BANNED — do not accept</option></select></div></div>
             <div class="form-group"><label class="form-label">Issue Type</label><select class="form-select" id="mIssueType"><option>Aggression (dog)</option><option>Aggression (human)</option><option>Biting</option><option>Escape Artist</option><option>Destruction</option><option>Excessive Barking</option><option>Resource Guarding</option><option>Separation Anxiety (extreme)</option><option>Not Housebroken</option><option>Medical Issues (undisclosed)</option><option>Owner Problems</option><option>Unpaid Balance</option><option>Other</option></select></div>
             <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="mDescription" rows="3" placeholder="What happened? Be specific for safety."></textarea></div>
             <div class="form-group"><label class="form-label">Action Taken</label><input class="form-input" id="mAction" placeholder="e.g. Warned owner, extra sitter required, banned"></div>
@@ -3264,40 +2724,18 @@ const showModal = (type) => {
             <div class="form-group"><label class="form-label">Notes / Receipt #</label><input class="form-input" id="mNotes" placeholder="Optional"></div>
             <div style="padding:10px;background:rgba(0,184,148,.05);border-radius:8px;font-size:.82rem;color:var(--text-muted);margin-top:8px">Track all business expenses for tax deductions. Gas, supplies, insurance, phone — all deductible for self-employed dog sitters.</div>
         ` },
-        manual_payment: { title: 'Record Cash/Manual Payment', body: (() => {
-            const paymentMethods = ['Cash', 'Card (manual)'];
-            if (businessSettings.cashAppHandle) paymentMethods.push('CashApp');
-            if (businessSettings.venmoHandle) paymentMethods.push('Venmo');
-            if (businessSettings.zelleHandle) paymentMethods.push('Zelle');
-            if (businessSettings.checkPayable) paymentMethods.push('Check');
-            if (businessSettings.paypalHandle) paymentMethods.push('PayPal');
-            if (businessSettings.googlePayHandle) paymentMethods.push('Google Pay');
-            if (businessSettings.applePayHandle) paymentMethods.push('Apple Pay');
-            if (businessSettings.stripeHandle) paymentMethods.push('Stripe');
-            const methodOptions = paymentMethods.map(m => `<option>${m}</option>`).join('');
-            return `
+        manual_payment: { title: 'Record Cash/Manual Payment', body: `
             <div class="form-row"><div class="form-group"><label class="form-label">Client Name</label><select class="form-select" id="mClientName" onchange="if(this.value==='__custom'){this.style.display='none';document.getElementById('mClientNameCustom').style.display='block';document.getElementById('mClientNameCustom').focus();}"><option value="">— Select client —</option>${clientNameOptions}<option value="__custom">Other (type name)...</option></select><input class="form-input" id="mClientNameCustom" style="display:none;margin-top:4px" placeholder="Type client name"></div><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService">${svcOptions}</select></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="mAmount" type="number" step="0.01"></div><div class="form-group"><label class="form-label">Tip</label><input class="form-input" id="mTip" type="number" step="0.01" value="0"></div></div>
-            <div class="form-group"><label class="form-label">Payment Method</label><select class="form-select" id="mMethod">${methodOptions}</select></div>
+            <div class="form-group"><label class="form-label">Payment Method</label><select class="form-select" id="mMethod"><option>Cash</option><option>Venmo</option><option>Zelle</option><option>CashApp</option><option>Check</option><option>Card (manual)</option></select></div>
             <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="mDate" type="date" value="${todayStr()}"></div>
-            `;
-        })() },
+        ` },
         checkin: { title: 'Check In Dog', body: (() => {
-            const today = todayStr();
-            const todayBkgs = bookings.filter(b => {
-                if (b.status === 'cancelled' || b.status === 'completed') return false;
-                // Include if booking date is today
-                if (b.date === today) return true;
-                // Include multi-day bookings where today falls within the range
-                if (b.date && b.endDate && b.date <= today && b.endDate >= today) return true;
-                // Include confirmed bookings from recent days (in case date was yesterday but not yet checked in)
-                if (b.status === 'confirmed' && b.date && b.date >= new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0]) return true;
-                return false;
-            });
-            const bkgOptions = todayBkgs.map(b => `<option value="${b.id}">${escHTML(b.clientName)} — ${escHTML(b.petName)} (${escHTML(b.service)}, ${b.date} ${b.time || '?'}) [${b.status}]</option>`).join('');
+            const todayBkgs = bookings.filter(b => b.date === todayStr() && b.status !== 'cancelled' && b.status !== 'completed');
+            const bkgOptions = todayBkgs.map(b => `<option value="${b.id}">${escHTML(b.clientName)} — ${escHTML(b.petName)} (${escHTML(b.service)}, ${b.time || '?'})</option>`).join('');
             return `
             <div class="form-group"><label class="form-label">Select Booking</label><select class="form-select" id="mBookingId" onchange="autofillCheckin(this.value)"><option value="">-- Walk-In (no booking) --</option>${bkgOptions}</select></div>
-            <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><select class="form-select" id="mPetName" onchange="autofillCheckinPet(this.value)"><option value="">— Select pet or type below —</option>${pets.map(p => { const o = clients.find(c => c.id === p.clientId); return '<option value="' + escHTML(p.name) + '" data-client-id="' + (p.clientId || '') + '">' + escHTML(p.name) + (o ? ' (' + escHTML(o.name) + ')' : '') + (p.breed ? ' — ' + escHTML(p.breed) : '') + '</option>'; }).join('')}<option value="__custom">Other (walk-in)...</option></select><input class="form-input" id="mPetNameCustom" style="display:none;margin-top:6px" placeholder="Type pet name"></div><div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="mOwnerSelect" onchange="autofillCheckinOwner(this.value)"><option value="">Select or type below</option>${clientOptions}</select></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="mPetName"></div><div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="mOwnerSelect" onchange="autofillCheckinOwner(this.value)"><option value="">Select or type below</option>${clientOptions}</select></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Owner Name</label><input class="form-input" id="mOwnerName"></div><div class="form-group"><label class="form-label">Owner Phone</label><input class="form-input" id="mPhone" type="tel"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="mService">${svcOptions}</select></div><div class="form-group"><label class="form-label">Drop-Off Time</label><input class="form-input" id="mDropoffTime" type="time" value="${new Date().toTimeString().slice(0,5)}"></div></div>
             <div class="form-row"><div class="form-group"><label class="form-label">Expected Pick-Up</label><input class="form-input" id="mPickupTime" type="time"></div><div class="form-group"><label class="form-label">Assigned Sitter</label><select class="form-select" id="mSitter"><option value="">Auto</option>${sitterOptions}</select></div></div>
@@ -3433,25 +2871,6 @@ const autofillCheckin = (bookingId) => {
     }
 };
 
-const autofillCheckinPet = (petName) => {
-    const customInput = document.getElementById('mPetNameCustom');
-    if (petName === '__custom') { if (customInput) customInput.style.display = 'block'; return; }
-    if (customInput) customInput.style.display = 'none';
-    if (!petName) return;
-    const pet = pets.find(p => p.name === petName);
-    if (pet?.clientId) {
-        const client = clients.find(c => c.id === pet.clientId);
-        if (client) {
-            const ownerField = document.getElementById('mOwnerName');
-            const phoneField = document.getElementById('mPhone');
-            const ownerSelect = document.getElementById('mOwnerSelect');
-            if (ownerField) ownerField.value = client.name;
-            if (phoneField) phoneField.value = client.phone || '';
-            if (ownerSelect) ownerSelect.value = client.id;
-        }
-    }
-};
-
 const autofillCheckinOwner = (clientId) => {
     const c = clients.find(x => x.id === clientId);
     if (!c) return;
@@ -3459,10 +2878,11 @@ const autofillCheckinOwner = (clientId) => {
     const phoneField = document.getElementById('mPhone');
     if (ownerField) ownerField.value = c.name;
     if (phoneField) phoneField.value = c.phone || '';
-    // Set pet dropdown to first matching pet for this client
+    // Populate pet field with first pet
     const clientPets = pets.filter(p => p.clientId === c.id);
     const petField = document.getElementById('mPetName');
-    if (petField && clientPets.length >= 1) petField.value = clientPets[0].name;
+    if (petField && clientPets.length === 1) petField.value = clientPets[0].name;
+    else if (petField && clientPets.length > 1) petField.value = clientPets.map(p => p.name).join(', ');
 };
 
 const autofillMsgPets = (clientId) => {
@@ -3531,14 +2951,14 @@ const updateBookingPrice = () => {
     const pickupFee = hasPickup ? (parseFloat(businessSettings.pickupFee) || 0) : 0;
     const dropoffFee = hasDropoff ? (parseFloat(businessSettings.dropoffFee) || 0) : 0;
 
-    const numDogs = extraDogs + 1;
-    let total = baseRate * numDogs * days;
+    let total = baseRate * days;
+    if (extraDogs > 0) total += extraDogs * extraDogFee * days;
     document.querySelectorAll('.addon-check:checked').forEach(cb => { total += parseFloat(cb.dataset.price) || 0; });
     total += pickupFee + dropoffFee;
 
     const parts = [];
-    if (numDogs > 1) parts.push(`${numDogs} dogs × ${fmt(baseRate)}`);
-    if (days > 1) parts.push(`${days} days`);
+    if (days > 1) parts.push(`${days} days × ${fmt(baseRate)}`);
+    if (extraDogs > 0 && extraDogFee > 0) parts.push(`+${extraDogs} dog${extraDogs > 1 ? 's' : ''} × ${fmt(extraDogFee)}${days > 1 ? '/day' : ''}`);
     if (pickupFee > 0) parts.push(`pickup ${fmt(pickupFee)}`);
     if (dropoffFee > 0) parts.push(`dropoff ${fmt(dropoffFee)}`);
 
@@ -3566,38 +2986,24 @@ const saveModal = (type) => {
         const derivedDate = dropoffDT ? dropoffDT.split('T')[0] : todayStr();
         const derivedTime = dropoffDT ? dropoffDT.split('T')[1]?.substring(0,5) || '' : '';
         const derivedEndDate = pickupDT ? pickupDT.split('T')[0] : '';
-        const numDogsVal = (parseInt(v('mExtraDogs')) || 0) + 1;
-        const petNameVal = v('mPetName') === '__custom' ? v('mPetNameCustom') : (v('mPetNameCustom') || v('mPetName'));
-        bookings.push({ id: uid(), clientId, clientName: v('mClientName'), petName: petNameVal, service: v('mService'), amount: svc?.price || 0, addons: selectedAddons, extraDogs: parseInt(v('mExtraDogs')) || 0, numDogs: numDogsVal, date: derivedDate, endDate: derivedEndDate, time: derivedTime, dropoffTime: dropoffDT, pickupTime: pickupDT, pickupAddr, dropoffAddr, zone: v('mZone'), sitter: v('mSitter'), notes: v('mNotes'), status: 'pending' });
+        const petName = resolveDropdown('mPetName', 'mPetNameCustom');
+        bookings.push({ id: uid(), clientId, clientName: v('mClientName'), petName: petName, service: v('mService'), amount: svc?.price || 0, addons: selectedAddons, extraDogs: parseInt(v('mExtraDogs')) || 0, date: derivedDate, endDate: derivedEndDate, time: derivedTime, dropoffTime: dropoffDT, pickupTime: pickupDT, pickupAddr, dropoffAddr, zone: v('mZone'), sitter: v('mSitter'), notes: v('mNotes'), status: 'pending' });
         save('bookings', bookings);
     } else if (type === 'client') {
         const clientEmail = v('mEmail');
         const clientName = v('mName');
         const clientPhone = v('mPhone');
-        const clientId = uid();
-        clients.push({ id: clientId, name: clientName, email: clientEmail, phone: clientPhone, photo: v('mClientPhotoData'), address: v('mAddress'), source: v('mSource'), notes: v('mNotes') });
+        clients.push({ id: uid(), name: clientName, email: clientEmail, phone: clientPhone, photo: v('mClientPhotoData'), address: v('mAddress'), source: v('mSource'), notes: v('mNotes') });
         save('clients', clients);
-
-        // Auto-create user account with temp password
-        if (clientEmail) {
-            const tempPass = 'Password123';
-            const users = load('users', []);
-            const existingUser = users.find(u => u.email === clientEmail);
-            if (!existingUser) {
-                users.push({ id: uid(), email: clientEmail, name: clientName, passwordHash: simpleHash(tempPass), plainPassword: tempPass, role: 'client', clientId, createdAt: new Date().toISOString() });
-                save('users', users);
-            }
-
-            // Send welcome email with login credentials
-            if (typeof GPC_NOTIFY !== 'undefined') {
-                GPC_NOTIFY.sendDirectEmail(clientEmail, clientName,
-                    'Welcome to GenusPupClub — Your Login Credentials',
-                    `Welcome to GenusPupClub — Richmond's #1 dog care service!\n\nYour account is ready. Here are your login details:\n\nEmail: ${clientEmail}\nPassword: ${tempPass}\n\nLog in here: ${window.location.origin}/login.html\n\nOnce logged in you can:\n• Book walks, daycare, sitting, and grooming\n• Get real-time photo updates of your pup\n• View report cards and invoices\n• Manage your pet profiles\n\nPlease change your password after your first login.\n\nOr call us at (804) 258-3830 to book your first visit.\n\nWe can't wait to meet your pup!`
-                );
-                GPC_NOTIFY.showToast('Account Created', `Login credentials emailed to ${clientEmail}`, 'success');
-            }
+        // Auto-send signup invite if email provided
+        if (clientEmail && typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendDirectEmail(clientEmail, clientName,
+                'Welcome to GenusPupClub — Create Your Account',
+                `Hi ${clientName}!\n\nYou've been added to GenusPupClub — Richmond's #1 dog care service.\n\nCreate your free account to:\n• Book walks, daycare, sitting, and grooming\n• Get real-time photo updates of your pup\n• View report cards and invoices\n• Manage your pet profiles\n\nSign up here: ${window.location.origin}/login.html\n\nOr call us at (804) 258-3830 to book your first visit.\n\nWe can't wait to meet your pup!\n— GenusPupClub`
+            );
+            GPC_NOTIFY.showToast('Invite Sent', `Signup invite emailed to ${clientEmail}`, 'success');
         }
-        // SMS link if phone provided and no email
+        // SMS link if phone provided
         if (clientPhone && !clientEmail) {
             const smsBody = encodeURIComponent(`Hi ${clientName}! You've been added to GenusPupClub. Create your account at ${window.location.origin}/login.html to book services and manage your pup's profile. — GenusPupClub`);
             window.open(`sms:${clientPhone}?body=${smsBody}`, '_blank');
@@ -3606,12 +3012,12 @@ const saveModal = (type) => {
         pets.push({ id: uid(), name: v('mName'), breed: v('mBreed'), age: v('mAge'), weight: v('mWeight'), gender: v('mGender'), fixed: v('mFixed'), clientId: v('mOwner'), photo: v('mPhotoData'), vet: v('mVet'), allergies: v('mAllergies'), medications: v('mMeds'), feedingSchedule: v('mFeeding'), tags: v('mTags'), notes: v('mNotes'), preferredSitter: v('mPreferredSitter'), coatType: v('mCoat'), groomFrequency: v('mGroomFreq'), shampoo: v('mShampoo'), groomNotes: v('mGroomNotes') });
         save('pets', pets);
     } else if (type === 'review') {
-        const reviewName = v('mName') === '__custom' ? v('mNameCustom') : (v('mNameCustom') || v('mName'));
-        const reviewPet = v('mPet') === '__custom' ? v('mPetCustom') : (v('mPetCustom') || v('mPet'));
+        const reviewName = resolveDropdown('mName', 'mNameCustom');
+        const reviewPet = resolveDropdown('mPet', 'mPetCustom');
         reviews.push({ id: uid(), name: reviewName, pet: reviewPet, stars: parseInt(v('mStars')) || 5, text: v('mText'), service: v('mService'), date: todayStr() });
         save('reviews', reviews);
     } else if (type === 'sitter') {
-        sitters.push({ id: uid(), name: v('mName'), phone: v('mPhone'), email: v('mEmail'), rate: parseFloat(v('mRate')) || 25, maxDogs: parseInt(v('mMaxDogs')) || 3, specialty: v('mSpecialty'), certifications: v('mCerts'), availability: v('mAvail'), bio: v('mBio'), photo: v('mSitterPhotoData'), status: 'active' });
+        sitters.push({ id: uid(), name: v('mName'), phone: v('mPhone'), email: v('mEmail'), rate: parseFloat(v('mRate')) || 25, maxDogs: parseInt(v('mMaxDogs')) || 3, specialty: v('mSpecialty'), certifications: v('mCerts'), availability: v('mAvail'), bio: v('mBio'), status: 'active' });
         save('sitters', sitters);
     } else if (type === 'service') {
         services.push({ id: uid(), name: v('mName'), price: parseFloat(v('mPrice')) || 0, duration: parseInt(v('mDuration')) || 0, category: v('mCategory'), description: v('mDesc'), active: true });
@@ -3620,14 +3026,16 @@ const saveModal = (type) => {
         addons.push({ id: uid(), name: v('mName'), price: parseFloat(v('mPrice')) || 0, description: v('mDesc') });
         save('addons', addons);
     } else if (type === 'package') {
-        packages.push({ id: uid(), name: v('mName'), services: [v('mBaseService')], visits: parseInt(v('mVisits')) || 5, discount: parseInt(v('mDiscount')) || 10, price: parseFloat(v('mPrice')) || 0, description: v('mDesc') });
+        packages.push({ id: uid(), name: v('mName'), services: [v('mBaseService')], visits: parseInt(v('mVisits')) || 5, discount: parseInt(v('mDiscount')) || 10, description: v('mDesc') });
         save('packages', packages);
     } else if (type === 'zone') {
         zones.push({ id: uid(), name: v('mName'), areas: v('mAreas'), surcharge: parseFloat(v('mSurcharge')) || 0 });
         save('zones', zones);
     } else if (type === 'infamy') {
         let infamy = load('infamy', []);
-        infamy.push({ id: uid(), dogName: resolveDropdown('mDogName','mDogNameCustom'), ownerName: resolveDropdown('mOwnerName','mOwnerNameCustom'), breed: resolveDropdown('mBreed','mBreedCustom'), severity: v('mSeverity'), issueType: v('mIssueType'), description: v('mDescription'), actionTaken: v('mAction'), staffNotes: v('mStaffNotes'), dateReported: todayStr(), incidents: [] });
+        const infamyDogName = resolveDropdown('mDogName', 'mDogNameCustom');
+        const infamyOwnerName = resolveDropdown('mOwnerName', 'mOwnerNameCustom');
+        infamy.push({ id: uid(), dogName: infamyDogName, ownerName: infamyOwnerName, breed: v('mBreed'), severity: v('mSeverity'), issueType: v('mIssueType'), description: v('mDescription'), actionTaken: v('mAction'), staffNotes: v('mStaffNotes'), dateReported: todayStr(), incidents: [] });
         save('infamy', infamy);
     } else if (type === 'client_account') {
         const name = v('mCAName');
@@ -3667,7 +3075,7 @@ const saveModal = (type) => {
         if (sendCreds && typeof GPC_NOTIFY !== 'undefined') {
             GPC_NOTIFY.sendDirectEmail(email, name,
                 'Welcome to GenusPupClub — Your Login Credentials',
-                `Welcome to GenusPupClub! An account has been created for you.\n\nEmail: ${email}\nPassword: ${pass}\n\nLog in at your client portal to book services, manage your pets, and more.\n\nQuestions? Call us at (804) 258-3830.`
+                `Hi ${name}!\n\nWelcome to GenusPupClub! An account has been created for you.\n\nEmail: ${email}\nPassword: ${pass}\n\nLog in at your client portal to book services, manage your pets, and more.\n\nQuestions? Call us at (804) 258-3830.\n\n— GenusPupClub`
             );
         }
         if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Account Created', `${name} can now log in`, 'success');
@@ -3698,8 +3106,9 @@ const saveModal = (type) => {
                 d.setDate(d.getDate() + (w * 7) + ((dayMap[day] - d.getDay() + 7) % 7));
                 if (d < startDate && w === 0) d.setDate(d.getDate() + 7);
                 const dateStr = d.toISOString().split('T')[0];
+                const recurringPetName = resolveDropdown('mPetName', 'mPetNameCustom');
                 bookings.push({
-                    id: uid(), clientId: v('mClient') || null, clientName: v('mClientName'), petName: v('mPetName'),
+                    id: uid(), clientId: v('mClient') || null, clientName: v('mClientName'), petName: recurringPetName,
                     service: v('mService'), amount: price, addons: [], extraDogs: 0,
                     date: dateStr, time: v('mTime'), zone: '', sitter: v('mSitter'),
                     notes: v('mNotes') + ` [Recurring: ${v('mFreq')} — ${discount}% off]`, status: 'confirmed',
@@ -3720,10 +3129,9 @@ const saveModal = (type) => {
         save('expenses', expenses);
     } else if (type === 'manual_payment') {
         const payments = load('payments', []);
-        const mpClientName = v('mClientName') === '__custom' ? v('mClientNameCustom') : (v('mClientNameCustom') || v('mClientName'));
-        const mpClient = clients.find(c => c.name === mpClientName);
+        const manualClientName = resolveDropdown('mClientName', 'mClientNameCustom');
         payments.push({
-            id: uid(), clientId: mpClient?.id || '', clientName: mpClientName, service: v('mService'),
+            id: uid(), clientId: '', clientName: manualClientName, service: v('mService'),
             amount: parseFloat(v('mAmount')) || 0, tip: parseFloat(v('mTip')) || 0,
             method: v('mMethod'), status: 'paid', date: v('mDate'), bookingId: ''
         });
@@ -3732,10 +3140,9 @@ const saveModal = (type) => {
         const checklist = {};
         document.querySelectorAll('.checklist-item').forEach(cb => { checklist[cb.value] = cb.checked; });
         const linkedBookingId = v('mBookingId') || null;
-        const petNameVal = v('mPetName') === '__custom' ? v('mPetNameCustom') : v('mPetName');
         checkins.push({
             id: uid(), bookingId: linkedBookingId, walkIn: !linkedBookingId,
-            petName: petNameVal, ownerName: v('mOwnerName'), ownerPhone: v('mPhone'),
+            petName: v('mPetName'), ownerName: v('mOwnerName'), ownerPhone: v('mPhone'),
             service: v('mService'), property: v('mProperty'), sitter: v('mSitter'),
             dropoffTime: v('mDropoffTime'), expectedPickup: v('mPickupTime'),
             checklist, belongings: v('mBelongings'),
@@ -3743,10 +3150,10 @@ const saveModal = (type) => {
             checkInDate: todayStr(), checkInTime: v('mDropoffTime') || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             checkedOut: false
         });
-        // Update linked booking status to confirmed (regardless of current status)
+        // Update linked booking status to confirmed
         if (linkedBookingId) {
             const bk = bookings.find(x => x.id === linkedBookingId);
-            if (bk && bk.status !== 'completed' && bk.status !== 'cancelled') { bk.status = 'confirmed'; save('bookings', bookings); }
+            if (bk && bk.status === 'pending') { bk.status = 'confirmed'; save('bookings', bookings); }
         }
         save('checkins', checkins);
     } else if (type === 'photo') {
@@ -3775,7 +3182,7 @@ const saveModal = (type) => {
             window.open(`sms:${cleanPhone}?body=${smsMsg}`, '_blank');
         }
         if ((photoSend === 'email' || photoSend === 'both') && photoEmail && typeof GPC_NOTIFY !== 'undefined') {
-            GPC_NOTIFY.sendDirectEmail(photoEmail, '', `📸 New Photo of ${photoPetName} — GenusPupClub`, `We just took a photo of ${photoPetName} during their visit!\n\n${photoCaption}\n\nView all photos in your portal: genuspupclub.com/portal.html`);
+            GPC_NOTIFY.sendDirectEmail(photoEmail, '', `📸 New Photo of ${photoPetName} — GenusPupClub`, `Hi!\n\nWe just took a photo of ${photoPetName} during their visit!\n\n${photoCaption}\n\nView all photos in your portal: genuspupclub.com/portal.html\n\n— GenusPupClub`);
         }
     } else if (type === 'message') {
         const toClientId = v('mTo');
@@ -3871,11 +3278,11 @@ const updateBooking = (id, status) => {
     // Fire notifications + emails
     if (typeof GPC_NOTIFY !== 'undefined') {
         if (status === 'confirmed') GPC_NOTIFY.onBookingConfirmed(b);
-        // completed notification is fired inside saveCompletionFlow after invoice is created
+        if (status === 'completed') GPC_NOTIFY.onBookingCompleted(b);
         if (status === 'cancelled') GPC_NOTIFY.onBookingCancelled(b);
     }
 
-    // On complete: show completion flow (invoice + report card, no payment yet)
+    // On complete: prompt for invoice + tip + rating
     if (status === 'completed') {
         showCompletionFlow(b);
     } else {
@@ -3887,139 +3294,54 @@ const showCompletionFlow = (booking) => {
     let overlay = document.getElementById('modalOverlay');
     if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
 
-    const amt = parseFloat(booking.amount) || 0;
-    const days = calcDays(booking.date, booking.endDate);
-    const total = calcBookingTotal(booking);
-
-    overlay.innerHTML = `<div class="modal" style="max-width:500px">
-        <div class="modal-title" style="color:var(--success)">✓ Complete Visit</div>
-        <div style="padding:12px;background:rgba(0,184,148,.05);border-radius:8px;margin-bottom:16px">
-            <strong>${escHTML(booking.petName)}</strong> — ${escHTML(booking.service)} on ${booking.date}${days > 1 ? ' to ' + (booking.endDate || booking.date) : ''}<br>
-            <span style="font-size:.88rem;color:var(--text-muted)">Client: ${escHTML(booking.clientName)} · Sitter: ${escHTML(booking.sitter || 'Unassigned')}</span><br>
-            <span style="font-size:.92rem;font-weight:600;color:var(--primary)">Total: ${fmt(total)}</span>
-        </div>
-
-        <div style="padding:10px;background:rgba(59,130,246,.05);border-radius:8px;margin-bottom:16px;font-size:.85rem;color:#3B82F6">
-            An invoice for ${fmt(total)} will be emailed to the client. Payment can be recorded later.
-        </div>
-
-        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Report Card</div>
-        <div style="display:flex;gap:4px;margin-bottom:8px" id="cfStars">
-            ${[1,2,3,4,5].map(s => `<button type="button" style="font-size:1.8rem;background:none;border:none;cursor:pointer;color:#ddd;transition:color .15s" onclick="setCFStars(${s})" data-star="${s}">★</button>`).join('')}
-        </div>
-        <input type="hidden" id="cfRating" value="5">
-
-        <div class="form-group"><label class="form-label">Behavior & Notes</label><textarea class="form-textarea" id="cfReportNotes" rows="3" placeholder="How did the visit go? Energy level, eating, potty, behavior..."></textarea></div>
-        <div class="form-group"><label class="form-label">Review (optional — visible to client)</label><textarea class="form-textarea" id="cfReview" rows="2" placeholder="A short review for the client's portal"></textarea></div>
-
-        <div class="form-group" style="margin-top:8px">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.88rem">
-                <input type="checkbox" id="cfSendReport" checked> Send report card email to client
-            </label>
-        </div>
-
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal();renderTab()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveCompletionFlow('${booking.id}')">Complete & Send Invoice</button>
-        </div>
-    </div>`;
-    overlay.classList.add('open');
-    setCFStars(5);
-};
-
-// ============================================
-// PAYMENT FLOW (separate from completion)
-// ============================================
-const showPaymentFlow = (bookingId) => {
-    const booking = bookings.find(b => b.id === bookingId);
-    if (!booking) return;
-    let overlay = document.getElementById('modalOverlay');
-    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
-
     const tipPercents = [0, 15, 18, 20, 25, 30];
-    const total = calcBookingTotal(booking);
+    const amt = parseFloat(booking.amount) || 0;
 
     overlay.innerHTML = `<div class="modal" style="max-width:500px">
-        <div class="modal-title" style="color:var(--primary)">Record Payment</div>
+        <div class="modal-title" style="color:var(--success)">✓ Visit Complete!</div>
         <div style="padding:12px;background:rgba(0,184,148,.05);border-radius:8px;margin-bottom:16px">
             <strong>${escHTML(booking.petName)}</strong> — ${escHTML(booking.service)} on ${booking.date}<br>
-            <span style="font-size:.88rem;color:var(--text-muted)">Client: ${escHTML(booking.clientName)}</span><br>
-            <span style="font-size:.92rem;font-weight:600;color:var(--primary)">Invoice Total: ${fmt(total)}</span>
+            <span style="font-size:.88rem;color:var(--text-muted)">Client: ${escHTML(booking.clientName)} · Sitter: ${escHTML(booking.sitter || 'Unassigned')}</span>
         </div>
 
-        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Payment Method</div>
-        <div class="form-group">
+        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Payment (${fmt(amt)})</div>
+        <div class="form-group"><label class="form-label">Payment Method</label>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-                ${['Card', 'CashApp', 'Venmo', 'Zelle', 'Cash', 'Prepaid/Package'].map(m => `<button type="button" class="btn btn-sm btn-ghost pf-method" onclick="document.querySelectorAll('.pf-method').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('pfMethod').value='${m}'">${m}</button>`).join('')}
+                ${['Card', 'CashApp', 'Venmo', 'Zelle', 'Cash', 'Prepaid/Package'].map(m => `<button type="button" class="btn btn-sm btn-ghost cf-method" onclick="document.querySelectorAll('.cf-method').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('cfMethod').value='${m}'">${m}</button>`).join('')}
             </div>
-            <input type="hidden" id="pfMethod" value="Cash">
+            <input type="hidden" id="cfMethod" value="Cash">
         </div>
 
         <div style="font-size:.92rem;font-weight:600;margin:12px 0 8px">Tip</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-            ${tipPercents.map(p => `<button type="button" class="btn btn-sm btn-ghost pf-tip" onclick="document.querySelectorAll('.pf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('pfTip').value='${(total * p / 100).toFixed(2)}';document.getElementById('pfTipCustom').value='';updatePFTotal(${total})">${p === 0 ? 'No tip' : p + '% (' + fmt(total * p / 100) + ')'}</button>`).join('')}
+            ${tipPercents.map(p => `<button type="button" class="btn btn-sm btn-ghost cf-tip" onclick="document.querySelectorAll('.cf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});this.style.borderColor='var(--primary)';this.style.color='var(--primary)';document.getElementById('cfTip').value='${(amt * p / 100).toFixed(2)}';document.getElementById('cfTipCustom').value='';updateCFTotal(${amt})">${p === 0 ? 'No tip' : p + '% (' + fmt(amt * p / 100) + ')'}</button>`).join('')}
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
             <span style="font-size:.85rem">Custom:</span>
-            <input type="number" id="pfTipCustom" step="0.01" min="0" placeholder="$0.00" class="form-input" style="width:100px" oninput="document.getElementById('pfTip').value=this.value;document.querySelectorAll('.pf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});updatePFTotal(${total})">
+            <input type="number" id="cfTipCustom" step="0.01" min="0" placeholder="$0.00" class="form-input" style="width:100px" oninput="document.getElementById('cfTip').value=this.value;document.querySelectorAll('.cf-tip').forEach(b=>{b.style.borderColor='';b.style.color=''});updateCFTotal(${amt})">
         </div>
-        <input type="hidden" id="pfTip" value="0">
+        <input type="hidden" id="cfTip" value="0">
         <div style="padding:12px;background:rgba(255,107,53,.05);border-radius:8px;text-align:right;margin-bottom:16px">
-            <span style="font-size:.88rem;color:var(--text-muted)">Service: ${fmt(total)} + Tip: <strong id="pfTipDisplay">$0.00</strong> = </span>
-            <strong style="font-size:1.3rem;color:var(--primary)" id="pfTotalDisplay">${fmt(total)}</strong>
+            <span style="font-size:.88rem;color:var(--text-muted)">Service: ${fmt(amt)} + Tip: <strong id="cfTipDisplay">$0.00</strong> = </span>
+            <strong style="font-size:1.3rem;color:var(--primary)" id="cfTotalDisplay">${fmt(amt)}</strong>
         </div>
 
+        <div style="font-size:.92rem;font-weight:600;margin-bottom:8px">Client Rating</div>
+        <div style="display:flex;gap:4px;margin-bottom:8px" id="cfStars">
+            ${[1,2,3,4,5].map(s => `<button type="button" style="font-size:1.8rem;background:none;border:none;cursor:pointer;color:#ddd;transition:color .15s" onclick="setCFStars(${s})" data-star="${s}">★</button>`).join('')}
+        </div>
+        <input type="hidden" id="cfRating" value="5">
+        <div class="form-group"><label class="form-label">Review (optional)</label><textarea class="form-textarea" id="cfReview" rows="2" placeholder="How was the visit?"></textarea></div>
+
         <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal();renderTab()">Cancel</button>
-            <button class="btn btn-primary" onclick="savePaymentFlow('${booking.id}')">Mark Paid</button>
+            <button class="btn btn-ghost" onclick="closeModal();renderTab()">Skip</button>
+            <button class="btn btn-primary" onclick="saveCompletionFlow('${booking.id}')">Save & Close</button>
         </div>
     </div>`;
     overlay.classList.add('open');
-};
 
-window.updatePFTotal = (amt) => {
-    const tip = parseFloat(document.getElementById('pfTip')?.value) || 0;
-    document.getElementById('pfTipDisplay').textContent = fmt(tip);
-    document.getElementById('pfTotalDisplay').textContent = fmt(amt + tip);
-};
-
-const savePaymentFlow = (bookingId) => {
-    const booking = bookings.find(b => b.id === bookingId);
-    if (!booking) { closeModal(); renderTab(); return; }
-    const method = document.getElementById('pfMethod')?.value || 'Cash';
-    const tip = parseFloat(document.getElementById('pfTip')?.value) || 0;
-    const total = calcBookingTotal(booking);
-
-    // Create payment record
-    const payments = load('payments', []);
-    payments.push({ id: uid(), clientId: booking.clientId, clientName: booking.clientName, bookingId, amount: total, tip, method, status: 'paid', service: booking.service, date: todayStr() });
-    save('payments', payments);
-
-    // Update booking payment status
-    booking.paymentStatus = 'paid';
-    booking.paymentMethod = method;
-    booking.paymentTip = tip;
-    booking.paymentDate = todayStr();
-    save('bookings', bookings);
-
-    // Update matching invoice status
-    const invoices = load('invoices', []);
-    const inv = invoices.find(i => i.bookingId === bookingId);
-    if (inv) {
-        inv.status = 'paid';
-        inv.method = method;
-        inv.tip = tip;
-        inv.total = total + tip;
-        inv.paidDate = todayStr();
-        save('invoices', invoices);
-    }
-
-    // Send payment notification
-    if (typeof GPC_NOTIFY !== 'undefined') {
-        GPC_NOTIFY.onPaymentReceived({ ...booking, amount: total, tip, method, clientName: booking.clientName });
-    }
-
-    closeModal(); renderTab();
+    // Default to 5 stars
+    setCFStars(5);
 };
 
 window.setCFStars = (n) => {
@@ -4029,27 +3351,28 @@ window.setCFStars = (n) => {
     });
 };
 
+window.updateCFTotal = (amt) => {
+    const tip = parseFloat(document.getElementById('cfTip')?.value) || 0;
+    document.getElementById('cfTipDisplay').textContent = fmt(tip);
+    document.getElementById('cfTotalDisplay').textContent = fmt(amt + tip);
+};
+
 const saveCompletionFlow = (bookingId) => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) { closeModal(); renderTab(); return; }
+    const method = document.getElementById('cfMethod')?.value || 'Cash';
+    const tip = parseFloat(document.getElementById('cfTip')?.value) || 0;
     const rating = parseInt(document.getElementById('cfRating')?.value) || 5;
-    const reportNotes = document.getElementById('cfReportNotes')?.value?.trim() || '';
     const reviewText = document.getElementById('cfReview')?.value?.trim() || '';
-    const sendReport = document.getElementById('cfSendReport')?.checked;
     const amt = parseFloat(booking.amount) || 0;
-
-    // Mark booking as completed but UNPAID
-    booking.paymentStatus = 'unpaid';
-    save('bookings', bookings);
-
-    // Save review if provided
+    const payments = load('payments', []);
+    payments.push({ id: uid(), clientId: booking.clientId, clientName: booking.clientName, bookingId, amount: amt, tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending', service: booking.service, date: todayStr() });
+    save('payments', payments);
     if (reviewText || rating) {
         const allReviews = load('reviews', []);
         allReviews.push({ id: uid(), name: booking.clientName, pet: booking.petName, stars: rating, text: reviewText || `Great ${booking.service} experience!`, service: booking.service, sitter: booking.sitter, date: todayStr() });
         save('reviews', allReviews);
     }
-
-    // Calculate invoice total
     const days = calcDays(booking.date, booking.endDate);
     const perDogFee = parseFloat(businessSettings.extraDogFee) || 0;
     const extraDogFee = (booking.extraDogs || 0) * perDogFee * days;
@@ -4064,28 +3387,16 @@ const saveCompletionFlow = (bookingId) => {
         addonTotal > 0 ? `Add-ons: ${fmt(addonTotal)}` : null,
         zoneSurcharge > 0 ? `Zone surcharge: ${fmt(zoneSurcharge)}` : null,
         pickupFee > 0 ? `Pickup fee: ${fmt(pickupFee)}` : null,
-        dropoffFee > 0 ? `Dropoff fee: ${fmt(dropoffFee)}` : null
+        dropoffFee > 0 ? `Dropoff fee: ${fmt(dropoffFee)}` : null,
+        tip > 0 ? `Tip: ${fmt(tip)}` : null
     ].filter(Boolean).join('\n');
-
-    // Create invoice with UNPAID status
     const invoiceId = 'INV-' + Date.now().toString(36).toUpperCase();
     const invoices = load('invoices', []);
-    invoices.push({ id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName, clientEmail: booking.clientEmail || '', petName: booking.petName, service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate, days, baseRate: amt, extraDogs: booking.extraDogs || 0, extraDogFee, addons: booking.addons, addonTotal, zoneSurcharge, tip: 0, subtotal: total, total, method: '', status: 'unpaid' });
+    invoices.push({ id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName, clientEmail: booking.clientEmail || '', petName: booking.petName, service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate, days, baseRate: amt, extraDogs: booking.extraDogs || 0, extraDogFee, addons: booking.addons, addonTotal, zoneSurcharge, tip, subtotal: total, total: total + tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending' });
     save('invoices', invoices);
-
     if (typeof GPC_NOTIFY !== 'undefined') {
-        // Send invoice email
-        GPC_NOTIFY.sendEmail('invoice', { clientName: booking.clientName, clientEmail: booking.clientEmail, clientId: booking.clientId, invoiceId, date: todayStr(), service: booking.service, petName: booking.petName, days, startDate: booking.date, endDate: booking.endDate || booking.date, lineItems, total });
-
-        // Send report card email if checked
-        if (sendReport) {
-            const reportDetails = reportNotes || 'Your pup had a wonderful visit!';
-            GPC_NOTIFY.sendEmail('report_card', { clientName: booking.clientName, clientEmail: booking.clientEmail, clientId: booking.clientId, petName: booking.petName, date: booking.date, service: booking.service, reportDetails, overallRating: '★'.repeat(rating) + '☆'.repeat(5 - rating), notes: reviewText });
-        }
-
-        // Visit complete notification (no payment notification)
-        GPC_NOTIFY.onBookingCompleted(booking);
-        GPC_NOTIFY.showToast('Visit Completed', `Invoice sent to ${booking.clientName} — payment pending`, 'success');
+        GPC_NOTIFY.onPaymentReceived({ ...booking, amount: total, tip, method, clientName: booking.clientName });
+        GPC_NOTIFY.sendEmail('invoice', { clientName: booking.clientName, clientEmail: booking.clientEmail, clientId: booking.clientId, invoiceId, date: todayStr(), service: booking.service, petName: booking.petName, days, startDate: booking.date, endDate: booking.endDate || booking.date, lineItems, total: total + tip });
         if (reviewText) GPC_NOTIFY.showToast('New Review', `${rating}★ from ${booking.clientName}`, 'success');
     }
     closeModal(); renderTab();
@@ -4121,74 +3432,14 @@ const deleteItem = (col, id) => { if (!confirm('Delete?')) return; const map = {
 const editClient = (id) => { const c = clients.find(x => x.id === id); if (!c) return; let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(c.name)}</div><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="ecName" value="${escHTML(c.name)}"></div><div class="form-row"><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ecEmail" value="${escHTML(c.email || '')}"></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="ecPhone" value="${escHTML(c.phone || '')}"></div></div><div class="form-group"><label class="form-label">Address</label><input class="form-input" id="ecAddr" value="${escHTML(c.address || '')}"></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ecNotes" rows="2">${escHTML(c.notes || '')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditClient('${c.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
 const saveEditClient = (id) => { const c = clients.find(x => x.id === id); if (!c) return; c.name = document.getElementById('ecName')?.value?.trim() || c.name; c.email = document.getElementById('ecEmail')?.value?.trim() || ''; c.phone = document.getElementById('ecPhone')?.value?.trim() || ''; c.address = document.getElementById('ecAddr')?.value?.trim() || ''; c.notes = document.getElementById('ecNotes')?.value?.trim() || ''; save('clients', clients); closeModal(); renderTab(); };
 
-const editBooking = (id) => { const b = bookings.find(x => x.id === id); if (!b) return; const svcOpts = services.map(s => `<option value="${escHTML(s.name)}" ${b.service === s.name ? 'selected' : ''}>${escHTML(s.name)} (${fmt(s.price)})</option>`).join(''); const sitterOpts = sitters.map(s => `<option value="${escHTML(s.name)}" ${b.sitter === s.name ? 'selected' : ''}>${escHTML(s.name)}</option>`).join(''); const ebClientOpts = clients.map(c => `<option value="${escHTML(c.name)}" ${(b.clientName||'') === c.name ? 'selected' : ''}>${escHTML(c.name)}</option>`).join(''); const ebPetOpts = pets.map(p => `<option value="${escHTML(p.name)}" ${(b.petName||'') === p.name ? 'selected' : ''}>${escHTML(p.name)}${p.breed ? ' — ' + escHTML(p.breed) : ''}</option>`).join(''); const statuses = ['pending','confirmed','completed','cancelled']; let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Booking</div><div class="form-row"><div class="form-group"><label class="form-label">Client</label><select class="form-select" id="ebClient" onchange="handleCustomSelect(this,'ebClientCustom')"><option value="">— Select —</option>${ebClientOpts}<option value="__custom">Other...</option></select><input class="form-input" id="ebClientCustom" style="display:${clients.find(c=>c.name===b.clientName)?'none':'block'};margin-top:4px" value="${escHTML(b.clientName||'')}" placeholder="Type client name"></div><div class="form-group"><label class="form-label">Pet</label><select class="form-select" id="ebPet" onchange="handleCustomSelect(this,'ebPetCustom')"><option value="">— Select —</option>${ebPetOpts}<option value="__custom">Other...</option></select><input class="form-input" id="ebPetCustom" style="display:${pets.find(p=>p.name===b.petName)?'none':'block'};margin-top:4px" value="${escHTML(b.petName||'')}" placeholder="Type pet name"></div></div><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="ebService">${svcOpts}</select></div><div class="form-row"><div class="form-group"><label class="form-label">Drop-Off</label><input class="form-input" id="ebDropoff" type="datetime-local" value="${b.dropoffTime||''}"></div><div class="form-group"><label class="form-label">Pick-Up</label><input class="form-input" id="ebPickup" type="datetime-local" value="${b.pickupTime||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="ebSitter"><option value="">Unassigned</option>${sitterOpts}</select></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ebStatus">${statuses.map(s=>`<option ${b.status===s?'selected':''}>${s}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ebNotes" rows="2">${escHTML(b.notes||'')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditBooking('${b.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
-const saveEditBooking = (id) => { const b = bookings.find(x => x.id === id); if (!b) return; const ebcVal = document.getElementById('ebClient')?.value?.trim(); b.clientName = (ebcVal === '__custom' || ebcVal === '') ? (document.getElementById('ebClientCustom')?.value?.trim() || b.clientName) : ebcVal; const ebpVal = document.getElementById('ebPet')?.value?.trim(); b.petName = (ebpVal === '__custom' || ebpVal === '') ? (document.getElementById('ebPetCustom')?.value?.trim() || b.petName) : ebpVal; b.service = document.getElementById('ebService')?.value || b.service; b.dropoffTime = document.getElementById('ebDropoff')?.value || ''; b.pickupTime = document.getElementById('ebPickup')?.value || ''; b.date = b.dropoffTime ? b.dropoffTime.split('T')[0] : b.date; b.endDate = b.pickupTime ? b.pickupTime.split('T')[0] : b.endDate; b.time = b.dropoffTime ? b.dropoffTime.split('T')[1]?.substring(0,5) : b.time; b.sitter = document.getElementById('ebSitter')?.value || ''; b.status = document.getElementById('ebStatus')?.value || b.status; b.notes = document.getElementById('ebNotes')?.value?.trim() || ''; save('bookings', bookings); closeModal(); renderTab(); };
+const editBooking = (id) => { const b = bookings.find(x => x.id === id); if (!b) return; const svcOpts = services.map(s => `<option value="${escHTML(s.name)}" ${b.service === s.name ? 'selected' : ''}>${escHTML(s.name)} (${fmt(s.price)})</option>`).join(''); const sitterOpts = sitters.map(s => `<option value="${escHTML(s.name)}" ${b.sitter === s.name ? 'selected' : ''}>${escHTML(s.name)}</option>`).join(''); const statuses = ['pending','confirmed','completed','cancelled']; let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Booking</div><div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="ebClient" value="${escHTML(b.clientName||'')}"></div><div class="form-group"><label class="form-label">Pet</label><input class="form-input" id="ebPet" value="${escHTML(b.petName||'')}"></div></div><div class="form-group"><label class="form-label">Service</label><select class="form-select" id="ebService">${svcOpts}</select></div><div class="form-row"><div class="form-group"><label class="form-label">Drop-Off</label><input class="form-input" id="ebDropoff" type="datetime-local" value="${b.dropoffTime||''}"></div><div class="form-group"><label class="form-label">Pick-Up</label><input class="form-input" id="ebPickup" type="datetime-local" value="${b.pickupTime||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Sitter</label><select class="form-select" id="ebSitter"><option value="">Unassigned</option>${sitterOpts}</select></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ebStatus">${statuses.map(s=>`<option ${b.status===s?'selected':''}>${s}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ebNotes" rows="2">${escHTML(b.notes||'')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditBooking('${b.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
+const saveEditBooking = (id) => { const b = bookings.find(x => x.id === id); if (!b) return; b.clientName = document.getElementById('ebClient')?.value?.trim() || b.clientName; b.petName = document.getElementById('ebPet')?.value?.trim() || b.petName; b.service = document.getElementById('ebService')?.value || b.service; b.dropoffTime = document.getElementById('ebDropoff')?.value || ''; b.pickupTime = document.getElementById('ebPickup')?.value || ''; b.date = b.dropoffTime ? b.dropoffTime.split('T')[0] : b.date; b.endDate = b.pickupTime ? b.pickupTime.split('T')[0] : b.endDate; b.time = b.dropoffTime ? b.dropoffTime.split('T')[1]?.substring(0,5) : b.time; b.sitter = document.getElementById('ebSitter')?.value || ''; b.status = document.getElementById('ebStatus')?.value || b.status; b.notes = document.getElementById('ebNotes')?.value?.trim() || ''; save('bookings', bookings); closeModal(); renderTab(); };
 
-const editReview = (id) => { const r = reviews.find(x => x.id === id); if (!r) return; const erClientOpts = clients.map(c => `<option value="${escHTML(c.name)}" ${(r.name||'') === c.name ? 'selected' : ''}>${escHTML(c.name)}</option>`).join(''); const erPetOpts = pets.map(p => `<option value="${escHTML(p.name)}" ${(r.pet||'') === p.name ? 'selected' : ''}>${escHTML(p.name)}</option>`).join(''); let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Review</div><div class="form-row"><div class="form-group"><label class="form-label">Client</label><select class="form-select" id="erName" onchange="handleCustomSelect(this,'erNameCustom')"><option value="">— Select —</option>${erClientOpts}<option value="__custom">Other...</option></select><input class="form-input" id="erNameCustom" style="display:${clients.find(c=>c.name===r.name)?'none':'block'};margin-top:4px" value="${escHTML(r.name||'')}" placeholder="Type client name"></div><div class="form-group"><label class="form-label">Pet</label><select class="form-select" id="erPet" onchange="handleCustomSelect(this,'erPetCustom')"><option value="">— Select —</option>${erPetOpts}<option value="__custom">Other...</option></select><input class="form-input" id="erPetCustom" style="display:${pets.find(p=>p.name===r.pet)?'none':'block'};margin-top:4px" value="${escHTML(r.pet||'')}" placeholder="Type pet name"></div></div><div class="form-group"><label class="form-label">Stars</label><select class="form-select" id="erStars">${[5,4,3,2,1].map(s=>`<option ${r.stars===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Review</label><textarea class="form-textarea" id="erText" rows="3">${escHTML(r.text||'')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditReview('${r.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
-const saveEditReview = (id) => { const r = reviews.find(x => x.id === id); if (!r) return; r.name = resolveDropdown('erName','erNameCustom') || r.name; r.pet = resolveDropdown('erPet','erPetCustom') || ''; r.stars = parseInt(document.getElementById('erStars')?.value) || r.stars; r.text = document.getElementById('erText')?.value?.trim() || ''; save('reviews', reviews); closeModal(); renderTab(); };
+const editReview = (id) => { const r = reviews.find(x => x.id === id); if (!r) return; let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit Review</div><div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="erName" value="${escHTML(r.name||'')}"></div><div class="form-group"><label class="form-label">Pet</label><input class="form-input" id="erPet" value="${escHTML(r.pet||'')}"></div></div><div class="form-group"><label class="form-label">Stars</label><select class="form-select" id="erStars">${[5,4,3,2,1].map(s=>`<option ${r.stars===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Review</label><textarea class="form-textarea" id="erText" rows="3">${escHTML(r.text||'')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditReview('${r.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
+const saveEditReview = (id) => { const r = reviews.find(x => x.id === id); if (!r) return; r.name = document.getElementById('erName')?.value?.trim() || r.name; r.pet = document.getElementById('erPet')?.value?.trim() || ''; r.stars = parseInt(document.getElementById('erStars')?.value) || r.stars; r.text = document.getElementById('erText')?.value?.trim() || ''; save('reviews', reviews); closeModal(); renderTab(); };
 
-const editPet = (id) => {
-    const p = pets.find(x => x.id === id);
-    if (!p) return;
-    const clientOpts = clients.map(c => `<option value="${c.id}" ${p.clientId === c.id ? 'selected' : ''}>${escHTML(c.name)}</option>`).join('');
-    const sitterOptions = sitters.filter(s => s.status === 'active').map(s => `<option value="${escHTML(s.name)}" ${p.preferredSitter === s.name ? 'selected' : ''}>${escHTML(s.name)}</option>`).join('');
-    const genderOpts = ['Male', 'Female'].map(g => `<option ${(p.gender || '') === g ? 'selected' : ''}>${g}</option>`).join('');
-    const fixedOpts = ['Yes', 'No'].map(f => `<option ${(p.fixed || '') === f ? 'selected' : ''}>${f}</option>`).join('');
-    const coatOpts = ['Short', 'Medium', 'Long', 'Wire/Rough', 'Curly', 'Double Coat', 'Hairless'].map(c => `<option ${(p.coatType || '') === c ? 'selected' : ''}>${c}</option>`).join('');
-    const groomFreqOpts = ['Monthly', 'Every 2 weeks', 'Weekly', 'Every 6 weeks', 'As needed'].map(f => `<option ${(p.groomFrequency || '') === f ? 'selected' : ''}>${f}</option>`).join('');
-    const shampooOpts = ['Standard', 'Hypoallergenic', 'Oatmeal', 'Medicated', 'De-shedding', 'Whitening', 'Owner provides'].map(s => `<option ${(p.shampoo || '') === s ? 'selected' : ''}>${s}</option>`).join('');
-    let overlay = document.getElementById('modalOverlay');
-    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
-    overlay.innerHTML = `<div class="modal" style="max-width:560px">
-        <div class="modal-title">Edit: ${escHTML(p.name)}</div>
-        ${p.photo ? `<div style="text-align:center;margin-bottom:12px"><img src="${p.photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover"></div>` : ''}
-        <div class="form-group"><label class="form-label">Photo</label><input type="file" accept="image/*" class="form-input" id="epPhoto" onchange="previewEditPetPhoto(this)"><input type="hidden" id="epPhotoData" value="${p.photo || ''}"></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Pet Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div><div class="form-group"><label class="form-label">Breed</label>${typeof breedSelectHTML === 'function' ? breedSelectHTML('epBreed', p.breed || '') : `<input class="form-input" id="epBreed" value="${escHTML(p.breed || '')}">`}</div></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="epAge" value="${escHTML(p.age || '')}" placeholder="e.g. 3 years"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="epWeight" value="${escHTML(p.weight || '')}" placeholder="e.g. 45 lbs"></div></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Gender</label><select class="form-select" id="epGender">${genderOpts}</select></div><div class="form-group"><label class="form-label">Spayed/Neutered</label><select class="form-select" id="epFixed">${fixedOpts}</select></div></div>
-        <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="epOwner"><option value="">None</option>${clientOpts}</select></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Vet Name & Phone</label><input class="form-input" id="epVet" value="${escHTML(p.vet || '')}"></div><div class="form-group"><label class="form-label">Allergies</label><input class="form-input" id="epAllergies" value="${escHTML(p.allergies || '')}"></div></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Medications</label><input class="form-input" id="epMeds" value="${escHTML(p.medications || '')}"></div><div class="form-group"><label class="form-label">Feeding Schedule</label><input class="form-input" id="epFeeding" value="${escHTML(p.feedingSchedule || '')}" placeholder="e.g. 1 cup AM, 1 cup PM"></div></div>
-        <div class="form-group"><label class="form-label">Temperament Tags</label><input class="form-input" id="epTags" value="${escHTML(p.tags || '')}" placeholder="e.g. friendly, leash reactive, food motivated"></div>
-        <div class="form-group"><label class="form-label">Preferred Sitter</label><select class="form-select" id="epPreferredSitter"><option value="">No preference</option>${sitterOptions}</select></div>
-        <div style="margin:12px 0 6px;font-size:.88rem;font-weight:600;color:var(--primary)">Grooming Preferences</div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Coat Type</label><select class="form-select" id="epCoat">${coatOpts}</select></div><div class="form-group"><label class="form-label">Grooming Frequency</label><select class="form-select" id="epGroomFreq">${groomFreqOpts}</select></div></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">Shampoo Preference</label><select class="form-select" id="epShampoo">${shampooOpts}</select></div><div class="form-group"><label class="form-label">Grooming Notes</label><input class="form-input" id="epGroomNotes" value="${escHTML(p.groomNotes || '')}" placeholder="e.g. Sensitive ears, hates dryer"></div></div>
-        <div class="form-group"><label class="form-label">Special Notes</label><textarea class="form-textarea" id="epNotes" rows="2">${escHTML(p.notes || '')}</textarea></div>
-        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditPet('${p.id}')">Save</button></div>
-    </div>`;
-    overlay.classList.add('open');
-};
-window.previewEditPetPhoto = (input) => {
-    if (!input.files[0]) return;
-    const reader = new FileReader();
-    reader.onload = (e) => { document.getElementById('epPhotoData').value = e.target.result; };
-    reader.readAsDataURL(input.files[0]);
-};
-const saveEditPet = (id) => {
-    const p = pets.find(x => x.id === id); if (!p) return;
-    p.name = document.getElementById('epName')?.value?.trim() || p.name;
-    p.breed = document.getElementById('epBreed')?.value?.trim() || '';
-    p.age = document.getElementById('epAge')?.value?.trim() || '';
-    p.weight = document.getElementById('epWeight')?.value?.trim() || '';
-    p.gender = document.getElementById('epGender')?.value || '';
-    p.fixed = document.getElementById('epFixed')?.value || '';
-    p.clientId = document.getElementById('epOwner')?.value || '';
-    p.vet = document.getElementById('epVet')?.value?.trim() || '';
-    p.allergies = document.getElementById('epAllergies')?.value?.trim() || '';
-    p.medications = document.getElementById('epMeds')?.value?.trim() || '';
-    p.feedingSchedule = document.getElementById('epFeeding')?.value?.trim() || '';
-    p.tags = document.getElementById('epTags')?.value?.trim() || '';
-    p.preferredSitter = document.getElementById('epPreferredSitter')?.value || '';
-    p.coatType = document.getElementById('epCoat')?.value || '';
-    p.groomFrequency = document.getElementById('epGroomFreq')?.value || '';
-    p.shampoo = document.getElementById('epShampoo')?.value || '';
-    p.groomNotes = document.getElementById('epGroomNotes')?.value?.trim() || '';
-    p.notes = document.getElementById('epNotes')?.value?.trim() || '';
-    const newPhoto = document.getElementById('epPhotoData')?.value;
-    if (newPhoto) p.photo = newPhoto;
-    save('pets', pets); closeModal(); renderTab();
-};
+const editPet = (id) => { const p = pets.find(x => x.id === id); if (!p) return; const clientOpts = clients.map(c => `<option value="${c.id}" ${p.clientId === c.id ? 'selected' : ''}>${escHTML(c.name)}</option>`).join(''); let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(p.name)}</div><div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="epName" value="${escHTML(p.name)}"></div><div class="form-group"><label class="form-label">Breed</label><input class="form-input" id="epBreed" value="${escHTML(p.breed||'')}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Age</label><input class="form-input" id="epAge" value="${escHTML(p.age||'')}"></div><div class="form-group"><label class="form-label">Weight</label><input class="form-input" id="epWeight" value="${escHTML(p.weight||'')}"></div></div><div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="epOwner"><option value="">None</option>${clientOpts}</select></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="epNotes" rows="2">${escHTML(p.notes||'')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditPet('${p.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
+const saveEditPet = (id) => { const p = pets.find(x => x.id === id); if (!p) return; p.name = document.getElementById('epName')?.value?.trim() || p.name; p.breed = document.getElementById('epBreed')?.value?.trim() || ''; p.age = document.getElementById('epAge')?.value?.trim() || ''; p.weight = document.getElementById('epWeight')?.value?.trim() || ''; p.clientId = document.getElementById('epOwner')?.value || ''; p.notes = document.getElementById('epNotes')?.value?.trim() || ''; save('pets', pets); closeModal(); renderTab(); };
 
 // Init
 renderTab();

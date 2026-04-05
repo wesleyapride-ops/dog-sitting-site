@@ -145,15 +145,22 @@ const renderDynamicPricing = () => {
             <div style="margin-top:32px">
                 <h3 style="text-align:center;font-family:var(--font-display);margin-bottom:16px">Save with Packages</h3>
                 <div class="pricing-grid">
-                    ${packages.map(p => {
+                    ${packages.filter(p => {
                         const baseSvc = activeServices.find(s => s.name === p.services?.[0] || p.services?.includes(s.name));
-                        const baseTotal = (baseSvc?.price || 25) * p.visits;
-                        const discounted = baseTotal * (1 - p.discount / 100);
+                        // Only show packages that have a valid base service OR a set price > 0
+                        if (p.price > 0) return true;
+                        if (baseSvc && baseSvc.price > 0) return true;
+                        return false;
+                    }).map(p => {
+                        const baseSvc = activeServices.find(s => s.name === p.services?.[0] || p.services?.includes(s.name));
+                        const perVisit = p.price > 0 ? p.price / (p.visits || 1) : (baseSvc?.price || 0);
+                        const baseTotal = perVisit * (p.visits || 1);
+                        const discounted = p.price > 0 ? p.price : baseTotal * (1 - (p.discount || 0) / 100);
                         return `<div class="price-card">
                             <h3>${p.name}</h3>
-                            <div class="price">$${Math.floor(discounted)}<span> <s style="font-size:.7rem;color:var(--text-muted)">$${Math.floor(baseTotal)}</s></span></div>
-                            <p class="price-desc">${p.description || p.visits + ' visits — save ' + p.discount + '%'}</p>
-                            <div style="display:inline-block;padding:4px 12px;border-radius:50px;background:rgba(0,184,148,0.1);color:var(--accent);font-size:.82rem;font-weight:600;margin-bottom:12px">${p.discount}% OFF</div>
+                            <div class="price">$${Math.floor(discounted)}<span> ${baseTotal > discounted ? `<s style="font-size:.7rem;color:var(--text-muted)">$${Math.floor(baseTotal)}</s>` : ''}</span></div>
+                            <p class="price-desc">${p.description || (p.visits || 0) + ' visits' + (p.discount ? ' — save ' + p.discount + '%' : '')}</p>
+                            ${p.discount ? `<div style="display:inline-block;padding:4px 12px;border-radius:50px;background:rgba(0,184,148,0.1);color:var(--accent);font-size:.82rem;font-weight:600;margin-bottom:12px">${p.discount}% OFF</div>` : ''}
                             <br><a href="#book" class="btn btn-outline">Get Package</a>
                         </div>`;
                     }).join('')}
@@ -173,7 +180,7 @@ const renderDynamicPricing = () => {
         ];
         select.innerHTML = '<option value="" disabled selected>Select Service</option>' +
             opts.map(s => `<option value="${s.name}">${s.name} ($${Math.floor(s.price)})</option>`).join('') +
-            (packages.length ? '<optgroup label="Packages">' + packages.map(p => `<option value="PKG:${p.name}">${p.name} (${p.visits} visits, ${p.discount}% off)</option>`).join('') + '</optgroup>' : '');
+            (packages.length ? '<optgroup label="Packages">' + packages.filter(p => { const svc = activeServices.find(s => s.name === p.services?.[0] || p.services?.includes(s.name)); return (svc && svc.price > 0) || p.price > 0; }).map(p => `<option value="PKG:${p.name}">${p.name} (${p.visits} visits${p.discount ? ', ' + p.discount + '% off' : ''})</option>`).join('') + '</optgroup>' : '');
     }
 };
 
@@ -300,6 +307,23 @@ document.querySelectorAll('.services-grid, .pricing-grid, .reviews-grid').forEac
     });
 });
 
+// ---- Meet the Sitters ----
+const renderSittersSection = () => {
+    const sittersEl = document.getElementById('sittersGrid');
+    if (!sittersEl) return;
+    const allSitters = gpcLoad('sitters', []).filter(s => s.status === 'active');
+    if (!allSitters.length) return;
+    sittersEl.innerHTML = allSitters.map(s => `
+        <div style="text-align:center;padding:24px 16px">
+            ${s.photo ? `<img src="${s.photo}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin-bottom:12px;border:3px solid var(--primary)">` : `<div style="width:100px;height:100px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin:0 auto 12px">${(s.name || '?').charAt(0)}</div>`}
+            <h3 style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:4px">${s.name}</h3>
+            ${s.specialty ? `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:4px">${s.specialty}</p>` : ''}
+            ${s.bio ? `<p style="font-size:.82rem;color:var(--text-light);font-style:italic">"${s.bio}"</p>` : ''}
+            ${s.certifications ? `<div style="font-size:.75rem;color:var(--accent);margin-top:6px">${s.certifications}</div>` : ''}
+        </div>
+    `).join('');
+};
+
 // ---- Footer Services ----
 const renderFooterServices = () => {
     const footerEl = document.getElementById('footerServices');
@@ -379,6 +403,7 @@ transportSelect?.addEventListener('change', () => {
 // ---- Init ----
 applyCMS();
 renderDynamicPricing();
+renderSittersSection();
 renderFooterServices();
 
 // Re-render pricing cards after they're added to DOM (for scroll animation)

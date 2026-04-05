@@ -141,6 +141,14 @@
         document.getElementById('wDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('wPhoto').checked = true;
 
+        // Pre-fill fields from URL parameters if coming from signup
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('fromSignup')) {
+            if (params.get('name')) document.getElementById('wName').value = params.get('name');
+            if (params.get('email')) document.getElementById('wEmail').value = params.get('email');
+            if (params.get('phone')) document.getElementById('wPhone').value = params.get('phone');
+        }
+
         const submitWaiver = () => {
             const v = (id) => document.getElementById(id)?.value?.trim() || '';
             const checked = (id) => document.getElementById(id)?.checked;
