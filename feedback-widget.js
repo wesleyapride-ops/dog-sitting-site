@@ -6,7 +6,13 @@
 (() => {
     const DB = 'gpc_';
     const load = (k, fb) => { try { return JSON.parse(localStorage.getItem(DB + k)) || fb; } catch { return fb; } };
-    const save = (k, d) => localStorage.setItem(DB + k, JSON.stringify(d));
+    const save = (k, d) => {
+        localStorage.setItem(DB + k, JSON.stringify(d));
+        // Cloud sync if Supabase is available
+        if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
+            GPC_SUPABASE.save(k, d).catch(() => {});
+        }
+    };
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
@@ -403,6 +409,15 @@
             screenSize: window.innerWidth + 'x' + window.innerHeight
         });
         save('feedback', feedback);
+
+        // Notify admin via email if notification system available
+        if (typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.sendDirectEmail(
+                'wesley.apride@gmail.com', 'Wesley',
+                `GPC Feedback: [${category.toUpperCase()}] ${summary}`,
+                `New feedback submitted via widget\n\nCategory: ${category}\nPriority: ${priority}\nPage: ${detectPage()}\nClient: ${session?.name || anonName || 'Anonymous'}\n\nSummary: ${summary}${details ? '\n\nDetails: ' + details : ''}${pendingScreenshots.length ? '\n\n[' + pendingScreenshots.length + ' screenshot(s) - view in admin dashboard]' : ''}\n\nView all feedback: Admin Dashboard → Feedback Box`
+            );
+        }
 
         pendingScreenshots = [];
         panelMode = 'success';
