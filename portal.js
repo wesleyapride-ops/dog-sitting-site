@@ -6,9 +6,14 @@
 const GPC = 'gpc_';
 const load = (key, fb) => { try { return JSON.parse(localStorage.getItem(GPC + key)) || fb; } catch { return fb; } };
 const save = (key, d) => {
-    localStorage.setItem(GPC + key, JSON.stringify(d));
+    try {
+        localStorage.setItem(GPC + key, JSON.stringify(d));
+    } catch (e) {
+        console.error('Save failed (storage full?):', e);
+        alert('Storage is full! Some data may not have saved. Please contact support.');
+    }
     if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
-        GPC_SUPABASE.save(key, d).catch(() => {});
+        GPC_SUPABASE.save(key, d).catch((err) => console.warn('Cloud sync failed:', err));
     }
 };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);

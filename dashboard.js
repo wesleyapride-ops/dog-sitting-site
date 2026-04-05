@@ -10,10 +10,16 @@ if (!_adminSession || !_adminSession.email) { window.location.href = 'admin-logi
 const DB_KEY = 'gpc_';
 const load = (key, fallback) => { try { const d = JSON.parse(localStorage.getItem(DB_KEY + key)); return d !== null ? d : fallback; } catch { return fallback; } };
 const save = (key, data) => {
-    localStorage.setItem(DB_KEY + key, JSON.stringify(data));
+    try {
+        localStorage.setItem(DB_KEY + key, JSON.stringify(data));
+    } catch (e) {
+        console.error('Save failed (storage full?):', e);
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Save Failed', 'Storage is full! Clear old data in Admin Lab → Advanced.', 'error');
+        else alert('Storage full! Data may not have saved.');
+    }
     // Cloud sync — fire-and-forget (non-blocking)
     if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
-        GPC_SUPABASE.save(key, data).catch(() => {});
+        GPC_SUPABASE.save(key, data).catch((err) => console.warn('Cloud sync failed:', err));
     }
 };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -5692,7 +5698,20 @@ const renderFeedback = () => {
     </div>`;
 };
 
-// ---- Screenshot preview for quick-add form ----
+// ---- Screenshot compression + preview for quick-add form ----
+const compressFbImage = (dataUrl) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+        const MAX = 800;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) { const s = Math.min(MAX/w, MAX/h); w = Math.round(w*s); h = Math.round(h*s); }
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.6));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+});
 let _fbPendingScreenshots = [];
 const previewFeedbackScreenshots = (input) => {
     const preview = document.getElementById('fbScreenshotPreview');
@@ -5700,8 +5719,9 @@ const previewFeedbackScreenshots = (input) => {
     const files = Array.from(input.files);
     files.forEach(file => {
         const reader = new FileReader();
-        reader.onload = (e) => {
-            _fbPendingScreenshots.push({ name: file.name, data: e.target.result, addedAt: new Date().toISOString() });
+        reader.onload = async (e) => {
+            const compressed = await compressFbImage(e.target.result);
+            _fbPendingScreenshots.push({ name: file.name, data: compressed, addedAt: new Date().toISOString() });
             renderScreenshotPreviews();
         };
         reader.readAsDataURL(file);

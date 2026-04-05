@@ -7,10 +7,15 @@
     const DB = 'gpc_';
     const load = (k, fb) => { try { return JSON.parse(localStorage.getItem(DB + k)) || fb; } catch { return fb; } };
     const save = (k, d) => {
-        localStorage.setItem(DB + k, JSON.stringify(d));
+        try {
+            localStorage.setItem(DB + k, JSON.stringify(d));
+        } catch (e) {
+            console.error('Save failed (storage full?):', e);
+            alert('Storage is full! Your feedback was saved to the cloud but not locally. Please ask the admin to clear old data.');
+        }
         // Cloud sync if Supabase is available
         if (typeof GPC_SUPABASE !== 'undefined' && GPC_SUPABASE.isConnected()) {
-            GPC_SUPABASE.save(k, d).catch(() => {});
+            GPC_SUPABASE.save(k, d).catch((err) => console.warn('Cloud sync failed:', err));
         }
     };
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -346,11 +351,32 @@
     };
     window._gpcFbUrg = (el) => { document.querySelectorAll('.gpc-fb-urg').forEach(u => u.classList.remove('active')); el.classList.add('active'); };
 
+    // Compress screenshot to max 800px, JPEG 60% — keeps localStorage small
+    const compressImage = (dataUrl) => new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const MAX = 800;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+                const scale = Math.min(MAX / w, MAX / h);
+                w = Math.round(w * scale);
+                h = Math.round(h * scale);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.onerror = () => resolve(dataUrl); // fallback to original if compression fails
+        img.src = dataUrl;
+    });
+
     window._gpcFbPhoto = (input) => {
         Array.from(input.files).forEach(file => {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                pendingScreenshots.push({ name: file.name, data: e.target.result });
+            reader.onload = async (e) => {
+                const compressed = await compressImage(e.target.result);
+                pendingScreenshots.push({ name: file.name, data: compressed });
                 const container = document.getElementById('gpcFbSS');
                 if (container) {
                     container.innerHTML = pendingScreenshots.map((s, i) => `
