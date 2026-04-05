@@ -2372,20 +2372,38 @@ const renderLabHomepage = (cfg, sc) => `
     </div>`;
 
 // ---- TAB 5: GAMIFICATION & FUN ----
-const renderLabGamification = (cfg) => `
+const renderLabGamification = (cfg) => {
+    const milestones = cfg.gamification?.milestones || DEFAULT_SITE_CONFIG.gamification.milestones;
+    const dogFacts = cfg.gamification?.dogFacts || [
+        "Dogs can smell up to 100,000 times better than humans!",
+        "A dog's nose print is unique, like a human fingerprint.",
+        "Dogs dream just like humans — they even twitch in their sleep!",
+        "The average dog can understand about 165 words.",
+        "Dogs can detect diseases like cancer through scent.",
+        "A wagging tail doesn't always mean a happy dog — direction matters!",
+        "Puppies are born deaf — they can't hear until about 3 weeks old.",
+        "A greyhound could beat a cheetah in a long-distance race.",
+        "Dogs can be trained to detect low blood sugar in diabetics.",
+        "Dogs have three eyelids — the third one keeps their eyes moist."
+    ];
+    return `
     <div class="card">
         <div class="card-title" style="margin-bottom:4px">Achievement Badges</div>
         ${renderToggle('Enable Badges', 'gamification.badges', 'Clients earn badges for milestones')}
         <div style="${cfg.gamification?.badges ? '' : 'opacity:.4;pointer-events:none'}">
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:12px">
-                ${(cfg.gamification?.milestones || DEFAULT_SITE_CONFIG.gamification.milestones).map(m => `
-                    <div style="padding:12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;gap:10px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:12px">
+                ${milestones.map((m, i) => `
+                    <div style="padding:12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;gap:10px;position:relative">
                         <span style="font-size:1.5rem">${m.icon}</span>
-                        <div><strong style="font-size:.85rem">${escHTML(m.name)}</strong><div style="font-size:.72rem;color:var(--text-muted)">${escHTML(m.description)}</div></div>
+                        <div style="flex:1"><strong style="font-size:.85rem">${escHTML(m.name)}</strong><div style="font-size:.72rem;color:var(--text-muted)">${escHTML(m.description)} (${m.threshold})</div></div>
+                        <div style="display:flex;gap:2px">
+                            <button class="btn btn-sm btn-ghost" onclick="editMilestone(${i})" title="Edit" style="padding:2px 6px">✏️</button>
+                            <button class="btn btn-sm btn-ghost" onclick="removeMilestone(${i})" title="Remove" style="padding:2px 6px;color:var(--danger)">✕</button>
+                        </div>
                     </div>
                 `).join('')}
             </div>
-            <button class="btn btn-sm btn-ghost" style="margin-top:10px" onclick="addCustomMilestone()">+ Add Custom Badge</button>
+            <button class="btn btn-sm btn-ghost" style="margin-top:10px" onclick="addCustomMilestone()">+ Add Badge</button>
         </div>
     </div>
     <div class="card">
@@ -2402,11 +2420,30 @@ const renderLabGamification = (cfg) => `
     </div>
     <div class="card">
         <div class="card-title" style="margin-bottom:4px">Easter Eggs</div>
-        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Hidden surprises that delight clients who discover them.</p>
         ${renderToggle('Konami Code', 'gamification.easterEggKonami', '↑↑↓↓←→←→BA — triggers a hidden animation')}
+        <div style="padding:4px 0 8px 20px;${cfg.gamification?.easterEggKonami ? '' : 'display:none'}">
+            <label class="form-label">Konami message</label>
+            <input class="form-input" value="${escHTML(cfg.gamification?.konamiMessage || '🐾 You found the secret! GenusPupClub loves you! 🐶')}" onchange="labToggle('gamification.konamiMessage',this.value)">
+        </div>
         ${renderToggle('Logo Secret Click', 'gamification.easterEggLogoClick', 'Click the logo 7 times for a surprise')}
+        <div style="padding:4px 0 8px 20px;${cfg.gamification?.easterEggLogoClick ? '' : 'display:none'}">
+            <label class="form-label">Logo click message</label>
+            <input class="form-input" value="${escHTML(cfg.gamification?.logoClickMessage || '🎉 You found the hidden menu! 10% off your next booking — use code SECRETPUP')}" onchange="labToggle('gamification.logoClickMessage',this.value)">
+        </div>
         ${renderToggle('Random Dog Facts', 'gamification.easterEggDogFacts', 'Hidden dog facts appear on hover/idle')}
+        <div style="padding:4px 0 8px 20px;${cfg.gamification?.easterEggDogFacts ? '' : 'display:none'}">
+            <label class="form-label">Dog Facts (one per line — add, edit, or remove)</label>
+            <textarea class="form-textarea" id="labDogFacts" rows="6" style="font-size:.82rem">${dogFacts.join('\n')}</textarea>
+            <button class="btn btn-sm btn-primary" style="margin-top:6px" onclick="labToggle('gamification.dogFacts',document.getElementById('labDogFacts').value.split('\\n').filter(l=>l.trim()));renderAdminLab()">Save Facts</button>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Welcome & Branding</div>
+        <div class="form-group"><label class="form-label">Welcome Animation Title</label><input class="form-input" value="${escHTML(cfg.gamification?.welcomeTitle || 'Welcome back, {clientName}!')}" onchange="labToggle('gamification.welcomeTitle',this.value)"></div>
+        <div class="form-group"><label class="form-label">Welcome Animation Subtitle</label><input class="form-input" value="${escHTML(cfg.gamification?.welcomeSubtitle || 'Your pups missed you.')}" onchange="labToggle('gamification.welcomeSubtitle',this.value)"></div>
+        <div class="form-group"><label class="form-label">Welcome Emoji</label><input class="form-input" style="width:80px;font-size:1.5rem;text-align:center" value="${cfg.gamification?.welcomeEmoji || '🐶'}" onchange="labToggle('gamification.welcomeEmoji',this.value)"></div>
     </div>`;
+};
 
 // ---- TAB 6: NOTIFICATIONS ----
 const renderLabNotifications = (cfg) => `
@@ -2497,7 +2534,8 @@ const renderLabAutomation = (cfg) => {
             <div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <strong style="font-size:.88rem">${escHTML(r.label)}</strong>
-                    <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="removeQuickResponse(${i})">✕</button>
+                    <button class="btn btn-sm btn-ghost" onclick="editQuickResponse(${i})" title="Edit">✏️</button>
+                    <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="removeQuickResponse(${i})" title="Remove">✕</button>
                 </div>
                 <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px">${escHTML(r.message)}</div>
             </div>
@@ -2532,12 +2570,94 @@ const removeQuickResponse = (idx) => {
     if (!confirm('Remove this quick response?')) return;
     if (!labConfig.automation?.quickResponses) return;
     labConfig.automation.quickResponses.splice(idx, 1);
+    save('site_config', labConfig); renderAdminLab();
+};
+const saveListEdit = (configKey) => {
+    const textarea = document.getElementById('list_' + configKey);
+    if (!textarea) return;
+    const items = textarea.value.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!labConfig.advanced) labConfig.advanced = {};
+    if (!labConfig.advanced.lists) labConfig.advanced.lists = {};
+    labConfig.advanced.lists[configKey] = items;
     save('site_config', labConfig);
-    renderAdminLab();
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved', `${configKey} list updated`, 'success');
+};
+const addBlackoutDate = () => {
+    const date = document.getElementById('advBlackoutDate')?.value;
+    const label = document.getElementById('advBlackoutLabel')?.value?.trim() || '';
+    if (!date) { alert('Pick a date.'); return; }
+    if (!labConfig.automation) labConfig.automation = {};
+    if (!labConfig.automation.blackoutDates) labConfig.automation.blackoutDates = [];
+    labConfig.automation.blackoutDates.push({ date, label });
+    labConfig.automation.blackoutDates.sort((a, b) => a.date.localeCompare(b.date));
+    save('site_config', labConfig); renderAdminLab();
+};
+const removeBlackoutDate = (idx) => {
+    if (!labConfig.automation?.blackoutDates) return;
+    labConfig.automation.blackoutDates.splice(idx, 1);
+    save('site_config', labConfig); renderAdminLab();
+};
+const editQuickResponse = (idx) => {
+    if (!labConfig.automation?.quickResponses) return;
+    const r = labConfig.automation.quickResponses[idx]; if (!r) return;
+    const label = prompt('Response name:', r.label); if (!label) return;
+    const message = prompt('Message text (use {clientName} and {petName}):', r.message); if (!message) return;
+    r.label = label; r.message = message;
+    save('site_config', labConfig); renderAdminLab();
 };
 
 // ---- TAB 8: ADVANCED ----
+const DEFAULT_LISTS = {
+    serviceCategories: ['Walking', 'Visits', 'Daycare', 'Sitting', 'Specialty', 'Transport', 'Grooming', 'Training', 'Other'],
+    expenseCategories: ['Supplies', 'Gas/Mileage', 'Insurance', 'Phone/Internet', 'Marketing', 'Equipment', 'Food/Treats', 'Vet/Medical', 'Software', 'Training', 'Uniforms', 'Vehicle', 'Office', 'Other'],
+    clientSources: ['Google', 'Instagram', 'Facebook', 'Referral', 'Nextdoor', 'Walk-in', 'Other'],
+    photoActivities: ['Walk', 'Play', 'Nap', 'Eating', 'Training', 'Cuddle', 'Outdoor', 'Grooming', 'Other'],
+    checkinItems: ['Leash', 'Collar with ID', 'Food', 'Food bowl', 'Water bowl', 'Treats', 'Medications', 'Favorite toy', 'Bed/blanket', 'Crate', 'Harness', 'Poop bags', 'Jacket/sweater', 'Vaccination records'],
+    feedbackAreas: ['Website', 'Client Portal', 'Booking System', 'Admin Dashboard', 'Pricing/Invoicing', 'Scheduling/Calendar', 'Communication', 'Photo Gallery', 'Report Cards', 'Waivers/Forms', 'Dog Walking', 'Daycare', 'Grooming', 'Pet Taxi', 'Overnight Sitting', 'General/Other'],
+    paymentMethods: ['Card', 'CashApp', 'Venmo', 'Zelle', 'Cash', 'Apple Pay'],
+    messageTypes: ['Visit Update', 'Booking', 'Reminder', 'General']
+};
+
+const renderEditableList = (title, configKey, defaults) => {
+    const items = labConfig.advanced?.lists?.[configKey] || defaults;
+    return `<div style="margin-bottom:16px">
+        <label class="form-label">${title}</label>
+        <textarea class="form-textarea" id="list_${configKey}" rows="4" style="font-size:.82rem">${items.join('\n')}</textarea>
+        <button class="btn btn-sm btn-ghost" style="margin-top:4px" onclick="saveListEdit('${configKey}')">Save</button>
+    </div>`;
+};
+
 const renderLabAdvanced = (cfg) => `
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Customize Dropdown Lists</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Edit the options that appear in dropdowns throughout the site. One item per line. Add, remove, or reorder as needed.</p>
+        <div class="grid-2">
+            ${renderEditableList('Service Categories', 'serviceCategories', DEFAULT_LISTS.serviceCategories)}
+            ${renderEditableList('Expense Categories', 'expenseCategories', DEFAULT_LISTS.expenseCategories)}
+            ${renderEditableList('Client Sources ("How did they find us?")', 'clientSources', DEFAULT_LISTS.clientSources)}
+            ${renderEditableList('Photo Activity Types', 'photoActivities', DEFAULT_LISTS.photoActivities)}
+            ${renderEditableList('Check-In Checklist Items', 'checkinItems', DEFAULT_LISTS.checkinItems)}
+            ${renderEditableList('Feedback Areas', 'feedbackAreas', DEFAULT_LISTS.feedbackAreas)}
+            ${renderEditableList('Payment Methods', 'paymentMethods', DEFAULT_LISTS.paymentMethods)}
+            ${renderEditableList('Message Types', 'messageTypes', DEFAULT_LISTS.messageTypes)}
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Blackout Dates</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Block specific dates from accepting bookings. Add holidays, vacation days, etc.</p>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+            <input type="date" class="form-input" id="advBlackoutDate" style="width:auto">
+            <input class="form-input" id="advBlackoutLabel" placeholder="Label (e.g. Christmas)" style="width:200px">
+            <button class="btn btn-sm btn-primary" onclick="addBlackoutDate()">+ Add</button>
+        </div>
+        ${(cfg.automation?.blackoutDates || []).length ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${cfg.automation.blackoutDates.map((d, i) => `<span style="padding:4px 10px;background:var(--bg);border-radius:6px;font-size:.82rem;display:flex;align-items:center;gap:6px">${d.date} — ${escHTML(d.label || 'Blocked')} <button class="btn btn-sm btn-ghost" style="padding:0 4px;color:var(--danger)" onclick="removeBlackoutDate(${i})">✕</button></span>`).join('')}</div>` : '<div style="font-size:.82rem;color:var(--text-muted)">No blackout dates set.</div>'}
+    </div>
+    <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Auto-Confirm Delay</div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">When auto-confirm is on, wait this many minutes before confirming (0 = instant).</p>
+        <input type="number" class="form-input" style="width:120px" min="0" max="1440" value="${cfg.automation?.autoConfirmDelay ?? 0}" onchange="labToggle('automation.autoConfirmDelay',parseInt(this.value))">
+        <span style="font-size:.82rem;color:var(--text-muted);margin-left:8px">minutes</span>
+    </div>
     <div class="card">
         <div class="card-title" style="margin-bottom:12px">Custom CSS</div>
         <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Inject custom CSS into the homepage and portal. For power users only.</p>
@@ -2578,8 +2698,23 @@ const addCustomMilestone = () => {
     if (!labConfig.gamification) labConfig.gamification = {};
     if (!labConfig.gamification.milestones) labConfig.gamification.milestones = [...DEFAULT_SITE_CONFIG.gamification.milestones];
     labConfig.gamification.milestones.push({ id: 'custom_' + uid(), name, icon, description: desc, threshold });
-    save('site_config', labConfig);
-    renderAdminLab();
+    save('site_config', labConfig); renderAdminLab();
+};
+const editMilestone = (idx) => {
+    if (!labConfig.gamification?.milestones) return;
+    const m = labConfig.gamification.milestones[idx]; if (!m) return;
+    const name = prompt('Badge name:', m.name); if (!name) return;
+    const icon = prompt('Emoji icon:', m.icon) || m.icon;
+    const desc = prompt('Description:', m.description) ?? m.description;
+    const threshold = parseInt(prompt('Threshold:', m.threshold)) || m.threshold;
+    m.name = name; m.icon = icon; m.description = desc; m.threshold = threshold;
+    save('site_config', labConfig); renderAdminLab();
+};
+const removeMilestone = (idx) => {
+    if (!labConfig.gamification?.milestones) return;
+    if (!confirm('Remove this badge?')) return;
+    labConfig.gamification.milestones.splice(idx, 1);
+    save('site_config', labConfig); renderAdminLab();
 };
 
 const importAllData = (input) => {
@@ -5006,7 +5141,7 @@ const renderFeedback = () => {
             <div class="form-group">
                 <label class="form-label">📸 Screenshot / Photo (optional)</label>
                 <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:6px">Snap a photo of the issue on their phone, a note they wrote, the screen showing the bug — anything visual helps your AI fix it faster.</p>
-                <input type="file" id="fbScreenshot" accept="image/*" multiple onchange="previewFeedbackScreenshots(this)" style="font-size:.88rem">
+                <input type="file" id="fbScreenshot" accept="image/*" capture="environment" multiple onchange="previewFeedbackScreenshots(this)" style="font-size:.88rem">
                 <div id="fbScreenshotPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;margin-top:12px">

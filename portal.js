@@ -1046,7 +1046,7 @@ const renderSuggestions = () => {
             <div class="form-group">
                 <label class="form-label">📸 Screenshot (optional)</label>
                 <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:6px">Take a screenshot of the issue or feature you're talking about — helps us fix it faster.</p>
-                <input type="file" id="sugScreenshot" accept="image/*" style="font-size:.88rem">
+                <input type="file" id="sugScreenshot" accept="image/*" capture="environment" style="font-size:.88rem">
             </div>
 
             <button class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px" onclick="submitSuggestion()">📩 Submit Feedback</button>
@@ -1171,7 +1171,7 @@ const applyPortalConfig = () => {
                     document.body.style.transition = 'transform .5s';
                     document.body.style.transform = 'rotate(360deg)';
                     setTimeout(() => { document.body.style.transform = ''; }, 600);
-                    alert('🐾 You found the secret! GenusPupClub loves you! 🐶');
+                    alert(cfg.gamification?.konamiMessage || '🐾 You found the secret! GenusPupClub loves you! 🐶');
                 }
             });
         }
@@ -1181,7 +1181,7 @@ const applyPortalConfig = () => {
     if (cfg.gamification?.easterEggDogFacts) {
         if (!window._dogFactsWired) {
             window._dogFactsWired = true;
-            const facts = [
+            const facts = cfg.gamification?.dogFacts || [
                 "Dogs can smell up to 100,000 times better than humans!",
                 "A dog's nose print is unique, like a human fingerprint.",
                 "Dogs dream just like humans — they even twitch in their sleep!",
@@ -1210,12 +1210,15 @@ const applyPortalConfig = () => {
     // Welcome animation
     if (cfg.portal?.welcomeAnimation && !window._welcomeShown) {
         window._welcomeShown = true;
+        const wTitle = (cfg.gamification?.welcomeTitle || 'Welcome back, {clientName}!').replace('{clientName}', esc(userName));
+        const wSub = (cfg.gamification?.welcomeSubtitle || 'Your pups missed you.').replace('{clientName}', esc(userName));
+        const wEmoji = cfg.gamification?.welcomeEmoji || '🐶';
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
         overlay.innerHTML = `<div style="background:#fff;padding:30px 40px;border-radius:16px;text-align:center;animation:fadeIn .4s">
-            <div style="font-size:3rem;margin-bottom:12px">🐶</div>
-            <h2 style="font-family:var(--font-display);margin:0 0 8px">Welcome back, ${esc(userName)}!</h2>
-            <p style="color:var(--text-muted);margin:0">Your pups missed you.</p>
+            <div style="font-size:3rem;margin-bottom:12px">${wEmoji}</div>
+            <h2 style="font-family:var(--font-display);margin:0 0 8px">${wTitle}</h2>
+            <p style="color:var(--text-muted);margin:0">${wSub}</p>
         </div>`;
         document.body.appendChild(overlay);
         setTimeout(() => { overlay.style.opacity = '0'; overlay.style.transition = 'opacity .3s'; setTimeout(() => overlay.remove(), 300); }, 2000);
