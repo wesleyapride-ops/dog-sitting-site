@@ -508,7 +508,8 @@ const calcDays = (start, end) => {
 };
 
 const calcBookingTotal = (b) => {
-    const baseRate = parseFloat(b.amount) || 0;
+    let baseRate = parseFloat(b.amount) || 0;
+    if (baseRate === 0 && b.service) { const svc = services.find(s => s.name === b.service); if (svc) baseRate = parseFloat(svc.price) || 0; }
     const days = calcDays(b.date, b.endDate);
     const numDogs = b.numDogs || ((b.extraDogs || 0) + 1);
     // Charge full base rate per dog per day

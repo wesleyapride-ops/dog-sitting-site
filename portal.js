@@ -124,7 +124,7 @@ const renderMyBookings = () => {
     const editReqs = load('edit_requests', []);
     el.innerHTML = `
         <div class="card">
-            <div class="card-header"><span class="card-title">My Bookings (${sorted.length})</span></div>
+            <div class="card-header"><span class="card-title">My Bookings (${sorted.length})</span><button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-tab=newbooking]').click()">+ Book New Service</button></div>
             ${sorted.length ? `<div class="table-wrap"><table>
                 <thead><tr><th>Date</th><th>Time</th><th>Pet</th><th>Service</th><th>Amount</th><th>Status</th><th></th></tr></thead>
                 <tbody>${sorted.map(b => {
@@ -481,15 +481,8 @@ const renderNewBooking = () => {
             </select></div>
             <div class="form-group"><label class="form-label">Add-ons</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${addons.map(a => `<label style="display:flex;gap:6px;align-items:center;font-size:.88rem;cursor:pointer"><input type="checkbox" class="nb-addon" value="${esc(a.name)}" data-price="${a.price}"> ${esc(a.name)} ${a.price > 0 ? fmt(a.price) : '(free)'}</label>`).join('')}</div></div>
             <div class="form-row">
-                <div class="form-group"><label class="form-label">Start Date</label><input class="form-input" type="date" id="nbDate" value="${todayStr()}" onchange="updateNBPrice()"></div>
-                <div class="form-group"><label class="form-label">End Date (multi-day)</label><input class="form-input" type="date" id="nbEndDate" onchange="updateNBPrice()"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Preferred Time</label><select class="form-select" id="nbTime"><option>8:00 AM</option><option>9:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>12:00 PM</option><option>1:00 PM</option><option>2:00 PM</option><option>3:00 PM</option><option>4:00 PM</option><option>5:00 PM</option></select></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label class="form-label">Drop-Off Date & Time</label><input class="form-input" type="datetime-local" id="nbDropoff"></div>
-                <div class="form-group"><label class="form-label">Pick-Up Date & Time</label><input class="form-input" type="datetime-local" id="nbPickup"></div>
+                <div class="form-group"><label class="form-label">Drop-Off Date & Time</label><input class="form-input" type="datetime-local" id="nbDropoff" onchange="updateNBPrice()"></div>
+                <div class="form-group"><label class="form-label">Pick-Up Date & Time</label><input class="form-input" type="datetime-local" id="nbPickup" onchange="updateNBPrice()"></div>
             </div>
             <div class="form-group"><label class="form-label">Need Transport?</label><select class="form-select" id="nbTransport" onchange="document.getElementById('nbTransportAddr').style.display=this.value&&this.value!=='none'?'grid':'none'"><option value="none">No — I'll handle drop-off/pick-up</option><option value="pickup">Pickup from my house</option><option value="dropoff">Dropoff to my house</option><option value="roundtrip">Round trip</option></select></div>
             <div class="form-row" id="nbTransportAddr" style="display:none"><div class="form-group"><label class="form-label">Pickup Address</label><input class="form-input" id="nbPickupAddr"></div><div class="form-group"><label class="form-label">Dropoff Address</label><input class="form-input" id="nbDropoffAddr"></div></div>
@@ -522,7 +515,12 @@ const calcPortalDays = (start, end) => {
 
 // Match admin calcBookingTotal — full rate per dog per day + addons + transport + zone
 const calcPortalTotal = (b) => {
-    const baseRate = parseFloat(b.amount) || 0;
+    // Use stored amount, or look up service price as fallback
+    let baseRate = parseFloat(b.amount) || 0;
+    if (baseRate === 0 && b.service) {
+        const svc = load('services', []).find(s => s.name === b.service);
+        if (svc) baseRate = parseFloat(svc.price) || 0;
+    }
     const days = calcPortalDays(b.date, b.endDate);
     const numDogs = b.numDogs || ((b.extraDogs || 0) + 1);
     let total = baseRate * numDogs * days;
@@ -544,8 +542,10 @@ const calcPortalTotal = (b) => {
 const updateNBPrice = () => {
     const svc = document.getElementById('nbService');
     const baseRate = parseFloat(svc?.selectedOptions?.[0]?.dataset?.price) || 0;
-    const startDate = document.getElementById('nbDate')?.value || '';
-    const endDate = document.getElementById('nbEndDate')?.value || '';
+    const dropoffDT = document.getElementById('nbDropoff')?.value || '';
+    const pickupDT = document.getElementById('nbPickup')?.value || '';
+    const startDate = dropoffDT ? dropoffDT.split('T')[0] : '';
+    const endDate = pickupDT ? pickupDT.split('T')[0] : '';
     const days = calcPortalDays(startDate, endDate);
     const selectedPets = document.querySelectorAll('.nb-pet-cb:checked');
     const extraDogs = selectedPets.length > 1 ? selectedPets.length - 1 : 0;
@@ -574,24 +574,25 @@ const updateNBPrice = () => {
 const submitBooking = () => {
     const pet = document.getElementById('nbPet')?.value;
     const service = document.getElementById('nbService')?.value;
-    const date = document.getElementById('nbDate')?.value;
-    const time = document.getElementById('nbTime')?.value;
+    const dropoffTime = document.getElementById('nbDropoff')?.value || '';
+    const pickupTime = document.getElementById('nbPickup')?.value || '';
     const notes = document.getElementById('nbNotes')?.value?.trim();
 
     if (!pet) { alert('Please select a pet'); return; }
     if (!service) { alert('Please select a service'); return; }
-    if (!date) { alert('Please select a date'); return; }
+    if (!dropoffTime) { alert('Please select a drop-off date & time'); return; }
+
+    // Derive date and time from drop-off/pick-up (same as admin)
+    const date = dropoffTime.split('T')[0];
+    const time = dropoffTime.split('T')[1]?.substring(0, 5) || '';
+    const endDate = pickupTime ? pickupTime.split('T')[0] : '';
 
     const svc = load('services', []).find(s => s.name === service);
     const selectedAddons = [...document.querySelectorAll('.nb-addon:checked')].map(cb => cb.value);
     const petNames = pet.split(',').map(p => p.trim()).filter(Boolean);
     const extraDogs = Math.max(0, petNames.length - 1);
-    const dropoffTime = document.getElementById('nbDropoff')?.value || '';
-    const pickupTime = document.getElementById('nbPickup')?.value || '';
     const pickupAddr = document.getElementById('nbPickupAddr')?.value?.trim() || '';
     const dropoffAddr = document.getElementById('nbDropoffAddr')?.value?.trim() || '';
-
-    const endDate = document.getElementById('nbEndDate')?.value || '';
 
     const bookings = load('bookings', []);
     bookings.push({
