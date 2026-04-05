@@ -10,8 +10,8 @@
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-    // Don't show on admin dashboard
-    if (window.location.pathname.includes('dashboard.html') || window.location.pathname.includes('admin')) return;
+    // Don't show on admin login page
+    if (window.location.pathname.includes('admin-login.html')) return;
 
     // Get client info if logged in
     const session = (() => { try { return JSON.parse(sessionStorage.getItem('gpc_client_auth') || 'null'); } catch { return null; } })();
@@ -95,6 +95,7 @@
 
     const openPanel = () => { panel.classList.add('open'); overlay.classList.add('open'); renderPanel(); };
     const closePanel = () => { panel.classList.remove('open'); overlay.classList.remove('open'); pendingScreenshots = []; panelMode = 'form'; };
+    window._gpcFbClose = closePanel;
     btn.addEventListener('click', openPanel);
     overlay.addEventListener('click', closePanel);
 
@@ -113,7 +114,7 @@
                     <div style="font-size:1.15rem;font-weight:700">Share Your Feedback</div>
                     <div style="font-size:.82rem;opacity:.85;margin-top:2px">Help us make GenusPupClub better</div>
                 </div>
-                <button onclick="document.getElementById('gpc-fb-panel').classList.remove('open');document.getElementById('gpc-fb-overlay').classList.remove('open')" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem">✕</button>
+                <button onclick="window._gpcFbClose()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem">✕</button>
             </div>
             ${myCount > 0 ? `<button onclick="window._gpcFbHistory()" style="margin-top:10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.82rem;font-family:inherit">View My Submissions (${myCount})</button>` : ''}
         </div>
@@ -201,7 +202,7 @@
                 <p style="color:#636E72;margin:0 0 16px;line-height:1.6">We got it. Your feedback has been logged and our team will review it. ${session ? 'Check back in your portal to see updates on your submissions.' : ''}</p>
                 <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
                     <button onclick="window._gpcFbMode='form';window._gpcFbRender()" style="padding:10px 20px;background:#FF6B35;color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-weight:600">Submit Another</button>
-                    <button onclick="document.getElementById('gpc-fb-panel').classList.remove('open');document.getElementById('gpc-fb-overlay').classList.remove('open')" style="padding:10px 20px;background:#F8F9FA;color:#636E72;border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-weight:600">Close</button>
+                    <button onclick="window._gpcFbClose()" style="padding:10px 20px;background:#F8F9FA;color:#636E72;border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-weight:600">Close</button>
                 </div>
             </div>
         </div>`;
@@ -358,7 +359,18 @@
         });
     };
 
-    window._gpcFbRemoveSS = (idx) => { pendingScreenshots.splice(idx, 1); window._gpcFbPhoto({ files: [] }); };
+    window._gpcFbRemoveSS = (idx) => {
+        pendingScreenshots.splice(idx, 1);
+        const container = document.getElementById('gpcFbSS');
+        if (container) {
+            container.innerHTML = pendingScreenshots.map((s, i) => `
+                <div class="gpc-fb-ss">
+                    <img src="${s.data}">
+                    <button onclick="event.stopPropagation();window._gpcFbRemoveSS(${i})">✕</button>
+                </div>
+            `).join('');
+        }
+    };
 
     window._gpcFbSubmit = () => {
         const summary = document.getElementById('gpcFbSummary')?.value?.trim();

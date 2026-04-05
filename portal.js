@@ -764,6 +764,7 @@ const uploadProfilePhoto = (input) => {
                 welcome.innerHTML = `<div style="text-align:center"><img src="${dataUrl}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin-bottom:8px"><h3 style="color:#fff;font-size:1rem">${esc(userName)}</h3><p>Client Portal</p></div>`;
             }
             alert('Profile photo updated!');
+            renderTab();
         };
         img.src = e.target.result;
     };
@@ -1091,6 +1092,14 @@ const submitSuggestion = () => {
         loggedBy: 'client-portal', adminNotes: '', source: 'client'
     };
 
+    const notifyAndFinish = () => {
+        if (typeof GPC_NOTIFY !== 'undefined') {
+            GPC_NOTIFY.create({ type: 'client_feedback', title: 'New Client Suggestion', body: `${userName}: ${summary}`, audience: 'admin', createdAt: new Date().toISOString() });
+        }
+        alert('Thank you! Your feedback has been submitted. We\'ll review it soon.');
+        renderSuggestions();
+    };
+
     // Handle screenshot
     const fileInput = document.getElementById('sugScreenshot');
     if (fileInput?.files?.length) {
@@ -1099,20 +1108,13 @@ const submitSuggestion = () => {
             newItem.screenshots.push({ name: fileInput.files[0].name, data: e.target.result, addedAt: new Date().toISOString() });
             feedback.push(newItem);
             save('feedback', feedback);
-            alert('Thank you! Your feedback has been submitted. We\'ll review it soon.');
-            renderSuggestions();
+            notifyAndFinish();
         };
         reader.readAsDataURL(fileInput.files[0]);
     } else {
         feedback.push(newItem);
         save('feedback', feedback);
-        alert('Thank you! Your feedback has been submitted. We\'ll review it soon.');
-        renderSuggestions();
-    }
-
-    // Notify admin
-    if (typeof GPC_NOTIFY !== 'undefined') {
-        GPC_NOTIFY.create({ type: 'client_feedback', title: 'New Client Suggestion', body: `${userName}: ${summary}`, audience: 'admin', createdAt: new Date().toISOString() });
+        notifyAndFinish();
     }
 };
 
@@ -1210,9 +1212,9 @@ const applyPortalConfig = () => {
     // Welcome animation
     if (cfg.portal?.welcomeAnimation && !window._welcomeShown) {
         window._welcomeShown = true;
-        const wTitle = (cfg.gamification?.welcomeTitle || 'Welcome back, {clientName}!').replace('{clientName}', esc(userName));
-        const wSub = (cfg.gamification?.welcomeSubtitle || 'Your pups missed you.').replace('{clientName}', esc(userName));
-        const wEmoji = cfg.gamification?.welcomeEmoji || '🐶';
+        const wTitle = esc((cfg.gamification?.welcomeTitle || 'Welcome back, {clientName}!').replace('{clientName}', userName));
+        const wSub = esc((cfg.gamification?.welcomeSubtitle || 'Your pups missed you.').replace('{clientName}', userName));
+        const wEmoji = esc(cfg.gamification?.welcomeEmoji || '🐶');
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
         overlay.innerHTML = `<div style="background:#fff;padding:30px 40px;border-radius:16px;text-align:center;animation:fadeIn .4s">
