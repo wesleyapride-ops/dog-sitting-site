@@ -356,7 +356,7 @@ const showPetHistory = (petId) => {
     const pet = pets.find(p => p.id === petId);
     if (!pet) return;
     const owner = clients.find(c => c.id === pet.clientId);
-    const petBookings = bookings.filter(b => b.petName === pet.name || (b.petName && b.petName.includes(pet.name))).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const petBookings = bookings.filter(b => b.petName === pet.name || (b.petName && b.petName.split(',').map(n => n.trim()).includes(pet.name))).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const petCheckins = (load('checkins', []) || []).filter(c => c.petName === pet.name).sort((a, b) => (b.checkInDate || '').localeCompare(a.checkInDate || ''));
     const petInfamy = (load('infamy', []) || []).filter(i => i.dogName === pet.name);
     const totalSpent = petBookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + calcBookingTotal(b), 0);
@@ -4291,7 +4291,7 @@ const saveModal = (type) => {
                 const dateStr = d.toISOString().split('T')[0];
                 bookings.push({
                     id: uid(), clientId: v('mClient') || null, clientName: v('mClientName'), petName: v('mPetName'),
-                    service: v('mService'), amount: price, addons: [], extraDogs: 0,
+                    service: v('mService'), amount: price, addons: [], extraDogs: 0, numDogs: 1,
                     date: dateStr, time: v('mTime'), zone: '', sitter: v('mSitter'),
                     notes: v('mNotes') + ` [Recurring: ${v('mFreq')} — ${discount}% off]`, status: 'confirmed',
                     source: 'recurring', recurring: true
@@ -4706,7 +4706,28 @@ const sendReportCardEmail = (checkinId) => {
 const checkWaitlist = (date) => { const maxPerDay = businessSettings.maxBookingsPerDay || 8; return bookings.filter(b => b.date === date && b.status !== 'cancelled').length >= maxPerDay; };
 const addToWaitlist = (clientName, clientEmail, service, date, petName) => { const waitlist = load('waitlist', []); waitlist.push({ id: uid(), clientName, clientEmail, service, date, petName, addedAt: todayStr(), notified: false }); save('waitlist', waitlist); if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Waitlisted', `${clientName} added to waitlist for ${date}`, 'info'); };
 const notifyWaitlist = (date) => { const waitlist = load('waitlist', []); const waiting = waitlist.filter(w => w.date === date && !w.notified); waiting.forEach(w => { if (typeof GPC_NOTIFY !== 'undefined') { GPC_NOTIFY.sendEmail('waitlist', { clientName: w.clientName, clientEmail: w.clientEmail, date: w.date, service: w.service }); w.notified = true; } }); save('waitlist', waitlist); if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Waitlist Notified', `${waiting.length} people notified about ${date}`, 'success'); };
-const deleteItem = (col, id) => { if (!confirm('Delete?')) return; const map = { bookings, clients, pets, reviews, sitters, messages }; map[col] = map[col].filter(x => x.id !== id); if (col === 'bookings') bookings = map[col]; else if (col === 'clients') clients = map[col]; else if (col === 'pets') pets = map[col]; else if (col === 'reviews') reviews = map[col]; else if (col === 'sitters') sitters = map[col]; save(col, map[col]); renderTab(); };
+const deleteItem = (col, id) => {
+    if (col === 'clients') {
+        const client = clients.find(c => c.id === id);
+        const clientPets = pets.filter(p => p.clientId === id);
+        const msg = `Delete ${client?.name || 'this client'}?${clientPets.length ? `\n\nThis will also remove their ${clientPets.length} pet(s): ${clientPets.map(p => p.name).join(', ')}` : ''}`;
+        if (!confirm(msg)) return;
+        clients = clients.filter(x => x.id !== id);
+        pets = pets.filter(p => p.clientId !== id);
+        save('clients', clients);
+        save('pets', pets);
+    } else {
+        if (!confirm('Delete?')) return;
+        const map = { bookings, clients, pets, reviews, sitters, messages };
+        map[col] = map[col].filter(x => x.id !== id);
+        if (col === 'bookings') bookings = map[col];
+        else if (col === 'pets') pets = map[col];
+        else if (col === 'reviews') reviews = map[col];
+        else if (col === 'sitters') sitters = map[col];
+        save(col, map[col]);
+    }
+    renderTab();
+};
 
 const editClient = (id) => { const c = clients.find(x => x.id === id); if (!c) return; let overlay = document.getElementById('modalOverlay'); if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); } overlay.innerHTML = `<div class="modal"><div class="modal-title">Edit: ${escHTML(c.name)}</div><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="ecName" value="${escHTML(c.name)}"></div><div class="form-row"><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ecEmail" value="${escHTML(c.email || '')}"></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="ecPhone" value="${escHTML(c.phone || '')}"></div></div><div class="form-group"><label class="form-label">Address</label><input class="form-input" id="ecAddr" value="${escHTML(c.address || '')}"></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ecNotes" rows="2">${escHTML(c.notes || '')}</textarea></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditClient('${c.id}')">Save</button></div></div>`; overlay.classList.add('open'); };
 const saveEditClient = (id) => { const c = clients.find(x => x.id === id); if (!c) return; c.name = document.getElementById('ecName')?.value?.trim() || c.name; c.email = document.getElementById('ecEmail')?.value?.trim() || ''; c.phone = document.getElementById('ecPhone')?.value?.trim() || ''; c.address = document.getElementById('ecAddr')?.value?.trim() || ''; c.notes = document.getElementById('ecNotes')?.value?.trim() || ''; save('clients', clients); closeModal(); renderTab(); };

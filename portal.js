@@ -14,7 +14,7 @@ const save = (key, d) => {
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const fmt = (n) => '$' + Number(n || 0).toFixed(2);
 const todayStr = () => new Date().toISOString().split('T')[0];
-const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
 // ---- Auth Check ----
 const session = JSON.parse(sessionStorage.getItem('gpc_client_auth') || 'null');
@@ -177,7 +177,7 @@ const renderMyPets = () => {
 const showPetDetail = (petId) => {
     const pet = myPets.find(p => p.id === petId);
     if (!pet) return;
-    const petBookings = myBookings.filter(b => b.petName === pet.name || (b.petName && b.petName.includes(pet.name))).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const petBookings = myBookings.filter(b => b.petName === pet.name || (b.petName && b.petName.split(',').map(n => n.trim()).includes(pet.name))).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const allCheckins = load('checkins', []);
     const petCheckins = allCheckins.filter(c => c.petName === pet.name).sort((a, b) => (b.checkInDate || '').localeCompare(a.checkInDate || ''));
 
