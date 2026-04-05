@@ -5160,6 +5160,7 @@ const renderFeedback = () => {
             <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button class="btn btn-sm btn-primary" onclick="exportFeedbackForAI()">🤖 Copy All for AI</button>
                 <button class="btn btn-sm btn-success" onclick="exportFeedbackForAI('open')">📋 Copy Open Only</button>
+                <button class="btn btn-sm btn-primary" style="background:#EA4335" onclick="emailFeedbackToWesley()">📧 Email to Wesley</button>
                 <button class="btn btn-sm btn-ghost" onclick="exportFeedbackCSV()">📊 Export CSV</button>
             </div>
         </div>
@@ -5619,6 +5620,47 @@ const exportFeedbackForAI = (filter) => {
 };
 
 // ---- Export CSV ----
+// ---- Email feedback to Wesley ----
+const emailFeedbackToWesley = (filter) => {
+    const feedback = load('feedback', []);
+    let items = filter === 'open' ? feedback.filter(f => ['new', 'reviewed', 'in_progress'].includes(f.status)) : feedback;
+    if (items.length === 0) { alert('No feedback items to send.'); return; }
+
+    const lines = items.map((f, i) => {
+        const cat = getFeedbackCat(f.category);
+        const pri = getFeedbackPri(f.priority);
+        return [
+            `${i + 1}. [${pri.label.toUpperCase()}] [${cat.label}] ${f.summary}`,
+            `   Page: ${f.affects || f.pageUrl || 'General'}`,
+            `   Client: ${f.clientName || 'Anonymous'}`,
+            `   Date: ${f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '—'}`,
+            f.details ? `   Details: ${f.details}` : '',
+            f.adminNotes ? `   Admin Notes: ${f.adminNotes}` : '',
+            f.screenshots?.length ? `   [${f.screenshots.length} screenshot(s) - view in dashboard]` : '',
+            f.screenSize ? `   Screen: ${f.screenSize}` : '',
+            ''
+        ].filter(Boolean).join('\n');
+    }).join('\n');
+
+    const subject = encodeURIComponent(`GenusPupClub Feedback — ${items.length} items (${items.filter(f => f.priority === 'urgent' || f.priority === 'high').length} urgent/high)`);
+    const body = encodeURIComponent(
+        `GenusPupClub Client Feedback Export\n` +
+        `${new Date().toLocaleString()}\n` +
+        `${items.length} items total\n` +
+        `Project: ~/Desktop/GenusPupClub/\n\n` +
+        `Instructions: Paste this into Claude and say "Implement these changes for my GenusPupClub site."\n\n` +
+        `${'='.repeat(50)}\n\n` +
+        lines +
+        `\n${'='.repeat(50)}\n` +
+        `Priority: URGENT > HIGH > MEDIUM > LOW\n` +
+        `Screenshots must be viewed in admin dashboard → Feedback Box`
+    );
+
+    window.open(`mailto:wesley.apride@gmail.com?subject=${subject}&body=${body}`, '_self');
+
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Email Opened', 'Your email client should open with the feedback. Send it!', 'success');
+};
+
 const exportFeedbackCSV = () => {
     const feedback = load('feedback', []);
     if (feedback.length === 0) { alert('No feedback to export.'); return; }
