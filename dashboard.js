@@ -4216,14 +4216,16 @@ const autofillClient = (clientId) => {
                 cb.addEventListener('change', () => {
                     const selected = [...wrapper.querySelectorAll('.pet-select-cb:checked')].map(c => c.value);
                     document.getElementById('mPetName').value = selected.join(', ');
-                    // Update extra dogs count
+                    // Update extra dogs count and recalculate price
                     const extraField = document.getElementById('mExtraDogs');
                     if (extraField) extraField.value = Math.max(0, selected.length - 1);
+                    updateBookingPrice();
                 });
             });
-            // Auto-set extra dogs
+            // Auto-set extra dogs and update price
             const extraField = document.getElementById('mExtraDogs');
             if (extraField) extraField.value = Math.max(0, clientPets.length - 1);
+            updateBookingPrice();
         }
     }
 };
