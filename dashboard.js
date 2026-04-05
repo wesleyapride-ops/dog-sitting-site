@@ -5894,8 +5894,8 @@ const emailFeedbackToWesley = (filter) => {
         ].filter(Boolean).join('\n');
     }).join('\n');
 
-    const subject = encodeURIComponent(`GenusPupClub Feedback — ${items.length} items (${items.filter(f => f.priority === 'urgent' || f.priority === 'high').length} urgent/high)`);
-    const body = encodeURIComponent(
+    const subjectText = `GenusPupClub Feedback — ${items.length} items (${items.filter(f => f.priority === 'urgent' || f.priority === 'high').length} urgent/high)`;
+    const bodyText =
         `GenusPupClub Client Feedback Export\n` +
         `${new Date().toLocaleString()}\n` +
         `${items.length} items total\n` +
@@ -5905,12 +5905,27 @@ const emailFeedbackToWesley = (filter) => {
         lines +
         `\n${'='.repeat(50)}\n` +
         `Priority: URGENT > HIGH > MEDIUM > LOW\n` +
-        `Screenshots must be viewed in admin dashboard → Feedback Box`
-    );
+        `Screenshots must be viewed in admin dashboard → Feedback Box`;
 
-    window.open(`mailto:wesley.apride@gmail.com?subject=${subject}&body=${body}`, '_self');
+    // Always copy to clipboard as backup
+    navigator.clipboard.writeText(bodyText).catch(() => {});
 
-    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Email Opened', 'Your email client should open with the feedback. Send it!', 'success');
+    // Try EmailJS first (actually sends the email automatically)
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.sendDirectEmail('wesley.apride@gmail.com', 'Wesley', subjectText, bodyText).then((sent) => {
+            if (sent !== false) {
+                GPC_NOTIFY.showToast('Email Sent!', 'Feedback emailed to wesley.apride@gmail.com + copied to clipboard', 'success');
+            } else {
+                // EmailJS not configured — fall back to mailto
+                window.open(`mailto:wesley.apride@gmail.com?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText.substring(0, 1800))}`, '_blank');
+                GPC_NOTIFY.showToast('Email Client Opened', 'Also copied to clipboard as backup (mailto has size limits)', 'warning');
+            }
+        });
+    } else {
+        // No notification system at all — just mailto
+        window.open(`mailto:wesley.apride@gmail.com?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText.substring(0, 1800))}`, '_blank');
+        alert('Feedback copied to clipboard + email client opened.\n\nNote: mailto has size limits. For full export, paste from clipboard.');
+    }
 };
 
 const exportFeedbackCSV = () => {
