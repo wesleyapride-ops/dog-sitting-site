@@ -177,6 +177,31 @@ const renderOverview = () => {
     const todayBookings = getBookingsForDate(todayStr());
     const activeClients = new Set(bookings.filter(b => (b.date || '') >= new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]).map(b => b.clientId)).size;
 
+    // AI Assistant data
+    const editReqs = load('edit_requests', []).filter(r => r.status === 'pending');
+    const feedback = load('feedback', []);
+    const newFeedback = feedback.filter(f => f.status === 'new');
+    const unpaidBookings = bookings.filter(b => b.status === 'completed' && b.paymentStatus !== 'paid');
+    const noShowCandidates = bookings.filter(b => b.date < todayStr() && b.status === 'confirmed');
+    const inactiveClients = clients.filter(c => {
+        const lastBooking = bookings.filter(b => b.clientId === c.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+        return !lastBooking || lastBooking.date < new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    });
+    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const tomorrowBookings = getBookingsForDate(tomorrowStr);
+    const petsWithoutVax = pets.filter(p => !p.vaccination);
+    const cfg = load('site_config', {});
+
+    // Build action items
+    const actions = [];
+    if (pending > 0) actions.push({ icon: '⏳', text: `${pending} booking(s) need confirmation`, btn: 'Confirm All', action: `confirmAllPending()` });
+    if (editReqs.length > 0) actions.push({ icon: '✏️', text: `${editReqs.length} client edit request(s) waiting`, btn: 'Review', action: `document.querySelector('[data-tab=approvals]').click()` });
+    if (newFeedback.length > 0) actions.push({ icon: '📬', text: `${newFeedback.length} new feedback item(s)`, btn: 'View', action: `document.querySelector('[data-tab=feedback]').click()` });
+    if (unpaidBookings.length > 0) actions.push({ icon: '💰', text: `${unpaidBookings.length} completed visit(s) unpaid`, btn: 'View', action: `document.querySelector('[data-tab=payments]').click()` });
+    if (noShowCandidates.length > 0) actions.push({ icon: '👻', text: `${noShowCandidates.length} past booking(s) still marked "confirmed"`, btn: 'Review', action: `document.querySelector('[data-tab=bookings]').click()` });
+    if (tomorrowBookings.length > 0) actions.push({ icon: '📧', text: `${tomorrowBookings.length} booking(s) tomorrow — send reminders?`, btn: 'Send', action: `sendTomorrowReminders()` });
+    if (inactiveClients.length > 0) actions.push({ icon: '💤', text: `${inactiveClients.length} client(s) inactive 30+ days`, btn: 'Details', action: `showInactiveClients()` });
+
     el.innerHTML = `
         <div class="stats-grid">
             <div class="stat-card"><div class="stat-label">Total Clients</div><div class="stat-value">${clients.length}</div><div class="stat-sub">${activeClients} active (30 days) | ${pets.length} pets</div></div>
@@ -184,6 +209,32 @@ const renderOverview = () => {
             <div class="stat-card blue"><div class="stat-label">Today</div><div class="stat-value">${todayBookings.length} bookings</div><div class="stat-sub">${pending} pending confirmations</div></div>
             <div class="stat-card yellow"><div class="stat-label">Rating</div><div class="stat-value">${reviews.length ? (reviews.reduce((s, r) => s + r.stars, 0) / reviews.length).toFixed(1) : '—'} ★</div><div class="stat-sub">${reviews.length} reviews</div></div>
         </div>
+
+        <!-- AI ASSISTANT PANEL -->
+        <div class="card" style="border-left:4px solid #6C5CE7;margin-bottom:16px">
+            <div class="card-header">
+                <span class="card-title" style="color:#6C5CE7">🤖 AI Assistant — What Needs Attention</span>
+                <div style="display:flex;gap:6px">
+                    <button class="btn btn-sm" style="background:#6C5CE7;color:#fff" onclick="runAutopilot()">⚡ Run Autopilot</button>
+                    <button class="btn btn-sm btn-ghost" onclick="exportSiteSnapshot()">📋 Copy Site Report for AI</button>
+                </div>
+            </div>
+            ${actions.length === 0 ? `<div style="text-align:center;padding:16px;color:var(--success);font-weight:600">✅ All clear! Nothing needs attention.</div>` : `
+                ${actions.map(a => `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+                    <span style="font-size:1.3rem;width:32px;text-align:center">${a.icon}</span>
+                    <span style="flex:1;font-size:.9rem">${a.text}</span>
+                    <button class="btn btn-sm btn-ghost" onclick="${a.action}">${a.btn}</button>
+                </div>`).join('')}
+            `}
+            <!-- ONE-CLICK OPERATIONS -->
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-sm btn-primary" onclick="oneClickEndOfDay()">🌙 End of Day</button>
+                <button class="btn btn-sm btn-ghost" onclick="oneClickMorningSetup()">☀️ Morning Setup</button>
+                <button class="btn btn-sm btn-ghost" onclick="confirmAllPending()">✅ Confirm All Pending</button>
+                <button class="btn btn-sm btn-ghost" style="color:#6C5CE7" onclick="exportSiteSnapshot()">🤖 Full AI Report</button>
+            </div>
+        </div>
+
         <div class="grid-2">
             <div class="card">
                 <div class="card-header"><span class="card-title">Today's Schedule</span></div>
@@ -216,6 +267,179 @@ const renderOverview = () => {
             ${renderBookingTable(bookings.filter(b => b.date >= todayStr() && b.status !== 'cancelled').sort((a, b) => a.date.localeCompare(b.date)).slice(0, 10))}
         </div>
     `;
+};
+
+// ============================================
+// AI ASSISTANT FUNCTIONS
+// ============================================
+const confirmAllPending = () => {
+    const pendingList = bookings.filter(b => b.status === 'pending');
+    if (pendingList.length === 0) { alert('No pending bookings.'); return; }
+    if (!confirm(`Confirm ${pendingList.length} pending booking(s)?`)) return;
+    pendingList.forEach(b => { b.status = 'confirmed'; });
+    save('bookings', bookings);
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        pendingList.forEach(b => {
+            if (b.clientEmail) GPC_NOTIFY.sendDirectEmail(b.clientEmail, b.clientName, 'Booking Confirmed — GenusPupClub', `Hi ${b.clientName},\n\nYour booking for ${b.petName} on ${b.date} has been confirmed!\n\nService: ${b.service}\n\nSee you soon!\n— GenusPupClub`);
+        });
+        GPC_NOTIFY.showToast('All Confirmed', `${pendingList.length} booking(s) confirmed and emails sent`, 'success');
+    }
+    renderTab();
+};
+
+const oneClickEndOfDay = () => {
+    const todayActive = bookings.filter(b => b.date === todayStr() && b.status === 'confirmed');
+    if (todayActive.length === 0) { alert('No active bookings today to close out.'); return; }
+    if (!confirm(`End of Day will:\n• Mark ${todayActive.length} booking(s) as completed\n• Generate invoices for each\n• Send tomorrow's reminders\n\nProceed?`)) return;
+    todayActive.forEach(b => { b.status = 'completed'; b.paymentStatus = 'unpaid'; });
+    save('bookings', bookings);
+    sendTomorrowReminders();
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('End of Day', `${todayActive.length} visit(s) completed, reminders sent`, 'success');
+    renderTab();
+};
+
+const oneClickMorningSetup = () => {
+    const todayList = getBookingsForDate(todayStr());
+    const pendingToday = todayList.filter(b => b.status === 'pending');
+    let msg = `Morning Setup:\n`;
+    msg += `• ${todayList.length} booking(s) today\n`;
+    if (pendingToday.length > 0) msg += `• Auto-confirming ${pendingToday.length} pending\n`;
+    msg += `• Sending today's schedule summary\n`;
+    if (!confirm(msg + '\nProceed?')) return;
+    pendingToday.forEach(b => { b.status = 'confirmed'; });
+    save('bookings', bookings);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Morning Setup', 'Schedule confirmed and ready to go!', 'success');
+    renderTab();
+};
+
+const runAutopilot = () => {
+    let actions = 0;
+    // 1. Confirm all pending
+    const pendingList = bookings.filter(b => b.status === 'pending');
+    if (pendingList.length > 0) { pendingList.forEach(b => { b.status = 'confirmed'; }); save('bookings', bookings); actions += pendingList.length; }
+    // 2. Mark past "confirmed" as no-show or completed
+    const pastConfirmed = bookings.filter(b => b.date < todayStr() && b.status === 'confirmed');
+    if (pastConfirmed.length > 0) { pastConfirmed.forEach(b => { b.status = 'completed'; b.paymentStatus = 'unpaid'; }); save('bookings', bookings); actions += pastConfirmed.length; }
+    // 3. Mark new feedback as reviewed
+    const fb = load('feedback', []);
+    const newFb = fb.filter(f => f.status === 'new');
+    if (newFb.length > 0) { newFb.forEach(f => { f.status = 'reviewed'; f.updatedAt = new Date().toISOString(); }); save('feedback', fb); actions += newFb.length; }
+    // 4. Send tomorrow's reminders
+    const tomorrowStr2 = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const tomorrowList = getBookingsForDate(tomorrowStr2);
+    if (tomorrowList.length > 0) { sendTomorrowReminders(); actions += tomorrowList.length; }
+
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Autopilot Complete', `${actions} action(s) processed`, 'success');
+    renderTab();
+};
+
+const showInactiveClients = () => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const inactive = clients.filter(c => {
+        const lastBooking = bookings.filter(b => b.clientId === c.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+        return !lastBooking || lastBooking.date < thirtyDaysAgo;
+    });
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal" style="max-width:600px">
+        <div class="modal-title">💤 Inactive Clients (${inactive.length})</div>
+        <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px">These clients haven't booked in 30+ days. Send a rebook nudge?</p>
+        ${inactive.map(c => {
+            const lastB = bookings.filter(b => b.clientId === c.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+                <div><strong>${escHTML(c.name)}</strong><div style="font-size:.78rem;color:var(--text-muted)">Last: ${lastB?.date || 'Never'} · ${escHTML(lastB?.service || 'N/A')}</div></div>
+                ${c.email ? `<button class="btn btn-sm btn-ghost" onclick="sendRebookNudge('${c.id}')">📧 Nudge</button>` : '<span style="font-size:.78rem;color:var(--text-muted)">No email</span>'}
+            </div>`;
+        }).join('')}
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+            <button class="btn btn-primary" onclick="sendAllRebookNudges()">📧 Nudge All (${inactive.filter(c => c.email).length})</button>
+        </div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+const sendRebookNudge = (clientId) => {
+    const c = clients.find(x => x.id === clientId);
+    if (!c?.email) return;
+    const cfg2 = load('site_config', {});
+    const qr = cfg2.automation?.quickResponses?.find(r => r.label?.toLowerCase().includes('rebook'));
+    const msg = qr ? qr.message.replace('{clientName}', c.name).replace('{petName}', pets.find(p => p.clientId === c.id)?.name || 'your pup') : `Hi ${c.name}! It's been a while since your last visit. Ready to book again? We'd love to see that tail wag! Book at ${window.location.origin}/login.html`;
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.sendDirectEmail(c.email, c.name, 'We Miss You — GenusPupClub', msg);
+        GPC_NOTIFY.showToast('Nudge Sent', `Rebook email sent to ${c.name}`, 'success');
+    }
+};
+
+const sendAllRebookNudges = () => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const inactive = clients.filter(c => {
+        if (!c.email) return false;
+        const lastB = bookings.filter(b => b.clientId === c.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+        return !lastB || lastB.date < thirtyDaysAgo;
+    });
+    inactive.forEach(c => sendRebookNudge(c.id));
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('All Nudged', `Rebook emails sent to ${inactive.length} client(s)`, 'success');
+    closeModal();
+};
+
+const exportSiteSnapshot = () => {
+    const cfg2 = load('site_config', {});
+    const fb = load('feedback', []);
+    const editReqs2 = load('edit_requests', []);
+    const surveys = load('satisfaction_surveys', []);
+    const invoices = load('invoices', []);
+    const payments = load('payments', []);
+
+    const snapshot = [
+        `# GenusPupClub — Full Site Report for AI`,
+        `Generated: ${new Date().toLocaleString()}`,
+        `Project: ~/Desktop/GenusPupClub/`,
+        ``,
+        `## Quick Stats`,
+        `- Clients: ${clients.length} (${new Set(bookings.filter(b => b.date >= new Date(Date.now() - 30*86400000).toISOString().split('T')[0]).map(b => b.clientId)).size} active)`,
+        `- Pets: ${pets.length}`,
+        `- Bookings: ${bookings.length} total, ${bookings.filter(b => b.status === 'pending').length} pending, ${bookings.filter(b => b.date === todayStr()).length} today`,
+        `- Revenue (month): ${fmt(bookings.filter(b => (b.date||'').startsWith(todayStr().substring(0,7)) && b.status !== 'cancelled').reduce((s,b) => s + calcBookingTotal(b), 0))}`,
+        `- Reviews: ${reviews.length} (avg ${reviews.length ? (reviews.reduce((s,r) => s + r.stars, 0) / reviews.length).toFixed(1) : '0'} stars)`,
+        `- Unpaid: ${bookings.filter(b => b.status === 'completed' && b.paymentStatus !== 'paid').length} booking(s)`,
+        ``,
+        `## Action Items`,
+        bookings.filter(b => b.status === 'pending').length > 0 ? `- ${bookings.filter(b => b.status === 'pending').length} pending bookings need confirmation` : '',
+        editReqs2.filter(r => r.status === 'pending').length > 0 ? `- ${editReqs2.filter(r => r.status === 'pending').length} client edit requests pending approval` : '',
+        fb.filter(f => f.status === 'new').length > 0 ? `- ${fb.filter(f => f.status === 'new').length} new feedback items to review` : '',
+        bookings.filter(b => b.status === 'completed' && b.paymentStatus !== 'paid').length > 0 ? `- ${bookings.filter(b => b.status === 'completed' && b.paymentStatus !== 'paid').length} unpaid completed visits` : '',
+        ``,
+        `## Open Feedback (${fb.filter(f => ['new','reviewed','in_progress'].includes(f.status)).length} items)`,
+        ...fb.filter(f => ['new','reviewed','in_progress'].includes(f.status)).map((f, i) => {
+            const pri = f.priority === 'urgent' ? 'URGENT' : f.priority === 'high' ? 'HIGH' : f.priority === 'medium' ? 'MEDIUM' : 'LOW';
+            return `${i+1}. [${pri}] [${f.category}] ${f.summary}${f.details ? ' — ' + f.details.substring(0,100) : ''}${f.pageUrl ? ' (page: ' + f.pageUrl + ')' : ''}`;
+        }),
+        ``,
+        `## Recent Bookings (next 7 days)`,
+        ...bookings.filter(b => b.date >= todayStr() && b.date <= new Date(Date.now() + 7*86400000).toISOString().split('T')[0]).sort((a,b) => a.date.localeCompare(b.date)).map(b => `- ${b.date} ${b.time||''}: ${b.clientName} — ${b.petName} (${b.service}) [${b.status}] ${fmt(calcBookingTotal(b))}`),
+        ``,
+        `## Clients Needing Attention`,
+        ...clients.filter(c => {
+            const lastB = bookings.filter(b => b.clientId === c.id).sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
+            return !lastB || lastB.date < new Date(Date.now() - 30*86400000).toISOString().split('T')[0];
+        }).slice(0, 10).map(c => {
+            const lastB = bookings.filter(b => b.clientId === c.id).sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
+            return `- ${c.name} (last: ${lastB?.date || 'never'})${c.email ? ' — ' + c.email : ''}`;
+        }),
+        ``,
+        `## Satisfaction`,
+        `- Surveys: ${surveys.length}`,
+        surveys.length ? `- Avg rating: ${(surveys.reduce((s,sv) => s + (sv.rating||0), 0) / surveys.length).toFixed(1)}/5` : '',
+        surveys.filter(s => s.whatToImprove).length > 0 ? `- Improvement suggestions: ${surveys.filter(s => s.whatToImprove).map(s => '"' + s.whatToImprove.substring(0,60) + '"').join(', ')}` : '',
+        ``,
+        `---`,
+        `Paste this into Claude and say: "Here's my GenusPupClub site report. What should I do next?"`,
+    ].filter(Boolean).join('\n');
+
+    navigator.clipboard.writeText(snapshot).then(() => {
+        if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Copied!', 'Full site report copied to clipboard. Paste into your AI.', 'success');
+    });
 };
 
 // ============================================
@@ -2150,6 +2374,11 @@ const renderAdminLab = () => {
 
 // ---- TAB 1: FEATURES & TOGGLES ----
 const renderLabFeatures = (cfg) => `
+    <div class="card" style="border-left:4px solid #6C5CE7">
+        <div class="card-title" style="margin-bottom:4px;color:#6C5CE7">🤖 Autopilot Mode</div>
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:8px">Turn everything on autopilot. One toggle to enable ALL automation — auto-confirm bookings, auto-complete visits at end of day, auto-invoice, auto-reminders, auto-follow-ups. The AI runs your business.</p>
+        ${renderToggle('Full Autopilot', 'features.autopilot', 'Enable ALL automation at once — auto-confirm, auto-complete, auto-invoice, auto-remind, auto-follow-up')}
+    </div>
     <div class="card">
         <div class="card-title" style="margin-bottom:4px">Booking Features</div>
         ${renderToggle('Recurring Bookings', 'features.recurringBookings', 'Allow clients to set up recurring weekly/monthly bookings with discounts')}
