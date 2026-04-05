@@ -2945,20 +2945,23 @@ const updateBookingPrice = () => {
     const endDate = pickupDT ? pickupDT.split('T')[0] : '';
     const days = calcDays(startDate, endDate);
     const extraDogs = parseInt(document.getElementById('mExtraDogs')?.value) || 0;
-    const extraDogFee = parseFloat(businessSettings.extraDogFee) || 0;
     const hasPickup = document.getElementById('mPickupAddr')?.value || document.getElementById('mPickupAddrCustom')?.value;
     const hasDropoff = document.getElementById('mDropoffAddr')?.value || document.getElementById('mDropoffAddrCustom')?.value;
     const pickupFee = hasPickup ? (parseFloat(businessSettings.pickupFee) || 0) : 0;
     const dropoffFee = hasDropoff ? (parseFloat(businessSettings.dropoffFee) || 0) : 0;
+    const selectedZone = document.getElementById('mZone')?.value || '';
+    const zoneObj = selectedZone ? zones.find(z => z.name === selectedZone) : null;
+    const zoneSurcharge = zoneObj?.surcharge || 0;
 
-    let total = baseRate * days;
-    if (extraDogs > 0) total += extraDogs * extraDogFee * days;
+    const numDogs = extraDogs + 1;
+    let total = baseRate * numDogs * days;
     document.querySelectorAll('.addon-check:checked').forEach(cb => { total += parseFloat(cb.dataset.price) || 0; });
-    total += pickupFee + dropoffFee;
+    total += zoneSurcharge + pickupFee + dropoffFee;
 
     const parts = [];
-    if (days > 1) parts.push(`${days} days × ${fmt(baseRate)}`);
-    if (extraDogs > 0 && extraDogFee > 0) parts.push(`+${extraDogs} dog${extraDogs > 1 ? 's' : ''} × ${fmt(extraDogFee)}${days > 1 ? '/day' : ''}`);
+    if (numDogs > 1) parts.push(`${numDogs} dogs × ${fmt(baseRate)}`);
+    if (days > 1) parts.push(`${days} days`);
+    if (zoneSurcharge > 0) parts.push(`zone +${fmt(zoneSurcharge)}`);
     if (pickupFee > 0) parts.push(`pickup ${fmt(pickupFee)}`);
     if (dropoffFee > 0) parts.push(`dropoff ${fmt(dropoffFee)}`);
 
@@ -2969,7 +2972,7 @@ const updateBookingPrice = () => {
 // Wire addon checkboxes + date changes to price update
 document.addEventListener('change', (e) => {
     if (e.target.classList.contains('addon-check')) updateBookingPrice();
-    if (['mDropoff', 'mPickup', 'mExtraDogs', 'mPickupAddr', 'mDropoffAddr', 'mService'].includes(e.target.id)) updateBookingPrice();
+    if (['mDropoff', 'mPickup', 'mExtraDogs', 'mPickupAddr', 'mDropoffAddr', 'mService', 'mZone'].includes(e.target.id)) updateBookingPrice();
 });
 
 const saveModal = (type) => {
@@ -3295,7 +3298,7 @@ const showCompletionFlow = (booking) => {
     if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
 
     const tipPercents = [0, 15, 18, 20, 25, 30];
-    const amt = parseFloat(booking.amount) || 0;
+    const amt = calcBookingTotal(booking);
 
     overlay.innerHTML = `<div class="modal" style="max-width:500px">
         <div class="modal-title" style="color:var(--success)">✓ Visit Complete!</div>
@@ -3365,8 +3368,10 @@ const saveCompletionFlow = (bookingId) => {
     const rating = parseInt(document.getElementById('cfRating')?.value) || 5;
     const reviewText = document.getElementById('cfReview')?.value?.trim() || '';
     const amt = parseFloat(booking.amount) || 0;
+    // Calculate total using same formula as calcBookingTotal
+    const total = calcBookingTotal(booking);
     const payments = load('payments', []);
-    payments.push({ id: uid(), clientId: booking.clientId, clientName: booking.clientName, bookingId, amount: amt, tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending', service: booking.service, date: todayStr() });
+    payments.push({ id: uid(), clientId: booking.clientId, clientName: booking.clientName, bookingId, amount: total, tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending', service: booking.service, date: todayStr() });
     save('payments', payments);
     if (reviewText || rating) {
         const allReviews = load('reviews', []);
@@ -3374,16 +3379,14 @@ const saveCompletionFlow = (bookingId) => {
         save('reviews', allReviews);
     }
     const days = calcDays(booking.date, booking.endDate);
-    const perDogFee = parseFloat(businessSettings.extraDogFee) || 0;
-    const extraDogFee = (booking.extraDogs || 0) * perDogFee * days;
+    const numDogs = booking.numDogs || ((booking.extraDogs || 0) + 1);
+    const baseSubtotal = amt * numDogs * days;
     const addonTotal = (booking.addons || []).reduce((s, aName) => { const a = addons.find(x => x.name === aName); return s + (a?.price || 0); }, 0);
     const zoneSurcharge = booking.zone ? (zones.find(z => z.name === booking.zone)?.surcharge || 0) : 0;
     const pickupFee = booking.pickupAddr ? (parseFloat(businessSettings.pickupFee) || 0) : 0;
     const dropoffFee = booking.dropoffAddr ? (parseFloat(businessSettings.dropoffFee) || 0) : 0;
-    const total = (amt * days) + extraDogFee + addonTotal + zoneSurcharge + pickupFee + dropoffFee;
     const lineItems = [
-        `${booking.service}: ${fmt(amt)}${days > 1 ? ` × ${days} days = ${fmt(amt * days)}` : ''}`,
-        booking.extraDogs > 0 ? `Extra dogs (${booking.extraDogs} × ${fmt(perDogFee)}${days > 1 ? '/day' : ''}): ${fmt(extraDogFee)}` : null,
+        `${booking.service}: ${fmt(amt)}${numDogs > 1 ? ` × ${numDogs} dogs` : ''}${days > 1 ? ` × ${days} days` : ''}${(numDogs > 1 || days > 1) ? ` = ${fmt(baseSubtotal)}` : ''}`,
         addonTotal > 0 ? `Add-ons: ${fmt(addonTotal)}` : null,
         zoneSurcharge > 0 ? `Zone surcharge: ${fmt(zoneSurcharge)}` : null,
         pickupFee > 0 ? `Pickup fee: ${fmt(pickupFee)}` : null,
@@ -3392,7 +3395,7 @@ const saveCompletionFlow = (bookingId) => {
     ].filter(Boolean).join('\n');
     const invoiceId = 'INV-' + Date.now().toString(36).toUpperCase();
     const invoices = load('invoices', []);
-    invoices.push({ id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName, clientEmail: booking.clientEmail || '', petName: booking.petName, service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate, days, baseRate: amt, extraDogs: booking.extraDogs || 0, extraDogFee, addons: booking.addons, addonTotal, zoneSurcharge, tip, subtotal: total, total: total + tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending' });
+    invoices.push({ id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName, clientEmail: booking.clientEmail || '', petName: booking.petName, service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate, days, baseRate: amt, numDogs, extraDogs: booking.extraDogs || 0, addons: booking.addons, addonTotal, zoneSurcharge, pickupFee, dropoffFee, tip, subtotal: total, total: total + tip, method, status: method === 'Cash' || method === 'Card' ? 'paid' : 'pending' });
     save('invoices', invoices);
     if (typeof GPC_NOTIFY !== 'undefined') {
         GPC_NOTIFY.onPaymentReceived({ ...booking, amount: total, tip, method, clientName: booking.clientName });

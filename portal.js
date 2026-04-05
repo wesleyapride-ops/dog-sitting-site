@@ -74,7 +74,7 @@ const logout = () => { sessionStorage.removeItem('gpc_client_auth'); window.loca
 // ============================================
 const renderDashboard = () => {
     const upcoming = myBookings.filter(b => b.date >= todayStr() && b.status !== 'cancelled');
-    const totalSpent = myBookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + (parseFloat(b.amount) || 0), 0);
+    const totalSpent = myBookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + calcPortalTotal(b), 0);
     const paidAmount = myPayments.filter(p => p.status === 'paid').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     const owed = totalSpent - paidAmount;
 
@@ -90,7 +90,7 @@ const renderDashboard = () => {
                 <div class="card-header"><span class="card-title">Upcoming</span></div>
                 ${upcoming.length ? upcoming.slice(0, 5).map(b => `
                     <div class="schedule-item"><div class="schedule-time">${b.date}<br>${b.time || ''}</div>
-                    <div class="schedule-info"><h4>${esc(b.petName)} — ${esc(b.service)}</h4><p><span class="badge badge-${b.status}">${b.status === 'pending' ? 'Awaiting Approval' : b.status}</span> ${fmt(b.amount)}</p></div></div>
+                    <div class="schedule-info"><h4>${esc(b.petName)} — ${esc(b.service)}</h4><p><span class="badge badge-${b.status}">${b.status === 'pending' ? 'Awaiting Approval' : b.status}</span> ${fmt(calcPortalTotal(b))}</p></div></div>
                 `).join('') : '<div class="empty"><p>No upcoming bookings. <a href="#" onclick="document.querySelector(\'[data-tab=newbooking]\').click()">Book now</a></p></div>'}
             </div>
             <div class="card">
@@ -108,16 +108,33 @@ const renderDashboard = () => {
 // ============================================
 const renderMyBookings = () => {
     const sorted = [...myBookings].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const surveys = load('satisfaction_surveys', []);
+    const editReqs = load('edit_requests', []);
     el.innerHTML = `
         <div class="card">
             <div class="card-header"><span class="card-title">My Bookings (${sorted.length})</span></div>
             ${sorted.length ? `<div class="table-wrap"><table>
                 <thead><tr><th>Date</th><th>Time</th><th>Pet</th><th>Service</th><th>Amount</th><th>Status</th><th></th></tr></thead>
-                <tbody>${sorted.map(b => `<tr>
-                    <td>${b.date}</td><td>${b.time || '—'}</td><td>${esc(b.petName)}</td><td>${esc(b.service)}</td>
-                    <td>${fmt(b.amount)}</td><td><span class="badge badge-${b.status}">${b.status === 'pending' ? 'Awaiting Approval' : b.status}</span></td>
-                    <td>${b.status === 'pending' ? `<button class="btn btn-ghost btn-sm" onclick="cancelBooking('${b.id}')">Cancel</button>` : ''}</td>
-                </tr>`).join('')}</tbody>
+                <tbody>${sorted.map(b => {
+                    const hasSurvey = surveys.some(s => s.bookingId === b.id);
+                    const hasEditReq = editReqs.filter(r => r.bookingId === b.id && r.status === 'pending').length > 0;
+                    return `<tr>
+                    <td>${b.date}${b.endDate ? `<br><span style="font-size:.78rem;color:var(--text-muted)">→ ${b.endDate}</span>` : ''}</td>
+                    <td>${b.time || '—'}${b.dropoffTime ? `<br><span style="font-size:.72rem;color:var(--text-muted)">Drop: ${new Date(b.dropoffTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>` : ''}</td>
+                    <td>${esc(b.petName)}</td>
+                    <td>${esc(b.service)}${b.addons?.length ? `<br><span style="font-size:.72rem;color:var(--text-muted)">${b.addons.join(', ')}</span>` : ''}</td>
+                    <td>${fmt(calcPortalTotal(b))}</td>
+                    <td>
+                        <span class="badge badge-${b.status}">${b.status === 'pending' ? 'Awaiting Approval' : b.status}</span>
+                        ${hasEditReq ? '<br><span class="badge" style="background:rgba(108,92,231,.1);color:#6C5CE7;margin-top:4px">Edit Pending</span>' : ''}
+                    </td>
+                    <td style="white-space:nowrap">
+                        ${b.status === 'pending' || b.status === 'confirmed' ? `<button class="btn btn-ghost btn-sm" onclick="requestEditBooking('${b.id}')" title="Request changes">✏️</button>` : ''}
+                        ${b.status === 'pending' ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="cancelBooking('${b.id}')" title="Cancel">✕</button>` : ''}
+                        ${b.status === 'completed' && !hasSurvey ? `<button class="btn btn-sm btn-primary" onclick="renderSatisfactionSurvey('${b.id}')">⭐ Rate</button>` : ''}
+                        ${b.status === 'completed' && hasSurvey ? '<span style="font-size:.78rem;color:var(--success)">✓ Rated</span>' : ''}
+                    </td>
+                </tr>`; }).join('')}</tbody>
             </table></div>` : '<div class="empty"><p>No bookings yet</p></div>'}
         </div>
     `;
@@ -205,7 +222,7 @@ const showPetDetail = (petId) => {
                                 <span class="badge badge-${b.status}">${b.status === 'pending' ? 'Awaiting Approval' : b.status}</span>
                             </div>
                             <div style="margin-bottom:4px">${esc(b.service)}</div>
-                            <div style="color:var(--text-muted);font-size:.8rem">${fmt(b.amount)}</div>
+                            <div style="color:var(--text-muted);font-size:.8rem">${fmt(calcPortalTotal(b))}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -286,7 +303,7 @@ const savePet = () => {
 // ============================================
 const renderPayments = () => {
     myPayments = load('payments', []).filter(p => p.clientId === userId);
-    const totalBilled = myBookings.filter(b => b.status === 'completed').reduce((s, b) => s + (parseFloat(b.amount) || 0), 0);
+    const totalBilled = myBookings.filter(b => b.status === 'completed').reduce((s, b) => s + calcPortalTotal(b), 0);
     const totalPaid = myPayments.filter(p => p.status === 'paid').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     const balance = totalBilled - totalPaid;
 
@@ -311,13 +328,13 @@ const renderPayments = () => {
                                 <div style="font-size:.82rem;color:var(--text-muted)">${esc(b.petName)}</div>
                             </div>
                             <div style="text-align:right">
-                                <div style="font-size:1.2rem;font-weight:700;color:var(--primary)">${fmt(b.amount)}</div>
+                                <div style="font-size:1.2rem;font-weight:700;color:var(--primary)">${fmt(calcPortalTotal(b))}</div>
                                 <div class="payment-methods">
-                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${b.amount}, 'card')">💳 Card</button>
-                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${b.amount}, 'venmo')">Venmo</button>
-                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${b.amount}, 'zelle')">Zelle</button>
-                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${b.amount}, 'cash')">Cash</button>
-                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${b.amount}, 'cashapp')">CashApp</button>
+                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${calcPortalTotal(b)}, 'card')">💳 Card</button>
+                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${calcPortalTotal(b)}, 'venmo')">Venmo</button>
+                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${calcPortalTotal(b)}, 'zelle')">Zelle</button>
+                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${calcPortalTotal(b)}, 'cash')">Cash</button>
+                                    <button class="pay-btn" onclick="makePayment('${b.id}', ${calcPortalTotal(b)}, 'cashapp')">CashApp</button>
                                 </div>
                             </div>
                         </div>
@@ -491,31 +508,50 @@ const calcPortalDays = (start, end) => {
     return diff > 0 ? diff : 1;
 };
 
+// Match admin calcBookingTotal — full rate per dog per day + addons + transport + zone
+const calcPortalTotal = (b) => {
+    const baseRate = parseFloat(b.amount) || 0;
+    const days = calcPortalDays(b.date, b.endDate);
+    const numDogs = b.numDogs || ((b.extraDogs || 0) + 1);
+    let total = baseRate * numDogs * days;
+    if (b.addons?.length) {
+        const allAddons = load('addons', []);
+        b.addons.forEach(aName => { const a = allAddons.find(x => x.name === aName); if (a) total += a.price; });
+    }
+    if (b.zone) {
+        const allZones = load('zones', []);
+        const zone = allZones.find(z => z.name === b.zone);
+        if (zone) total += zone.surcharge;
+    }
+    const settings = load('settings', {});
+    if (b.pickupAddr) total += parseFloat(settings.pickupFee) || 0;
+    if (b.dropoffAddr) total += parseFloat(settings.dropoffFee) || 0;
+    return total;
+};
+
 const updateNBPrice = () => {
     const svc = document.getElementById('nbService');
     const baseRate = parseFloat(svc?.selectedOptions?.[0]?.dataset?.price) || 0;
     const startDate = document.getElementById('nbDate')?.value || '';
     const endDate = document.getElementById('nbEndDate')?.value || '';
     const days = calcPortalDays(startDate, endDate);
-    // Extra dogs pricing
     const selectedPets = document.querySelectorAll('.nb-pet-cb:checked');
     const extraDogs = selectedPets.length > 1 ? selectedPets.length - 1 : 0;
     const settings = load('settings', {});
-    const perDogFee = parseFloat(settings.extraDogFee) || 0;
     const hasPickup = document.getElementById('nbPickupAddr')?.value?.trim();
     const hasDropoff = document.getElementById('nbDropoffAddr')?.value?.trim();
     const transport = document.getElementById('nbTransport')?.value || 'none';
     const pickupFee = (transport === 'pickup' || transport === 'roundtrip') && hasPickup ? (parseFloat(settings.pickupFee) || 0) : 0;
     const dropoffFee = (transport === 'dropoff' || transport === 'roundtrip') && hasDropoff ? (parseFloat(settings.dropoffFee) || 0) : 0;
 
-    let total = baseRate * days;
-    if (extraDogs > 0 && perDogFee > 0) total += extraDogs * perDogFee * days;
+    const numDogs = extraDogs + 1;
+    let total = baseRate * numDogs * days;
     document.querySelectorAll('.nb-addon:checked').forEach(cb => total += parseFloat(cb.dataset.price) || 0);
     total += pickupFee + dropoffFee;
 
     const parts = [];
+    if (numDogs > 1) parts.push(`${numDogs} dogs × ${fmt(baseRate)}`);
     if (days > 1) parts.push(`${days} days`);
-    if (extraDogs > 0 && perDogFee > 0) parts.push(`+${extraDogs} dog${extraDogs > 1 ? 's' : ''}`);
     if (pickupFee > 0) parts.push(`pickup ${fmt(pickupFee)}`);
     if (dropoffFee > 0) parts.push(`dropoff ${fmt(dropoffFee)}`);
 
@@ -725,6 +761,239 @@ const uploadProfilePhoto = (input) => {
         img.src = e.target.result;
     };
     reader.readAsDataURL(input.files[0]);
+};
+
+// ============================================
+// BOOKING EDIT REQUESTS
+// Client requests changes → admin approves/denies
+// ============================================
+const requestEditBooking = (bookingId) => {
+    const allBookings = load('bookings', []);
+    const b = allBookings.find(x => x.id === bookingId);
+    if (!b) return;
+    const allServices = load('services', []).filter(s => s.active);
+    const allAddons = load('addons', []);
+
+    el.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">✏️ Request Changes to Booking</span>
+                <button class="btn btn-ghost btn-sm" onclick="activeTab='mybookings';renderTab()">← Back</button>
+            </div>
+            <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px">Request changes below. Your changes need <strong>admin approval</strong> before taking effect. You'll be notified once reviewed.</p>
+
+            <div style="background:var(--bg);padding:14px;border-radius:8px;margin-bottom:16px">
+                <strong style="font-size:.85rem">Current Booking:</strong>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:.88rem">
+                    <div><strong>Pet:</strong> ${esc(b.petName)}</div>
+                    <div><strong>Service:</strong> ${esc(b.service)}</div>
+                    <div><strong>Date:</strong> ${b.date}${b.endDate ? ' → ' + b.endDate : ''}</div>
+                    <div><strong>Time:</strong> ${b.time || b.dropoffTime || '—'}</div>
+                    <div><strong>Add-ons:</strong> ${b.addons?.length ? b.addons.join(', ') : 'None'}</div>
+                    <div><strong>Total:</strong> ${fmt(calcPortalTotal(b))}</div>
+                </div>
+            </div>
+
+            <h4 style="font-size:.95rem;margin-bottom:12px;color:var(--primary)">What would you like to change?</h4>
+
+            <div class="form-group">
+                <label class="form-label">Service</label>
+                <select class="form-select" id="erService">
+                    <option value="">— Keep current (${esc(b.service)}) —</option>
+                    ${allServices.map(s => `<option value="${esc(s.name)}" ${b.service === s.name ? 'selected' : ''}>${esc(s.name)} — ${fmt(s.price)}</option>`).join('')}
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">New Start Date</label><input class="form-input" type="date" id="erDate" value="${b.date || ''}"></div>
+                <div class="form-group"><label class="form-label">New End Date</label><input class="form-input" type="date" id="erEndDate" value="${b.endDate || ''}"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">New Drop-Off</label><input class="form-input" type="datetime-local" id="erDropoff" value="${b.dropoffTime || ''}"></div>
+                <div class="form-group"><label class="form-label">New Pick-Up</label><input class="form-input" type="datetime-local" id="erPickup" value="${b.pickupTime || ''}"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Add-ons</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                    ${allAddons.map(a => `<label style="display:flex;gap:6px;align-items:center;font-size:.88rem;cursor:pointer">
+                        <input type="checkbox" class="er-addon" value="${esc(a.name)}" ${b.addons?.includes(a.name) ? 'checked' : ''}>
+                        ${esc(a.name)} ${a.price > 0 ? fmt(a.price) : '(free)'}
+                    </label>`).join('')}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Reason for change</label>
+                <textarea class="form-textarea" id="erReason" rows="3" placeholder="e.g. Schedule changed, need to add extra day, want grooming add-on..."></textarea>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:16px">
+                <button class="btn btn-primary" onclick="submitEditRequest('${b.id}')">📩 Submit Change Request</button>
+                <button class="btn btn-ghost" onclick="activeTab='mybookings';renderTab()">Cancel</button>
+            </div>
+        </div>
+    `;
+};
+
+const submitEditRequest = (bookingId) => {
+    const reason = document.getElementById('erReason')?.value?.trim();
+    if (!reason) { alert('Please provide a reason for the change.'); return; }
+
+    const newService = document.getElementById('erService')?.value || '';
+    const newDate = document.getElementById('erDate')?.value || '';
+    const newEndDate = document.getElementById('erEndDate')?.value || '';
+    const newDropoff = document.getElementById('erDropoff')?.value || '';
+    const newPickup = document.getElementById('erPickup')?.value || '';
+    const newAddons = [...document.querySelectorAll('.er-addon:checked')].map(cb => cb.value);
+
+    const editRequests = load('edit_requests', []);
+    editRequests.push({
+        id: uid(),
+        bookingId,
+        clientId: userId,
+        clientName: userName,
+        clientEmail: session?.email || '',
+        requestedChanges: {
+            service: newService || null,
+            date: newDate || null,
+            endDate: newEndDate || null,
+            dropoffTime: newDropoff || null,
+            pickupTime: newPickup || null,
+            addons: newAddons
+        },
+        reason,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        adminResponse: ''
+    });
+    save('edit_requests', editRequests);
+
+    // Notify admin
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        GPC_NOTIFY.create({ type: 'edit_request', title: 'Booking Edit Request', body: `${userName} wants to change their booking: ${reason}`, audience: 'admin', createdAt: new Date().toISOString() });
+    }
+
+    alert('Change request submitted! You\'ll be notified once it\'s reviewed.');
+    activeTab = 'mybookings';
+    renderTab();
+};
+
+// ============================================
+// SATISFACTION SURVEY — Post-visit
+// ============================================
+const renderSatisfactionSurvey = (bookingId) => {
+    const allBookings = load('bookings', []);
+    const b = allBookings.find(x => x.id === bookingId);
+    if (!b) return;
+
+    el.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">⭐ How Was Your Experience?</span>
+                <button class="btn btn-ghost btn-sm" onclick="activeTab='mybookings';renderTab()">← Back</button>
+            </div>
+            <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px">Your honest feedback helps us improve! This takes about 30 seconds.</p>
+
+            <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:16px;font-size:.88rem">
+                <strong>${esc(b.service)}</strong> for <strong>${esc(b.petName)}</strong> on ${b.date}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Overall Rating</label>
+                <div id="surveyStars" style="display:flex;gap:8px;font-size:2rem;cursor:pointer">
+                    ${[1,2,3,4,5].map(n => `<span class="survey-star" data-val="${n}" onclick="setSurveyStar(${n})" style="opacity:0.3;transition:opacity .2s">⭐</span>`).join('')}
+                </div>
+                <input type="hidden" id="surveyRating" value="0">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">How was your pet when you picked them up?</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    ${['Happy & energetic', 'Calm & relaxed', 'Tired but good', 'A little anxious', 'Not themselves'].map(mood => `<label style="display:flex;gap:4px;align-items:center;font-size:.88rem;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:8px"><input type="radio" name="petMood" value="${mood}"> ${mood}</label>`).join('')}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Rate these areas (1-5)</label>
+                <div style="display:grid;gap:10px;margin-top:6px">
+                    ${['Communication', 'Punctuality', 'Photo updates', 'Value for money', 'Would recommend'].map(area => `
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <span style="min-width:140px;font-size:.88rem">${area}</span>
+                            <select class="form-select survey-sub" data-area="${area}" style="width:auto;min-width:80px">
+                                <option value="">—</option>
+                                <option value="5">5 — Excellent</option>
+                                <option value="4">4 — Great</option>
+                                <option value="3">3 — Okay</option>
+                                <option value="2">2 — Poor</option>
+                                <option value="1">1 — Bad</option>
+                            </select>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">What did we do well?</label>
+                <textarea class="form-textarea" id="surveyGood" rows="2" placeholder="e.g. Great photos, my dog loved the sitter..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">What could we improve?</label>
+                <textarea class="form-textarea" id="surveyImprove" rows="2" placeholder="e.g. Earlier pickup, more frequent updates..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Would you book again?</label>
+                <div style="display:flex;gap:8px">
+                    ${['Definitely', 'Probably', 'Maybe', 'Unlikely'].map(opt => `<label style="display:flex;gap:4px;align-items:center;font-size:.88rem;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:8px"><input type="radio" name="bookAgain" value="${opt}"> ${opt}</label>`).join('')}
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%;padding:14px;margin-top:12px" onclick="submitSurvey('${b.id}')">📩 Submit Feedback</button>
+        </div>
+    `;
+};
+
+const setSurveyStar = (n) => {
+    document.getElementById('surveyRating').value = n;
+    document.querySelectorAll('.survey-star').forEach(s => {
+        s.style.opacity = parseInt(s.dataset.val) <= n ? '1' : '0.3';
+    });
+};
+
+const submitSurvey = (bookingId) => {
+    const rating = parseInt(document.getElementById('surveyRating')?.value) || 0;
+    if (rating === 0) { alert('Please select a star rating.'); return; }
+
+    const mood = document.querySelector('input[name="petMood"]:checked')?.value || '';
+    const bookAgain = document.querySelector('input[name="bookAgain"]:checked')?.value || '';
+    const good = document.getElementById('surveyGood')?.value?.trim() || '';
+    const improve = document.getElementById('surveyImprove')?.value?.trim() || '';
+    const subRatings = {};
+    document.querySelectorAll('.survey-sub').forEach(sel => { if (sel.value) subRatings[sel.dataset.area] = parseInt(sel.value); });
+
+    const surveys = load('satisfaction_surveys', []);
+    surveys.push({
+        id: uid(), bookingId, clientId: userId, clientName: userName,
+        rating, petMood: mood, bookAgain, whatWentWell: good, whatToImprove: improve,
+        subRatings, createdAt: new Date().toISOString()
+    });
+    save('satisfaction_surveys', surveys);
+
+    // Also auto-post as a review if 4+ stars
+    if (rating >= 4 && good) {
+        const allBookings = load('bookings', []);
+        const b = allBookings.find(x => x.id === bookingId);
+        const reviews = load('reviews', []);
+        reviews.push({ id: uid(), name: userName, pet: b?.petName || '', stars: rating, text: good, service: b?.service || '', date: todayStr() });
+        save('reviews', reviews);
+    }
+
+    alert('Thank you for your feedback! 🐾');
+    activeTab = 'mybookings';
+    renderTab();
 };
 
 // Init

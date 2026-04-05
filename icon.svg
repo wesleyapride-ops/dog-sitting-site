@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#FF6B35"/>
+  <g transform="translate(256,240)" fill="#fff">
+    <!-- Main pad -->
+    <ellipse cx="0" cy="60" rx="65" ry="55"/>
+    <!-- Toe pads -->
+    <ellipse cx="-70" cy="-20" rx="32" ry="38" transform="rotate(-15,-70,-20)"/>
+    <ellipse cx="-25" cy="-55" rx="28" ry="35" transform="rotate(-5,-25,-55)"/>
+    <ellipse cx="25" cy="-55" rx="28" ry="35" transform="rotate(5,25,-55)"/>
+    <ellipse cx="70" cy="-20" rx="32" ry="38" transform="rotate(15,70,-20)"/>
+  </g>
+  <text x="256" y="420" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="56" fill="#fff">GenusPupClub</text>
+</svg>

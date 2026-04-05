@@ -1,0 +1,17 @@
+{
+  "name": "GenusPupClub",
+  "short_name": "GPC",
+  "description": "Premium Dog Sitting & Care in Richmond, VA",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#FF6B35",
+  "theme_color": "#FF6B35",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

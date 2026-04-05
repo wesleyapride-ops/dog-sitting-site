@@ -162,7 +162,7 @@ const renderTab = () => {
     sitters = load('sitters', sitters); reviews = load('reviews', reviews);
     messages = load('messages', []); businessSettings = load('settings', businessSettings);
 
-    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, emails: renderEmailCenter, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, website: renderWebsiteEditor, settings: renderSettings };
+    const views = { overview: renderOverview, bookings: renderBookings, clients: renderClients, pets: renderPets, schedule: renderSchedule, revenue: renderRevenue, payments: renderPaymentsAdmin, reviews: renderReviews, sitters: renderSitters, properties: renderProperties, checkin: renderCheckIn, gallery: renderGallery, messages: renderMessages, emails: renderEmailCenter, loyalty: renderLoyalty, waivers: renderWaivers, infamy: renderInfamy, approvals: renderApprovals, satisfaction: renderSatisfaction, feedback: renderFeedback, website: renderWebsiteEditor, settings: renderSettings };
     (views[activeTab] || renderOverview)();
 };
 
@@ -721,14 +721,16 @@ const renderPaymentsAdmin = () => {
 
     // Revenue calculations
     const grossIncome = paid.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-    const totalTips = allPayments.reduce((s, p) => s + (parseFloat(p.tip) || 0), 0);
+    const totalTips = paid.reduce((s, p) => s + (parseFloat(p.tip) || 0), 0);
     const totalPending = pending.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     const totalExpenses = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
-    // Tax calculations
+    // Tax calculations — tips are taxable income, expenses are deductible
     const taxRate = parseFloat(businessSettings.taxRate) || 0;
-    const taxOwed = grossIncome * (taxRate / 100);
-    const netIncome = grossIncome - totalExpenses - taxOwed;
+    const taxableIncome = grossIncome + totalTips;
+    const taxableProfit = Math.max(0, taxableIncome - totalExpenses);
+    const taxOwed = taxableProfit * (taxRate / 100);
+    const netIncome = taxableIncome - totalExpenses - taxOwed;
 
     // By method
     const byMethod = {};
@@ -756,7 +758,7 @@ const renderPaymentsAdmin = () => {
     const quarterMonths = [thisQuarter * 3, thisQuarter * 3 + 1, thisQuarter * 3 + 2].map(m => {
         const d = new Date(); d.setMonth(m); return d.toISOString().substring(0, 7);
     });
-    const quarterIncome = quarterMonths.reduce((s, m) => s + (monthlyData[m]?.income || 0), 0);
+    const quarterIncome = quarterMonths.reduce((s, m) => s + (monthlyData[m]?.income || 0) + (monthlyData[m]?.tips || 0), 0);
     const quarterTax = quarterIncome * (taxRate / 100);
 
     // Expense categories
@@ -775,7 +777,7 @@ const renderPaymentsAdmin = () => {
             <div class="stat-card" style="border-left-color:${netIncome >= 0 ? '#00B894' : '#E17055'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="color:${netIncome >= 0 ? '#00B894' : '#E17055'}">${fmt(netIncome)}</div><div class="stat-sub">After expenses & tax</div></div>
             <div class="stat-card" style="border-left-color:#E17055"><div class="stat-label">Tax Owed (${taxRate}%)</div><div class="stat-value">${fmt(taxOwed)}</div><div class="stat-sub">Set rate in Settings</div></div>
             <div class="stat-card" style="border-left-color:#8B5CF6"><div class="stat-label">Q${thisQuarter + 1} Estimated Tax</div><div class="stat-value">${fmt(quarterTax)}</div><div class="stat-sub">Quarterly estimate</div></div>
-            <div class="stat-card"><div class="stat-label">Profit Margin</div><div class="stat-value">${grossIncome > 0 ? Math.round((netIncome / grossIncome) * 100) : 0}%</div></div>
+            <div class="stat-card"><div class="stat-label">Profit Margin</div><div class="stat-value">${taxableIncome > 0 ? Math.round((netIncome / taxableIncome) * 100) : 0}%</div></div>
         </div>
 
         <div class="grid-2">
@@ -810,7 +812,7 @@ const renderPaymentsAdmin = () => {
             <div class="table-wrap"><table>
                 <thead><tr><th>Month</th><th>Income</th><th>Tips</th><th>Expenses</th><th>Tax (${taxRate}%)</th><th>Net Profit</th><th>Visits</th></tr></thead>
                 <tbody>${Object.entries(monthlyData).sort().reverse().map(([m, d]) => {
-                    const tax = d.income * (taxRate / 100);
+                    const tax = (d.income + d.tips) * (taxRate / 100);
                     const net = d.income + d.tips - d.expenses - tax;
                     return `<tr>
                         <td><strong>${m}</strong></td><td>${fmt(d.income)}</td><td>${fmt(d.tips)}</td>
@@ -3525,20 +3527,23 @@ const updateBookingPrice = () => {
     const endDate = pickupDT ? pickupDT.split('T')[0] : '';
     const days = calcDays(startDate, endDate);
     const extraDogs = parseInt(document.getElementById('mExtraDogs')?.value) || 0;
-    const extraDogFee = parseFloat(businessSettings.extraDogFee) || 0;
     const hasPickup = document.getElementById('mPickupAddr')?.value || document.getElementById('mPickupAddrCustom')?.value;
     const hasDropoff = document.getElementById('mDropoffAddr')?.value || document.getElementById('mDropoffAddrCustom')?.value;
     const pickupFee = hasPickup ? (parseFloat(businessSettings.pickupFee) || 0) : 0;
     const dropoffFee = hasDropoff ? (parseFloat(businessSettings.dropoffFee) || 0) : 0;
+    const selectedZone = document.getElementById('mZone')?.value || '';
+    const zoneObj = selectedZone ? zones.find(z => z.name === selectedZone) : null;
+    const zoneSurcharge = zoneObj?.surcharge || 0;
 
     const numDogs = extraDogs + 1;
     let total = baseRate * numDogs * days;
     document.querySelectorAll('.addon-check:checked').forEach(cb => { total += parseFloat(cb.dataset.price) || 0; });
-    total += pickupFee + dropoffFee;
+    total += zoneSurcharge + pickupFee + dropoffFee;
 
     const parts = [];
     if (numDogs > 1) parts.push(`${numDogs} dogs × ${fmt(baseRate)}`);
     if (days > 1) parts.push(`${days} days`);
+    if (zoneSurcharge > 0) parts.push(`zone +${fmt(zoneSurcharge)}`);
     if (pickupFee > 0) parts.push(`pickup ${fmt(pickupFee)}`);
     if (dropoffFee > 0) parts.push(`dropoff ${fmt(dropoffFee)}`);
 
@@ -3549,7 +3554,7 @@ const updateBookingPrice = () => {
 // Wire addon checkboxes + date changes to price update
 document.addEventListener('change', (e) => {
     if (e.target.classList.contains('addon-check')) updateBookingPrice();
-    if (['mDropoff', 'mPickup', 'mExtraDogs', 'mPickupAddr', 'mDropoffAddr', 'mService'].includes(e.target.id)) updateBookingPrice();
+    if (['mDropoff', 'mPickup', 'mExtraDogs', 'mPickupAddr', 'mDropoffAddr', 'mService', 'mZone'].includes(e.target.id)) updateBookingPrice();
 });
 
 const saveModal = (type) => {
@@ -4049,18 +4054,17 @@ const saveCompletionFlow = (bookingId) => {
         save('reviews', allReviews);
     }
 
-    // Calculate invoice total
+    // Calculate invoice total — must match calcBookingTotal exactly
+    const total = calcBookingTotal(booking);
     const days = calcDays(booking.date, booking.endDate);
-    const perDogFee = parseFloat(businessSettings.extraDogFee) || 0;
-    const extraDogFee = (booking.extraDogs || 0) * perDogFee * days;
+    const numDogs = booking.numDogs || ((booking.extraDogs || 0) + 1);
+    const baseSubtotal = amt * numDogs * days;
     const addonTotal = (booking.addons || []).reduce((s, aName) => { const a = addons.find(x => x.name === aName); return s + (a?.price || 0); }, 0);
     const zoneSurcharge = booking.zone ? (zones.find(z => z.name === booking.zone)?.surcharge || 0) : 0;
     const pickupFee = booking.pickupAddr ? (parseFloat(businessSettings.pickupFee) || 0) : 0;
     const dropoffFee = booking.dropoffAddr ? (parseFloat(businessSettings.dropoffFee) || 0) : 0;
-    const total = (amt * days) + extraDogFee + addonTotal + zoneSurcharge + pickupFee + dropoffFee;
     const lineItems = [
-        `${booking.service}: ${fmt(amt)}${days > 1 ? ` × ${days} days = ${fmt(amt * days)}` : ''}`,
-        booking.extraDogs > 0 ? `Extra dogs (${booking.extraDogs} × ${fmt(perDogFee)}${days > 1 ? '/day' : ''}): ${fmt(extraDogFee)}` : null,
+        `${booking.service}: ${fmt(amt)}${numDogs > 1 ? ` × ${numDogs} dogs` : ''}${days > 1 ? ` × ${days} days` : ''}${(numDogs > 1 || days > 1) ? ` = ${fmt(baseSubtotal)}` : ''}`,
         addonTotal > 0 ? `Add-ons: ${fmt(addonTotal)}` : null,
         zoneSurcharge > 0 ? `Zone surcharge: ${fmt(zoneSurcharge)}` : null,
         pickupFee > 0 ? `Pickup fee: ${fmt(pickupFee)}` : null,
@@ -4070,7 +4074,7 @@ const saveCompletionFlow = (bookingId) => {
     // Create invoice with UNPAID status
     const invoiceId = 'INV-' + Date.now().toString(36).toUpperCase();
     const invoices = load('invoices', []);
-    invoices.push({ id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName, clientEmail: booking.clientEmail || '', petName: booking.petName, service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate, days, baseRate: amt, extraDogs: booking.extraDogs || 0, extraDogFee, addons: booking.addons, addonTotal, zoneSurcharge, tip: 0, subtotal: total, total, method: '', status: 'unpaid' });
+    invoices.push({ id: invoiceId, bookingId, clientId: booking.clientId, clientName: booking.clientName, clientEmail: booking.clientEmail || '', petName: booking.petName, service: booking.service, date: todayStr(), startDate: booking.date, endDate: booking.endDate, days, baseRate: amt, numDogs, extraDogs: booking.extraDogs || 0, addons: booking.addons, addonTotal, zoneSurcharge, pickupFee, dropoffFee, tip: 0, subtotal: total, total, method: '', status: 'unpaid' });
     save('invoices', invoices);
 
     if (typeof GPC_NOTIFY !== 'undefined') {
@@ -4188,6 +4192,871 @@ const saveEditPet = (id) => {
     const newPhoto = document.getElementById('epPhotoData')?.value;
     if (newPhoto) p.photo = newPhoto;
     save('pets', pets); closeModal(); renderTab();
+};
+
+// ============================================
+// APPROVALS — Client Edit Requests
+// ============================================
+const renderApprovals = () => {
+    const editRequests = load('edit_requests', []);
+    const pending = editRequests.filter(r => r.status === 'pending');
+    const resolved = editRequests.filter(r => r.status !== 'pending');
+
+    el.innerHTML = `
+    <div class="stats-grid">
+        <div class="stat-card" style="border-left-color:var(--warning)"><div class="stat-label">Pending Requests</div><div class="stat-value">${pending.length}</div><div class="stat-sub">Need your review</div></div>
+        <div class="stat-card green"><div class="stat-label">Approved</div><div class="stat-value">${editRequests.filter(r => r.status === 'approved').length}</div></div>
+        <div class="stat-card" style="border-left-color:var(--danger)"><div class="stat-label">Denied</div><div class="stat-value">${editRequests.filter(r => r.status === 'denied').length}</div></div>
+        <div class="stat-card blue"><div class="stat-label">Total Requests</div><div class="stat-value">${editRequests.length}</div></div>
+    </div>
+
+    <!-- PENDING -->
+    <div class="card">
+        <div class="card-header"><span class="card-title">⏳ Pending Edit Requests (${pending.length})</span></div>
+        ${pending.length === 0 ? '<div class="empty"><div class="empty-icon">✅</div><p>No pending requests — all clear!</p></div>' : `
+        ${pending.map(r => {
+            const b = bookings.find(x => x.id === r.bookingId);
+            const changes = r.requestedChanges || {};
+            return `<div style="padding:16px;border:2px solid var(--warning);border-radius:var(--radius);margin-bottom:12px;background:rgba(253,203,110,.04)">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+                    <div>
+                        <strong style="font-size:1rem">${escHTML(r.clientName)}</strong>
+                        <span style="font-size:.82rem;color:var(--text-muted);margin-left:8px">${r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</span>
+                    </div>
+                    <span class="badge badge-pending">Pending</span>
+                </div>
+
+                ${b ? `<div style="background:var(--bg);padding:10px;border-radius:8px;margin-bottom:10px;font-size:.85rem">
+                    <strong>Current booking:</strong> ${escHTML(b.service)} for ${escHTML(b.petName)} on ${b.date}${b.endDate ? ' → ' + b.endDate : ''} — ${fmt(calcBookingTotal(b))}
+                </div>` : '<div style="font-size:.85rem;color:var(--danger);margin-bottom:10px">Original booking not found</div>'}
+
+                <div style="font-size:.88rem;margin-bottom:10px">
+                    <strong>Requested changes:</strong>
+                    <ul style="margin:6px 0 0 20px;line-height:1.8">
+                        ${changes.service ? `<li><strong>Service:</strong> ${escHTML(changes.service)}</li>` : ''}
+                        ${changes.date ? `<li><strong>Start Date:</strong> ${changes.date}</li>` : ''}
+                        ${changes.endDate ? `<li><strong>End Date:</strong> ${changes.endDate}</li>` : ''}
+                        ${changes.dropoffTime ? `<li><strong>Drop-Off:</strong> ${new Date(changes.dropoffTime).toLocaleString()}</li>` : ''}
+                        ${changes.pickupTime ? `<li><strong>Pick-Up:</strong> ${new Date(changes.pickupTime).toLocaleString()}</li>` : ''}
+                        ${changes.addons?.length ? `<li><strong>Add-ons:</strong> ${changes.addons.join(', ')}</li>` : ''}
+                    </ul>
+                </div>
+
+                <div style="font-size:.88rem;margin-bottom:12px;padding:10px;background:rgba(108,92,231,.04);border-radius:6px">
+                    <strong>Reason:</strong> ${escHTML(r.reason)}
+                </div>
+
+                <div class="form-group"><label class="form-label">Admin Response (optional — client sees this)</label><textarea class="form-textarea" id="arResponse_${r.id}" rows="2" placeholder="e.g. Approved — updated your booking! / Sorry, that date is fully booked."></textarea></div>
+
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-success" onclick="resolveEditRequest('${r.id}','approved')">✅ Approve & Apply</button>
+                    <button class="btn btn-danger" onclick="resolveEditRequest('${r.id}','denied')">❌ Deny</button>
+                </div>
+            </div>`;
+        }).join('')}
+        `}
+    </div>
+
+    <!-- HISTORY -->
+    ${resolved.length > 0 ? `<div class="card">
+        <div class="card-header"><span class="card-title">History (${resolved.length})</span></div>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Client</th><th>Booking</th><th>Changes</th><th>Reason</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>${resolved.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(r => {
+                const b2 = bookings.find(x => x.id === r.bookingId);
+                const changes = r.requestedChanges || {};
+                const changeSummary = [changes.service, changes.date, changes.addons?.length ? changes.addons.length + ' addons' : ''].filter(Boolean).join(', ') || 'See details';
+                return `<tr>
+                    <td>${escHTML(r.clientName)}</td>
+                    <td style="font-size:.85rem">${b2 ? escHTML(b2.service) + ' — ' + escHTML(b2.petName) : 'N/A'}</td>
+                    <td style="font-size:.85rem">${escHTML(changeSummary)}</td>
+                    <td style="font-size:.85rem;max-width:200px">${escHTML(r.reason)}</td>
+                    <td><span class="badge ${r.status === 'approved' ? 'badge-confirmed' : 'badge-cancelled'}">${r.status}</span></td>
+                    <td style="font-size:.82rem">${r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</td>
+                </tr>`;
+            }).join('')}</tbody>
+        </table></div>
+    </div>` : ''}`;
+};
+
+const resolveEditRequest = (reqId, decision) => {
+    const editRequests = load('edit_requests', []);
+    const req = editRequests.find(r => r.id === reqId);
+    if (!req) return;
+
+    req.status = decision;
+    req.adminResponse = document.getElementById('arResponse_' + reqId)?.value?.trim() || '';
+    req.resolvedAt = new Date().toISOString();
+
+    // If approved, apply changes to the booking
+    if (decision === 'approved') {
+        const changes = req.requestedChanges || {};
+        const b = bookings.find(x => x.id === req.bookingId);
+        if (b) {
+            if (changes.service) {
+                b.service = changes.service;
+                const svc = services.find(s => s.name === changes.service);
+                if (svc) b.amount = svc.price;
+            }
+            if (changes.date) b.date = changes.date;
+            if (changes.endDate) b.endDate = changes.endDate;
+            if (changes.dropoffTime) b.dropoffTime = changes.dropoffTime;
+            if (changes.pickupTime) b.pickupTime = changes.pickupTime;
+            if (changes.addons) b.addons = changes.addons;
+            save('bookings', bookings);
+        }
+    }
+
+    save('edit_requests', editRequests);
+
+    // Notify client
+    if (typeof GPC_NOTIFY !== 'undefined') {
+        const emoji = decision === 'approved' ? '✅' : '❌';
+        GPC_NOTIFY.create({ type: 'edit_response', title: `${emoji} Edit Request ${decision === 'approved' ? 'Approved' : 'Denied'}`, body: req.adminResponse || `Your booking change was ${decision}.`, audience: 'client', clientId: req.clientId, createdAt: new Date().toISOString() });
+        // Email notification
+        if (req.clientEmail) {
+            GPC_NOTIFY.sendDirectEmail(req.clientEmail, req.clientName,
+                `GenusPupClub — Booking Edit ${decision === 'approved' ? 'Approved' : 'Denied'}`,
+                `Hi ${req.clientName},\n\nYour booking change request has been ${decision}.\n\n${req.adminResponse ? 'Message from admin: ' + req.adminResponse + '\n\n' : ''}Log in to your portal to see the details: ${window.location.origin}/portal.html\n\n— GenusPupClub`
+            );
+        }
+    }
+
+    renderApprovals();
+};
+
+// ============================================
+// SATISFACTION SURVEYS — Admin View
+// ============================================
+const renderSatisfaction = () => {
+    const surveys = load('satisfaction_surveys', []);
+    const avgRating = surveys.length ? (surveys.reduce((s, sv) => s + (sv.rating || 0), 0) / surveys.length).toFixed(1) : '—';
+    const wouldBookAgain = surveys.filter(s => s.bookAgain === 'Definitely' || s.bookAgain === 'Probably').length;
+    const needsAttention = surveys.filter(s => s.rating <= 3 || s.whatToImprove).length;
+
+    // Aggregate sub-ratings
+    const subRatingTotals = {};
+    const subRatingCounts = {};
+    surveys.forEach(sv => {
+        if (sv.subRatings) {
+            Object.entries(sv.subRatings).forEach(([area, val]) => {
+                subRatingTotals[area] = (subRatingTotals[area] || 0) + val;
+                subRatingCounts[area] = (subRatingCounts[area] || 0) + 1;
+            });
+        }
+    });
+
+    el.innerHTML = `
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Avg Rating</div><div class="stat-value">${avgRating} ⭐</div><div class="stat-sub">${surveys.length} surveys</div></div>
+        <div class="stat-card green"><div class="stat-label">Would Book Again</div><div class="stat-value">${surveys.length ? Math.round(wouldBookAgain / surveys.length * 100) : 0}%</div><div class="stat-sub">${wouldBookAgain} of ${surveys.length}</div></div>
+        <div class="stat-card" style="border-left-color:var(--danger)"><div class="stat-label">Needs Attention</div><div class="stat-value">${needsAttention}</div><div class="stat-sub">Low rating or improvement noted</div></div>
+        <div class="stat-card blue"><div class="stat-label">Total Surveys</div><div class="stat-value">${surveys.length}</div></div>
+    </div>
+
+    <!-- SUB-RATING BREAKDOWN -->
+    ${Object.keys(subRatingTotals).length > 0 ? `<div class="card">
+        <div class="card-title" style="margin-bottom:14px">Area Breakdown</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+            ${Object.entries(subRatingTotals).map(([area, total]) => {
+                const avg = (total / subRatingCounts[area]).toFixed(1);
+                const pct = (avg / 5 * 100).toFixed(0);
+                const color = avg >= 4 ? 'var(--success)' : avg >= 3 ? 'var(--warning)' : 'var(--danger)';
+                return `<div style="padding:12px;background:var(--bg);border-radius:8px">
+                    <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:4px">${escHTML(area)}</div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:4px"></div></div>
+                        <strong style="font-size:.88rem;color:${color}">${avg}</strong>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+    </div>` : ''}
+
+    <!-- INDIVIDUAL SURVEYS -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">All Surveys (${surveys.length})</span>
+            <button class="btn btn-sm btn-ghost" onclick="exportSurveysForAI()">🤖 Copy for AI</button>
+        </div>
+        ${surveys.length === 0 ? '<div class="empty"><div class="empty-icon">📊</div><p>No surveys yet. Clients can rate completed bookings from their portal.</p></div>' : `
+        ${[...surveys].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(sv => {
+            const b = bookings.find(x => x.id === sv.bookingId);
+            const stars = '⭐'.repeat(sv.rating || 0);
+            const isLow = sv.rating <= 3;
+            return `<div style="padding:14px;border-bottom:1px solid var(--border);${isLow ? 'background:rgba(225,112,85,.04);border-left:3px solid var(--danger)' : ''}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <strong>${escHTML(sv.clientName)}</strong>
+                        <span style="margin-left:8px;font-size:1rem">${stars}</span>
+                        ${sv.petMood ? `<span class="badge" style="background:rgba(0,184,148,.1);color:var(--success);margin-left:8px">${escHTML(sv.petMood)}</span>` : ''}
+                        ${sv.bookAgain ? `<span class="badge" style="background:rgba(116,185,255,.1);color:var(--info);margin-left:4px">${escHTML(sv.bookAgain)}</span>` : ''}
+                    </div>
+                    <span style="font-size:.78rem;color:var(--text-muted)">${sv.createdAt ? new Date(sv.createdAt).toLocaleDateString() : '—'}</span>
+                </div>
+                ${b ? `<div style="font-size:.82rem;color:var(--text-muted);margin-top:4px">${escHTML(b.service)} for ${escHTML(b.petName)} on ${b.date}</div>` : ''}
+                ${sv.whatWentWell ? `<div style="font-size:.88rem;margin-top:8px;color:var(--success)"><strong>What went well:</strong> ${escHTML(sv.whatWentWell)}</div>` : ''}
+                ${sv.whatToImprove ? `<div style="font-size:.88rem;margin-top:4px;color:var(--danger)"><strong>To improve:</strong> ${escHTML(sv.whatToImprove)}</div>` : ''}
+                ${sv.subRatings ? `<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${Object.entries(sv.subRatings).map(([area, val]) => `<span style="font-size:.75rem;padding:2px 8px;border-radius:4px;background:${val >= 4 ? 'rgba(0,184,148,.08)' : val >= 3 ? 'rgba(253,203,110,.15)' : 'rgba(225,112,85,.08)'}">${area}: ${val}/5</span>`).join('')}</div>` : ''}
+            </div>`;
+        }).join('')}
+        `}
+    </div>`;
+};
+
+const exportSurveysForAI = () => {
+    const surveys = load('satisfaction_surveys', []);
+    if (surveys.length === 0) { alert('No surveys to export.'); return; }
+    const text = `# GenusPupClub — Client Satisfaction Surveys (${surveys.length})\nExported: ${new Date().toLocaleString()}\n\n` +
+        surveys.map((sv, i) => {
+            const b = bookings.find(x => x.id === sv.bookingId);
+            return [
+                `## ${i + 1}. ${sv.clientName} — ${'⭐'.repeat(sv.rating || 0)}`,
+                b ? `Service: ${b.service} for ${b.petName} on ${b.date}` : '',
+                sv.petMood ? `Pet mood at pickup: ${sv.petMood}` : '',
+                sv.bookAgain ? `Would book again: ${sv.bookAgain}` : '',
+                sv.whatWentWell ? `What went well: ${sv.whatWentWell}` : '',
+                sv.whatToImprove ? `To improve: ${sv.whatToImprove}` : '',
+                sv.subRatings ? `Sub-ratings: ${Object.entries(sv.subRatings).map(([a, v]) => `${a}=${v}/5`).join(', ')}` : ''
+            ].filter(Boolean).join('\n');
+        }).join('\n\n---\n\n');
+    navigator.clipboard.writeText(text).then(() => alert(`Copied ${surveys.length} survey(s) to clipboard!`));
+};
+
+// ============================================
+// FEEDBACK BOX — Suggestions, Complaints & Fix Requests
+// ============================================
+const FEEDBACK_CATEGORIES = [
+    { value: 'suggestion', label: 'Suggestion', icon: '💡', color: '#00B894' },
+    { value: 'complaint', label: 'Complaint', icon: '😤', color: '#E17055' },
+    { value: 'bug', label: 'Bug / Fix Needed', icon: '🐛', color: '#D63031' },
+    { value: 'feature', label: 'Feature Request', icon: '🚀', color: '#6C5CE7' },
+    { value: 'compliment', label: 'Compliment', icon: '🌟', color: '#FDCB6E' },
+    { value: 'safety', label: 'Safety Concern', icon: '⚠️', color: '#E17055' },
+    { value: 'pricing', label: 'Pricing Feedback', icon: '💲', color: '#00B894' },
+    { value: 'scheduling', label: 'Scheduling Issue', icon: '📅', color: '#74B9FF' },
+    { value: 'staff', label: 'Staff Feedback', icon: '🧑‍🤝‍🧑', color: '#A29BFE' },
+    { value: 'other', label: 'Other', icon: '📝', color: '#636E72' }
+];
+const FEEDBACK_PRIORITIES = [
+    { value: 'low', label: 'Low', color: '#00B894' },
+    { value: 'medium', label: 'Medium', color: '#FDCB6E' },
+    { value: 'high', label: 'High', color: '#E17055' },
+    { value: 'urgent', label: 'Urgent', color: '#D63031' }
+];
+const FEEDBACK_STATUSES = [
+    { value: 'new', label: 'New', color: '#74B9FF' },
+    { value: 'reviewed', label: 'Reviewed', color: '#A29BFE' },
+    { value: 'in_progress', label: 'In Progress', color: '#FDCB6E' },
+    { value: 'implemented', label: 'Implemented', color: '#00B894' },
+    { value: 'wont_fix', label: "Won't Fix", color: '#636E72' },
+    { value: 'duplicate', label: 'Duplicate', color: '#B2BEC3' }
+];
+
+const getFeedbackCat = (val) => FEEDBACK_CATEGORIES.find(c => c.value === val) || FEEDBACK_CATEGORIES[9];
+const getFeedbackPri = (val) => FEEDBACK_PRIORITIES.find(p => p.value === val) || FEEDBACK_PRIORITIES[0];
+const getFeedbackStatus = (val) => FEEDBACK_STATUSES.find(s => s.value === val) || FEEDBACK_STATUSES[0];
+
+let feedbackFilter = { category: 'all', priority: 'all', status: 'all', search: '' };
+
+const renderFeedback = () => {
+    const feedback = load('feedback', []);
+    const totalNew = feedback.filter(f => f.status === 'new').length;
+    const totalOpen = feedback.filter(f => ['new', 'reviewed', 'in_progress'].includes(f.status)).length;
+    const totalImplemented = feedback.filter(f => f.status === 'implemented').length;
+    const totalComplaints = feedback.filter(f => f.category === 'complaint' || f.category === 'safety').length;
+    const totalBugs = feedback.filter(f => f.category === 'bug').length;
+
+    // Apply filters
+    let filtered = [...feedback];
+    if (feedbackFilter.category !== 'all') filtered = filtered.filter(f => f.category === feedbackFilter.category);
+    if (feedbackFilter.priority !== 'all') filtered = filtered.filter(f => f.priority === feedbackFilter.priority);
+    if (feedbackFilter.status !== 'all') filtered = filtered.filter(f => f.status === feedbackFilter.status);
+    if (feedbackFilter.search) {
+        const q = feedbackFilter.search.toLowerCase();
+        filtered = filtered.filter(f => (f.summary || '').toLowerCase().includes(q) || (f.details || '').toLowerCase().includes(q) || (f.clientName || '').toLowerCase().includes(q));
+    }
+    filtered.sort((a, b) => {
+        const priOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+        if (priOrder[a.priority] !== priOrder[b.priority]) return (priOrder[a.priority] ?? 3) - (priOrder[b.priority] ?? 3);
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+
+    const catOpts = FEEDBACK_CATEGORIES.map(c => `<option value="${c.value}" ${feedbackFilter.category === c.value ? 'selected' : ''}>${c.icon} ${c.label}</option>`).join('');
+    const priOpts = FEEDBACK_PRIORITIES.map(p => `<option value="${p.value}" ${feedbackFilter.priority === p.value ? 'selected' : ''}>${p.label}</option>`).join('');
+    const statusOpts = FEEDBACK_STATUSES.map(s => `<option value="${s.value}" ${feedbackFilter.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('');
+    const clientOpts = clients.map(c => `<option value="${c.id}">${escHTML(c.name)}</option>`).join('');
+
+    el.innerHTML = `
+    <!-- STAT CARDS -->
+    <div class="stats-grid">
+        <div class="stat-card blue"><div class="stat-label">New / Unread</div><div class="stat-value">${totalNew}</div><div class="stat-sub">Awaiting review</div></div>
+        <div class="stat-card yellow"><div class="stat-label">Open Items</div><div class="stat-value">${totalOpen}</div><div class="stat-sub">New + Reviewed + In Progress</div></div>
+        <div class="stat-card green"><div class="stat-label">Implemented</div><div class="stat-value">${totalImplemented}</div><div class="stat-sub">Changes shipped</div></div>
+        <div class="stat-card" style="border-left-color:var(--danger)"><div class="stat-label">Complaints + Bugs</div><div class="stat-value">${totalComplaints + totalBugs}</div><div class="stat-sub">${totalComplaints} complaints, ${totalBugs} bugs</div></div>
+    </div>
+
+    <!-- QUICK ADD -->
+    <div class="card" id="fbQuickAdd">
+        <div class="card-header">
+            <span class="card-title">📬 Quick Add — Drop-Off Feedback</span>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fbQuickBody').style.display = document.getElementById('fbQuickBody').style.display==='none' ? 'block' : 'none'">Toggle ▾</button>
+        </div>
+        <div id="fbQuickBody">
+            <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px">Client says something at drop-off? Log it in 10 seconds. You'll review later and hand it to your AI.</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Client (optional)</label>
+                    <select class="form-select" id="fbClient"><option value="">— Walk-in / Anonymous —</option>${clientOpts}</select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="fbCategory">
+                        ${FEEDBACK_CATEGORIES.map(c => `<option value="${c.value}">${c.icon} ${c.label}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select class="form-select" id="fbPriority">
+                        ${FEEDBACK_PRIORITIES.map(p => `<option value="${p.value}" ${p.value === 'medium' ? 'selected' : ''}>${p.label}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Affects (area of site/service)</label>
+                    <select class="form-select" id="fbAffects">
+                        <option value="">— Select area —</option>
+                        <option value="website">Website / Landing Page</option>
+                        <option value="portal">Client Portal</option>
+                        <option value="booking">Booking System</option>
+                        <option value="dashboard">Admin Dashboard</option>
+                        <option value="pricing">Pricing / Invoicing</option>
+                        <option value="scheduling">Scheduling / Calendar</option>
+                        <option value="communication">Communication (Email/SMS)</option>
+                        <option value="photos">Photo Gallery / Updates</option>
+                        <option value="report_cards">Report Cards</option>
+                        <option value="waivers">Waivers / Forms</option>
+                        <option value="walking">Dog Walking Service</option>
+                        <option value="daycare">Daycare Service</option>
+                        <option value="grooming">Grooming Service</option>
+                        <option value="transport">Pet Taxi / Transport</option>
+                        <option value="sitting">Overnight Sitting</option>
+                        <option value="general">General / Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Summary (what they said — keep it short)</label>
+                <input class="form-input" id="fbSummary" placeholder="e.g. 'Wants text updates not just email' or 'Calendar won't load on her phone'">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Details (optional — full context, exact words, specifics)</label>
+                <textarea class="form-textarea" id="fbDetails" rows="3" placeholder="Any extra context... what page, what happened, what they expected, mood, urgency, etc."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">📸 Screenshot / Photo (optional)</label>
+                <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:6px">Snap a photo of the issue on their phone, a note they wrote, the screen showing the bug — anything visual helps your AI fix it faster.</p>
+                <input type="file" id="fbScreenshot" accept="image/*" multiple onchange="previewFeedbackScreenshots(this)" style="font-size:.88rem">
+                <div id="fbScreenshotPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+                <button class="btn btn-primary" onclick="submitQuickFeedback()">📬 Log Feedback</button>
+                <span style="font-size:.82rem;color:var(--text-muted)">Saved locally — review anytime, export to AI when ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTERS & ACTIONS -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">All Feedback (${filtered.length} of ${feedback.length})</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-sm btn-primary" onclick="exportFeedbackForAI()">🤖 Copy All for AI</button>
+                <button class="btn btn-sm btn-success" onclick="exportFeedbackForAI('open')">📋 Copy Open Only</button>
+                <button class="btn btn-sm btn-ghost" onclick="exportFeedbackCSV()">📊 Export CSV</button>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <select class="form-select" style="width:auto;min-width:140px" onchange="feedbackFilter.category=this.value;renderFeedback()">
+                <option value="all">All Categories</option>${catOpts}
+            </select>
+            <select class="form-select" style="width:auto;min-width:120px" onchange="feedbackFilter.priority=this.value;renderFeedback()">
+                <option value="all">All Priorities</option>${priOpts}
+            </select>
+            <select class="form-select" style="width:auto;min-width:120px" onchange="feedbackFilter.status=this.value;renderFeedback()">
+                <option value="all">All Statuses</option>${statusOpts}
+            </select>
+            <input class="form-input" style="width:auto;min-width:200px;flex:1" placeholder="🔍 Search feedback..." value="${escHTML(feedbackFilter.search)}" oninput="feedbackFilter.search=this.value;renderFeedback()">
+        </div>
+
+        ${filtered.length === 0 ? `
+            <div class="empty">
+                <div class="empty-icon">📬</div>
+                <p>No feedback yet. Log your first one above!</p>
+                <p style="font-size:.82rem;color:var(--text-muted);margin-top:8px">When a client mentions something at drop-off — a suggestion, complaint, bug, anything — log it here.<br>Later, copy it all and hand it to your AI to implement.</p>
+            </div>
+        ` : `
+            <!-- BULK ACTIONS -->
+            <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+                <label style="font-size:.82rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fbSelectAll" onchange="toggleAllFeedback(this.checked)"> Select All</label>
+                <button class="btn btn-sm btn-ghost" onclick="bulkUpdateFeedbackStatus('reviewed')">Mark Reviewed</button>
+                <button class="btn btn-sm btn-ghost" onclick="bulkUpdateFeedbackStatus('in_progress')">Mark In Progress</button>
+                <button class="btn btn-sm btn-ghost" style="color:var(--success)" onclick="bulkUpdateFeedbackStatus('implemented')">Mark Done</button>
+                <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="bulkDeleteFeedback()">Delete Selected</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr>
+                        <th style="width:30px"></th>
+                        <th>Category</th>
+                        <th>Summary</th>
+                        <th>Client</th>
+                        <th>Area</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>📎</th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody>
+                        ${filtered.map(f => {
+                            const cat = getFeedbackCat(f.category);
+                            const pri = getFeedbackPri(f.priority);
+                            const st = getFeedbackStatus(f.status);
+                            const clientObj = f.clientId ? clients.find(c => c.id === f.clientId) : null;
+                            const hasScreenshots = f.screenshots && f.screenshots.length > 0;
+                            const dateStr = f.createdAt ? new Date(f.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+                            return `<tr style="${f.status === 'new' ? 'background:rgba(116,185,255,0.04);font-weight:500' : ''}">
+                                <td><input type="checkbox" class="fb-check" value="${f.id}"></td>
+                                <td><span style="font-size:.95rem" title="${escHTML(cat.label)}">${cat.icon}</span> <span style="font-size:.82rem">${escHTML(cat.label)}</span></td>
+                                <td style="max-width:260px">
+                                    <div style="font-size:.9rem;${f.status === 'new' ? 'font-weight:600' : ''}">${escHTML(f.summary || '(no summary)')}</div>
+                                    ${f.details ? `<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${escHTML(f.details)}</div>` : ''}
+                                </td>
+                                <td style="font-size:.85rem">${clientObj ? escHTML(clientObj.name) : (f.clientName ? escHTML(f.clientName) : '<span style="color:var(--text-muted)">Anon</span>')}</td>
+                                <td style="font-size:.82rem">${escHTML(f.affects || '—')}</td>
+                                <td><span class="badge" style="background:${pri.color}20;color:${pri.color}">${pri.label}</span></td>
+                                <td>
+                                    <select class="form-select" style="padding:4px 8px;font-size:.78rem;width:auto;border-color:${st.color}" onchange="updateFeedbackStatus('${f.id}',this.value)">
+                                        ${FEEDBACK_STATUSES.map(s => `<option value="${s.value}" ${f.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
+                                    </select>
+                                </td>
+                                <td style="font-size:.82rem;white-space:nowrap">${dateStr}</td>
+                                <td>${hasScreenshots ? `<span title="${f.screenshots.length} screenshot(s)" style="cursor:pointer" onclick="viewFeedbackScreenshots('${f.id}')">📸${f.screenshots.length > 1 ? f.screenshots.length : ''}</span>` : ''}</td>
+                                <td style="white-space:nowrap">
+                                    <button class="btn btn-sm btn-ghost" onclick="viewFeedbackDetail('${f.id}')" title="View details">👁️</button>
+                                    <button class="btn btn-sm btn-ghost" onclick="editFeedbackItem('${f.id}')" title="Edit">✏️</button>
+                                    <button class="btn btn-sm btn-ghost" onclick="copyFeedbackItem('${f.id}')" title="Copy for AI">🤖</button>
+                                    <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="deleteFeedbackItem('${f.id}')" title="Delete">🗑️</button>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `}
+    </div>
+
+    <!-- AI EXPORT GUIDE -->
+    <div class="card" style="border-left:4px solid #6C5CE7">
+        <div class="card-header">
+            <span class="card-title">🤖 How to Use This with Your AI</span>
+        </div>
+        <div style="font-size:.88rem;color:var(--text-light);line-height:1.7">
+            <ol style="padding-left:20px">
+                <li><strong>Log feedback</strong> at drop-off using the Quick Add form above — takes 10 seconds</li>
+                <li><strong>Attach screenshots</strong> of the issue (phone photo, screen capture, client's phone) — visuals help the AI understand exactly what's wrong</li>
+                <li><strong>Click "🤖 Copy All for AI"</strong> to copy every open item to your clipboard as a formatted list</li>
+                <li><strong>Paste it into Claude</strong> (or your AI of choice) and say: <em>"Here's client feedback for my dog care website. Implement these changes."</em></li>
+                <li><strong>Mark items as "Implemented"</strong> after your AI builds the fix — keeps your queue clean</li>
+            </ol>
+            <div style="margin-top:12px;padding:12px;background:rgba(108,92,231,0.06);border-radius:8px">
+                <strong>Pro tip:</strong> Use the "Copy Open Only" button for a focused list. The export includes category, priority, area affected, client name, and full details — everything your AI needs to understand the request and build the fix without you having to re-explain.
+            </div>
+        </div>
+    </div>`;
+};
+
+// ---- Screenshot preview for quick-add form ----
+let _fbPendingScreenshots = [];
+const previewFeedbackScreenshots = (input) => {
+    const preview = document.getElementById('fbScreenshotPreview');
+    if (!preview) return;
+    const files = Array.from(input.files);
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            _fbPendingScreenshots.push({ name: file.name, data: e.target.result, addedAt: new Date().toISOString() });
+            renderScreenshotPreviews();
+        };
+        reader.readAsDataURL(file);
+    });
+};
+const renderScreenshotPreviews = () => {
+    const preview = document.getElementById('fbScreenshotPreview');
+    if (!preview) return;
+    preview.innerHTML = _fbPendingScreenshots.map((s, i) => `
+        <div class="fb-screenshot-thumb" style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:2px solid var(--border);cursor:pointer" onclick="viewScreenshotFull('${escHTML(s.data)}')">
+            <img src="${s.data}" style="width:100%;height:100%;object-fit:cover">
+            <button onclick="event.stopPropagation();removePendingScreenshot(${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+        </div>
+    `).join('');
+};
+const removePendingScreenshot = (idx) => {
+    _fbPendingScreenshots.splice(idx, 1);
+    renderScreenshotPreviews();
+};
+const viewScreenshotFull = (src) => {
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal" style="max-width:90vw;max-height:90vh;padding:12px;text-align:center">
+        <img src="${src}" style="max-width:100%;max-height:80vh;border-radius:8px">
+        <div style="margin-top:12px"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+// ---- Submit quick feedback ----
+const submitQuickFeedback = () => {
+    const summary = document.getElementById('fbSummary')?.value?.trim();
+    if (!summary) { alert('Please enter a summary of what the client said.'); return; }
+    const clientId = document.getElementById('fbClient')?.value || '';
+    const clientObj = clientId ? clients.find(c => c.id === clientId) : null;
+    const feedback = load('feedback', []);
+    feedback.push({
+        id: uid(),
+        category: document.getElementById('fbCategory')?.value || 'suggestion',
+        priority: document.getElementById('fbPriority')?.value || 'medium',
+        affects: document.getElementById('fbAffects')?.value || '',
+        summary,
+        details: document.getElementById('fbDetails')?.value?.trim() || '',
+        clientId: clientId || null,
+        clientName: clientObj?.name || null,
+        screenshots: [..._fbPendingScreenshots],
+        status: 'new',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        loggedBy: _adminSession?.email || 'admin',
+        adminNotes: ''
+    });
+    save('feedback', feedback);
+    _fbPendingScreenshots = [];
+    renderFeedback();
+    // Flash success
+    const card = document.getElementById('fbQuickAdd');
+    if (card) { card.style.boxShadow = '0 0 0 3px var(--success)'; setTimeout(() => card.style.boxShadow = '', 1200); }
+};
+
+// ---- Status update (inline dropdown) ----
+const updateFeedbackStatus = (id, newStatus) => {
+    const feedback = load('feedback', []);
+    const item = feedback.find(f => f.id === id);
+    if (item) { item.status = newStatus; item.updatedAt = new Date().toISOString(); save('feedback', feedback); renderFeedback(); }
+};
+
+// ---- View detail modal ----
+const viewFeedbackDetail = (id) => {
+    const feedback = load('feedback', []);
+    const f = feedback.find(x => x.id === id);
+    if (!f) return;
+    const cat = getFeedbackCat(f.category);
+    const pri = getFeedbackPri(f.priority);
+    const st = getFeedbackStatus(f.status);
+    const clientObj = f.clientId ? clients.find(c => c.id === f.clientId) : null;
+
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+
+    const screenshotHTML = f.screenshots && f.screenshots.length > 0
+        ? `<div style="margin-top:12px"><strong style="font-size:.85rem">📸 Screenshots (${f.screenshots.length}):</strong><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${f.screenshots.map(s => `
+            <div style="width:120px;height:120px;border-radius:8px;overflow:hidden;border:2px solid var(--border);cursor:pointer" onclick="viewScreenshotFull('${escHTML(s.data)}')">
+                <img src="${s.data}" style="width:100%;height:100%;object-fit:cover">
+            </div>`).join('')}</div></div>`
+        : '';
+
+    overlay.innerHTML = `<div class="modal" style="max-width:600px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div>
+                <div style="font-size:1.3rem;margin-bottom:4px">${cat.icon} <span style="font-family:var(--font-display)">${escHTML(f.summary)}</span></div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <span class="badge" style="background:${cat.color}20;color:${cat.color}">${cat.label}</span>
+                    <span class="badge" style="background:${pri.color}20;color:${pri.color}">${pri.label} Priority</span>
+                    <span class="badge" style="background:${st.color}20;color:${st.color}">${st.label}</span>
+                </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="closeModal()" style="font-size:1.2rem">✕</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div style="font-size:.85rem"><strong>Client:</strong> ${clientObj ? escHTML(clientObj.name) : (f.clientName || 'Anonymous')}</div>
+            <div style="font-size:.85rem"><strong>Area:</strong> ${escHTML(f.affects || 'Not specified')}</div>
+            <div style="font-size:.85rem"><strong>Logged:</strong> ${f.createdAt ? new Date(f.createdAt).toLocaleString() : '—'}</div>
+            <div style="font-size:.85rem"><strong>By:</strong> ${escHTML(f.loggedBy || 'admin')}</div>
+        </div>
+
+        ${f.details ? `<div style="background:var(--bg);padding:14px;border-radius:8px;margin-bottom:12px">
+            <strong style="font-size:.82rem;color:var(--text-muted)">Full Details:</strong>
+            <p style="font-size:.9rem;margin-top:6px;white-space:pre-wrap;line-height:1.6">${escHTML(f.details)}</p>
+        </div>` : ''}
+
+        ${screenshotHTML}
+
+        <div style="margin-top:14px">
+            <label class="form-label">Admin Notes (internal — not shared with client)</label>
+            <textarea class="form-textarea" id="fbAdminNotes" rows="2" placeholder="Your notes... what action to take, who to assign, etc.">${escHTML(f.adminNotes || '')}</textarea>
+        </div>
+
+        <div style="margin-top:14px">
+            <label class="form-label">Update Status</label>
+            <select class="form-select" id="fbDetailStatus">
+                ${FEEDBACK_STATUSES.map(s => `<option value="${s.value}" ${f.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
+            </select>
+        </div>
+
+        <div class="modal-footer" style="flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="copyFeedbackItem('${f.id}');closeModal()">🤖 Copy for AI</button>
+            <button class="btn btn-ghost" onclick="editFeedbackItem('${f.id}');closeModal()">✏️ Edit</button>
+            <button class="btn btn-primary" onclick="saveFeedbackDetail('${f.id}')">💾 Save & Close</button>
+        </div>
+    </div>`;
+    overlay.classList.add('open');
+    // Mark as reviewed if it was new
+    if (f.status === 'new') { f.status = 'reviewed'; f.updatedAt = new Date().toISOString(); save('feedback', feedback); }
+};
+
+const saveFeedbackDetail = (id) => {
+    const feedback = load('feedback', []);
+    const f = feedback.find(x => x.id === id);
+    if (!f) return;
+    f.adminNotes = document.getElementById('fbAdminNotes')?.value?.trim() || '';
+    f.status = document.getElementById('fbDetailStatus')?.value || f.status;
+    f.updatedAt = new Date().toISOString();
+    save('feedback', feedback);
+    closeModal();
+    renderFeedback();
+};
+
+// ---- Edit feedback item (full modal) ----
+const editFeedbackItem = (id) => {
+    const feedback = load('feedback', []);
+    const f = feedback.find(x => x.id === id);
+    if (!f) return;
+    const clientOpts = clients.map(c => `<option value="${c.id}" ${f.clientId === c.id ? 'selected' : ''}>${escHTML(c.name)}</option>`).join('');
+
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+
+    overlay.innerHTML = `<div class="modal" style="max-width:550px">
+        <div class="modal-title">✏️ Edit Feedback</div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Client</label><select class="form-select" id="efClient"><option value="">Anonymous</option>${clientOpts}</select></div>
+            <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="efCategory">${FEEDBACK_CATEGORIES.map(c => `<option value="${c.value}" ${f.category === c.value ? 'selected' : ''}>${c.icon} ${c.label}</option>`).join('')}</select></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="efPriority">${FEEDBACK_PRIORITIES.map(p => `<option value="${p.value}" ${f.priority === p.value ? 'selected' : ''}>${p.label}</option>`).join('')}</select></div>
+            <div class="form-group"><label class="form-label">Area Affected</label><select class="form-select" id="efAffects">
+                <option value="">— Select —</option>
+                ${['website','portal','booking','dashboard','pricing','scheduling','communication','photos','report_cards','waivers','walking','daycare','grooming','transport','sitting','general'].map(a => `<option value="${a}" ${f.affects === a ? 'selected' : ''}>${a}</option>`).join('')}
+            </select></div>
+        </div>
+        <div class="form-group"><label class="form-label">Summary</label><input class="form-input" id="efSummary" value="${escHTML(f.summary || '')}"></div>
+        <div class="form-group"><label class="form-label">Details</label><textarea class="form-textarea" id="efDetails" rows="4">${escHTML(f.details || '')}</textarea></div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="efStatus">${FEEDBACK_STATUSES.map(s => `<option value="${s.value}" ${f.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Admin Notes</label><textarea class="form-textarea" id="efNotes" rows="2">${escHTML(f.adminNotes || '')}</textarea></div>
+        <div class="form-group">
+            <label class="form-label">📸 Add More Screenshots</label>
+            <input type="file" id="efScreenshot" accept="image/*" multiple style="font-size:.88rem">
+            ${f.screenshots && f.screenshots.length > 0 ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${f.screenshots.map((s, i) => `
+                <div style="position:relative;width:70px;height:70px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">
+                    <img src="${s.data}" style="width:100%;height:100%;object-fit:cover">
+                    <button onclick="removeEditScreenshot('${f.id}',${i})" style="position:absolute;top:1px;right:1px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer">✕</button>
+                </div>`).join('')}</div>` : ''}
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEditFeedback('${f.id}')">💾 Save Changes</button>
+        </div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+const saveEditFeedback = (id) => {
+    const feedback = load('feedback', []);
+    const f = feedback.find(x => x.id === id);
+    if (!f) return;
+    const clientId = document.getElementById('efClient')?.value || '';
+    const clientObj = clientId ? clients.find(c => c.id === clientId) : null;
+    f.category = document.getElementById('efCategory')?.value || f.category;
+    f.priority = document.getElementById('efPriority')?.value || f.priority;
+    f.affects = document.getElementById('efAffects')?.value || '';
+    f.summary = document.getElementById('efSummary')?.value?.trim() || f.summary;
+    f.details = document.getElementById('efDetails')?.value?.trim() || '';
+    f.status = document.getElementById('efStatus')?.value || f.status;
+    f.adminNotes = document.getElementById('efNotes')?.value?.trim() || '';
+    f.clientId = clientId || null;
+    f.clientName = clientObj?.name || null;
+    f.updatedAt = new Date().toISOString();
+    // Handle new screenshots
+    const fileInput = document.getElementById('efScreenshot');
+    if (fileInput?.files?.length) {
+        const files = Array.from(fileInput.files);
+        let remaining = files.length;
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (!f.screenshots) f.screenshots = [];
+                f.screenshots.push({ name: file.name, data: e.target.result, addedAt: new Date().toISOString() });
+                remaining--;
+                if (remaining === 0) { save('feedback', feedback); closeModal(); renderFeedback(); }
+            };
+            reader.readAsDataURL(file);
+        });
+    } else {
+        save('feedback', feedback);
+        closeModal();
+        renderFeedback();
+    }
+};
+
+const removeEditScreenshot = (id, idx) => {
+    const feedback = load('feedback', []);
+    const f = feedback.find(x => x.id === id);
+    if (f?.screenshots) { f.screenshots.splice(idx, 1); save('feedback', feedback); editFeedbackItem(id); }
+};
+
+// ---- Delete ----
+const deleteFeedbackItem = (id) => {
+    if (!confirm('Delete this feedback item?')) return;
+    let feedback = load('feedback', []);
+    feedback = feedback.filter(f => f.id !== id);
+    save('feedback', feedback);
+    renderFeedback();
+};
+
+// ---- View screenshots modal ----
+const viewFeedbackScreenshots = (id) => {
+    const feedback = load('feedback', []);
+    const f = feedback.find(x => x.id === id);
+    if (!f?.screenshots?.length) return;
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay'; overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); }); document.body.appendChild(overlay); }
+    overlay.innerHTML = `<div class="modal" style="max-width:700px">
+        <div class="modal-title">📸 Screenshots — ${escHTML(f.summary)}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+            ${f.screenshots.map(s => `
+                <div style="border-radius:8px;overflow:hidden;border:2px solid var(--border);cursor:pointer" onclick="viewScreenshotFull('${escHTML(s.data)}')">
+                    <img src="${s.data}" style="width:100%;height:180px;object-fit:cover">
+                    <div style="padding:6px;font-size:.75rem;color:var(--text-muted)">${escHTML(s.name || 'Screenshot')}</div>
+                </div>
+            `).join('')}
+        </div>
+        <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
+    </div>`;
+    overlay.classList.add('open');
+};
+
+// ---- Copy single item for AI ----
+const copyFeedbackItem = (id) => {
+    const feedback = load('feedback', []);
+    const f = feedback.find(x => x.id === id);
+    if (!f) return;
+    const cat = getFeedbackCat(f.category);
+    const pri = getFeedbackPri(f.priority);
+    const clientObj = f.clientId ? clients.find(c => c.id === f.clientId) : null;
+    const text = [
+        `[${cat.label.toUpperCase()}] ${f.summary}`,
+        `Priority: ${pri.label} | Area: ${f.affects || 'General'} | Client: ${clientObj?.name || f.clientName || 'Anonymous'}`,
+        f.details ? `Details: ${f.details}` : '',
+        f.adminNotes ? `Admin Notes: ${f.adminNotes}` : '',
+        f.screenshots?.length ? `[${f.screenshots.length} screenshot(s) attached — see dashboard]` : ''
+    ].filter(Boolean).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard! Paste it into your AI.');
+    });
+};
+
+// ---- Export all/open for AI ----
+const exportFeedbackForAI = (filter) => {
+    const feedback = load('feedback', []);
+    let items = feedback;
+    if (filter === 'open') items = feedback.filter(f => ['new', 'reviewed', 'in_progress'].includes(f.status));
+
+    if (items.length === 0) { alert('No feedback items to export.'); return; }
+
+    const header = `# GenusPupClub — Client Feedback (${items.length} items)\nExported: ${new Date().toLocaleString()}\nSource: Admin Dashboard → Feedback Box\n\nPlease review and implement the following client feedback for our dog care website/service:\n`;
+
+    const body = items.map((f, i) => {
+        const cat = getFeedbackCat(f.category);
+        const pri = getFeedbackPri(f.priority);
+        const clientObj = f.clientId ? clients.find(c => c.id === f.clientId) : null;
+        return [
+            `---`,
+            `## ${i + 1}. [${cat.label.toUpperCase()}] ${f.summary}`,
+            `- **Priority:** ${pri.label}`,
+            `- **Area:** ${f.affects || 'General'}`,
+            `- **Client:** ${clientObj?.name || f.clientName || 'Anonymous'}`,
+            `- **Status:** ${getFeedbackStatus(f.status).label}`,
+            `- **Logged:** ${f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '—'}`,
+            f.details ? `- **Details:** ${f.details}` : '',
+            f.adminNotes ? `- **Admin Notes:** ${f.adminNotes}` : '',
+            f.screenshots?.length ? `- **Screenshots:** ${f.screenshots.length} attached (see dashboard for images)` : ''
+        ].filter(Boolean).join('\n');
+    }).join('\n\n');
+
+    const fullText = header + '\n' + body + '\n\n---\nEnd of feedback export.';
+    navigator.clipboard.writeText(fullText).then(() => {
+        alert(`Copied ${items.length} feedback item(s) to clipboard!\n\nPaste into your AI and say:\n"Here's client feedback for my dog care website. Implement these changes."`);
+    });
+};
+
+// ---- Export CSV ----
+const exportFeedbackCSV = () => {
+    const feedback = load('feedback', []);
+    if (feedback.length === 0) { alert('No feedback to export.'); return; }
+    const rows = [['Category', 'Priority', 'Status', 'Summary', 'Details', 'Client', 'Area', 'Date', 'Screenshots', 'Admin Notes']];
+    feedback.forEach(f => {
+        const clientObj = f.clientId ? clients.find(c => c.id === f.clientId) : null;
+        rows.push([
+            getFeedbackCat(f.category).label, getFeedbackPri(f.priority).label, getFeedbackStatus(f.status).label,
+            `"${(f.summary || '').replace(/"/g, '""')}"`, `"${(f.details || '').replace(/"/g, '""')}"`,
+            clientObj?.name || f.clientName || 'Anonymous', f.affects || '', f.createdAt || '',
+            f.screenshots?.length || 0, `"${(f.adminNotes || '').replace(/"/g, '""')}"`
+        ]);
+    });
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `genuspupclub-feedback-${todayStr()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+};
+
+// ---- Bulk actions ----
+const toggleAllFeedback = (checked) => {
+    document.querySelectorAll('.fb-check').forEach(cb => cb.checked = checked);
+};
+const getSelectedFeedbackIds = () => Array.from(document.querySelectorAll('.fb-check:checked')).map(cb => cb.value);
+const bulkUpdateFeedbackStatus = (newStatus) => {
+    const ids = getSelectedFeedbackIds();
+    if (ids.length === 0) { alert('Select at least one item.'); return; }
+    const feedback = load('feedback', []);
+    ids.forEach(id => {
+        const f = feedback.find(x => x.id === id);
+        if (f) { f.status = newStatus; f.updatedAt = new Date().toISOString(); }
+    });
+    save('feedback', feedback);
+    renderFeedback();
+};
+const bulkDeleteFeedback = () => {
+    const ids = getSelectedFeedbackIds();
+    if (ids.length === 0) { alert('Select at least one item.'); return; }
+    if (!confirm(`Delete ${ids.length} feedback item(s)?`)) return;
+    let feedback = load('feedback', []);
+    feedback = feedback.filter(f => !ids.includes(f.id));
+    save('feedback', feedback);
+    renderFeedback();
 };
 
 // Init
