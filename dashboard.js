@@ -2392,9 +2392,10 @@ const renderCopyCenter = () => {
         </div>
         <div>${content}</div>
         <div style="position:sticky;bottom:16px;background:var(--card-bg);padding:12px;border-radius:12px;box-shadow:0 -4px 20px rgba(0,0,0,.1);display:flex;gap:8px;align-items:center;z-index:10">
-            <button class="btn btn-sm btn-primary" style="background:#6C5CE7" onclick="ccCopyAll()">📋 Copy Everything on This Tab</button>
-            <button class="btn btn-sm btn-primary" style="background:#EA4335" onclick="emailFeedbackToWesley()">📧 Email Feedback to Wesley</button>
-            <button class="btn btn-sm btn-ghost" onclick="exportSiteSnapshot()">🤖 Full AI Report to Clipboard</button>
+            <button class="btn btn-sm btn-primary" style="background:#6C5CE7" onclick="ccCopyAll()">📋 Copy This Tab</button>
+            <button class="btn btn-sm btn-primary" style="background:#6C5CE7" onclick="saveFeedbackForAI()">📁 Save Feedback File</button>
+            <button class="btn btn-sm btn-primary" style="background:#2D3436" onclick="saveAllDataForAI()">📁 Save ALL Data File</button>
+            <button class="btn btn-sm btn-primary" style="background:#EA4335" onclick="emailFeedbackToWesley()">📧 Email to Wesley</button>
         </div>
     `;
 };
@@ -2405,6 +2406,20 @@ const ccCopyAll = () => {
     navigator.clipboard.writeText(all).then(() => {
         if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Copied!', 'All content on this tab copied to clipboard', 'success');
     });
+};
+
+// Save ALL site data as one JSON file Claude can read
+const saveAllDataForAI = () => {
+    const data = {};
+    ['feedback', 'bookings', 'clients', 'pets', 'reviews', 'payments', 'invoices', 'edit_requests', 'satisfaction_surveys', 'sitters', 'services', 'addons', 'packages', 'zones', 'settings', 'site_config', 'site_content', 'staff_accounts', 'checkins', 'infamy', 'users'].forEach(key => {
+        const val = load(key, null);
+        if (val !== null) data[key] = val;
+    });
+    data._meta = { exported: new Date().toISOString(), project: 'GenusPupClub', instruction: 'Tell Claude: read C:/Users/Wesley/Desktop/GenusPupClub/site-data.json' };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'site-data.json'; a.click(); URL.revokeObjectURL(a.href);
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved!', 'site-data.json downloaded — save to GenusPupClub folder', 'success');
 };
 
 // ============================================
@@ -5593,6 +5608,7 @@ const renderFeedback = () => {
                 <button class="btn btn-sm btn-primary" onclick="exportFeedbackForAI()">🤖 Copy All for AI</button>
                 <button class="btn btn-sm btn-success" onclick="exportFeedbackForAI('open')">📋 Copy Open Only</button>
                 <button class="btn btn-sm btn-primary" style="background:#EA4335" onclick="emailFeedbackToWesley()">📧 Email to Wesley</button>
+                <button class="btn btn-sm btn-primary" style="background:#6C5CE7" onclick="saveFeedbackForAI()">📁 Save for AI</button>
                 <button class="btn btn-sm btn-ghost" onclick="exportFeedbackCSV()">📊 Export CSV</button>
             </div>
         </div>
@@ -6120,6 +6136,49 @@ const emailFeedbackToWesley = (filter) => {
         window.open(`mailto:wesley.apride@gmail.com?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText.substring(0, 1800))}`, '_blank');
         alert('Feedback copied to clipboard + email client opened.\n\nNote: mailto has size limits. For full export, paste from clipboard.');
     }
+};
+
+// ---- Save feedback as JSON file for AI to read directly ----
+const saveFeedbackForAI = () => {
+    const feedback = load('feedback', []);
+    if (feedback.length === 0) { alert('No feedback to save.'); return; }
+
+    const data = {
+        _meta: {
+            exported: new Date().toISOString(),
+            project: 'GenusPupClub',
+            path: '~/Desktop/GenusPupClub/',
+            totalItems: feedback.length,
+            openItems: feedback.filter(f => ['new', 'reviewed', 'in_progress'].includes(f.status)).length,
+            instruction: 'Paste this file path into Claude: C:/Users/Wesley/Desktop/GenusPupClub/feedback-data.json — then say "read this and implement the feedback"'
+        },
+        feedback: feedback.map(f => ({
+            id: f.id,
+            category: f.category,
+            priority: f.priority,
+            status: f.status,
+            summary: f.summary,
+            details: f.details || '',
+            clientName: f.clientName || 'Anonymous',
+            affects: f.affects || '',
+            pageUrl: f.pageUrl || '',
+            screenSize: f.screenSize || '',
+            screenshots: f.screenshots?.length || 0,
+            adminNotes: f.adminNotes || '',
+            source: f.source || '',
+            createdAt: f.createdAt || '',
+            updatedAt: f.updatedAt || ''
+        }))
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'feedback-data.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    if (typeof GPC_NOTIFY !== 'undefined') GPC_NOTIFY.showToast('Saved!', 'feedback-data.json downloaded — save it to your GenusPupClub folder, then tell Claude to read it', 'success');
 };
 
 const exportFeedbackCSV = () => {
