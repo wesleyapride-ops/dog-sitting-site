@@ -28,6 +28,14 @@
     --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ---- CUSTOM SCROLLBAR ---- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-alt, #FFF5EB); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--primary, #FF6B35), var(--primary-dark, #E55A2B)); border-radius: 10px; border: 2px solid var(--bg-alt, #FFF5EB); }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--primary-dark, #E55A2B), #D04A1A); }
+::-webkit-scrollbar-corner { background: var(--bg-alt, #FFF5EB); }
+* { scrollbar-width: thin; scrollbar-color: var(--primary, #FF6B35) var(--bg-alt, #FFF5EB); }
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; scroll-padding-top: 80px; }

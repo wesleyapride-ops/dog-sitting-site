@@ -2229,6 +2229,8 @@ const renderLabTheme = (cfg, sc) => `
             </div>
         </div>
         ${renderToggle('Dark Mode', 'theme.darkMode', 'Dark theme across the entire site')}
+        ${renderToggle('Custom Scrollbar', 'theme.customScrollbar', 'Orange-themed scrollbar matching your brand colors')}
+        ${renderToggle('Smooth Scroll', 'theme.smoothScroll', 'Smooth scrolling when clicking nav links')}
     </div>`;
 
 // ---- TAB 3: CLIENT PORTAL CONTROLS ----
